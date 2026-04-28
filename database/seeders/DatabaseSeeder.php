@@ -21,6 +21,8 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        $this->call(DepartmentSeeder::class);
+
         // User::factory(10)->create();
 
         User::query()->updateOrCreate(
@@ -31,6 +33,7 @@ class DatabaseSeeder extends Seeder
                 'password' => Hash::make('password'),
                 'role' => 'admin',
                 'is_active' => true,
+                'department_id' => \App\Models\Department::query()->where('code', 'ops')->value('id'),
             ],
         );
 
@@ -109,6 +112,7 @@ class DatabaseSeeder extends Seeder
                 'staff_name' => $staffName,
                 'status' => $status,
                 'date' => $date,
+                'department_id' => \App\Models\Department::query()->where('code', 'sales-1')->value('id'),
             ]);
         }
 

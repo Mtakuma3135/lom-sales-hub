@@ -12,12 +12,13 @@ class UserService
     public function index(int $perPage = 20): LengthAwarePaginator
     {
         return User::query()
+            ->with('department')
             ->orderByDesc('id')
             ->paginate($perPage);
     }
 
     /**
-     * @param  array{name:string,employee_code:string,email:string,password:string,role:string,is_active?:bool}  $data
+     * @param  array{name:string,employee_code:string,email:string,password:string,role:string,is_active?:bool,department_id?:int|null}  $data
      */
     public function store(array $data): User
     {
@@ -29,6 +30,7 @@ class UserService
                 'password' => Hash::make($data['password']),
                 'role' => $data['role'],
                 'is_active' => $data['is_active'] ?? true,
+                'department_id' => $data['department_id'] ?? null,
             ]);
         } catch (\Throwable $e) {
             Log::error('UserService.store failed', [
@@ -41,7 +43,7 @@ class UserService
     }
 
     /**
-     * @param  array{name?:string,role?:string,is_active?:bool}  $data
+     * @param  array{name?:string,role?:string,is_active?:bool,department_id?:int|null}  $data
      */
     public function update(int $id, array $data): User
     {
@@ -57,10 +59,13 @@ class UserService
             if (array_key_exists('is_active', $data)) {
                 $user->is_active = (bool) $data['is_active'];
             }
+            if (array_key_exists('department_id', $data)) {
+                $user->department_id = $data['department_id'] === null ? null : (int) $data['department_id'];
+            }
 
             $user->save();
 
-            return $user->refresh();
+            return $user->refresh()->load('department');
         } catch (\Throwable $e) {
             Log::error('UserService.update failed', [
                 'id' => $id,

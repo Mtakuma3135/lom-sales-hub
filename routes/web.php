@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\DiscordNotificationLogController as AdminDiscordN
 use App\Http\Controllers\Admin\DiscordNotificationLogPageController;
 use App\Http\Controllers\Admin\AuditLogController as AdminAuditLogController;
 use App\Http\Controllers\Admin\AuditLogPageController;
+use App\Http\Controllers\Admin\DepartmentController as AdminDepartmentController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\LunchBreakController;
 use App\Http\Controllers\MypageController;
@@ -94,6 +95,8 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/api/audit-logs', [AdminAuditLogController::class, 'index'])->name('portal.api.audit-logs.index');
         Route::get('/api/audit-logs/{id}', [AdminAuditLogController::class, 'show'])->name('portal.api.audit-logs.show');
+
+        Route::get('/api/departments', [AdminDepartmentController::class, 'index'])->name('portal.api.departments.index');
 
         // Webセッション用 JSON API（一般ログインで使用）
         Route::get('/api/sales/records', [SalesRecordController::class, 'index'])->name('portal.api.sales.records');

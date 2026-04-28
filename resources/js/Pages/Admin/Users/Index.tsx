@@ -13,6 +13,7 @@ type UserRow = {
     email: string;
     role: 'admin' | 'general' | string;
     is_active?: boolean;
+    department?: { id: number; name: string; code: string } | null;
 };
 
 type UsersProp = {
@@ -27,7 +28,25 @@ export default function Index({ users }: { users: UsersProp }) {
         email: '',
         password: '',
         role: 'general' as 'admin' | 'general',
+        department_id: '' as string,
     });
+
+    const [departments, setDepartments] = useState<Array<{ id: number; name: string; code: string }>>([]);
+    const [departmentsLoaded, setDepartmentsLoaded] = useState<boolean>(false);
+
+    const loadDepartments = async () => {
+        if (departmentsLoaded) return;
+        try {
+            const res = await fetch(route('portal.api.departments.index'), { headers: { Accept: 'application/json' } });
+            if (!res.ok) throw new Error();
+            const json = (await res.json()) as Array<{ id: number; name: string; code: string }>;
+            setDepartments(Array.isArray(json) ? json : []);
+            setDepartmentsLoaded(true);
+        } catch {
+            setDepartments([]);
+            setDepartmentsLoaded(true);
+        }
+    };
 
     // 新規ユーザー登録送信イベント
     const submit = (e: React.FormEvent) => {
@@ -65,12 +84,15 @@ export default function Index({ users }: { users: UsersProp }) {
     const [editName, setEditName] = useState<string>('');
     const [editRole, setEditRole] = useState<'admin' | 'general'>('general');
     const [editActive, setEditActive] = useState<boolean>(true);
+    const [editDepartmentId, setEditDepartmentId] = useState<string>('');
 
     const openEdit = (u: UserRow) => {
         setEditingUserId(u.id);
         setEditName(u.name ?? '');
         setEditRole((u.role === 'admin' ? 'admin' : 'general') as 'admin' | 'general');
         setEditActive(u.is_active !== false);
+        setEditDepartmentId(u.department?.id ? String(u.department.id) : '');
+        void loadDepartments();
     };
 
     return (
@@ -169,6 +191,25 @@ export default function Index({ users }: { users: UsersProp }) {
                                 </select>
                                 <InputError message={errors.role} className="mt-2" />
                             </div>
+                            {/* 部署 */}
+                            <div>
+                                <InputLabel htmlFor="department_id" value="部署" />
+                                <select
+                                    id="department_id"
+                                    onFocus={() => void loadDepartments()}
+                                    className="mt-1 block w-full rounded-2xl border border-white/10 bg-[#0b1020]/60 px-4 py-3 text-sm font-semibold text-white/90 shadow-[0_0_0_1px_rgba(255,255,255,0.06)] focus:outline-none focus:ring-2 focus:ring-cyan-400/30"
+                                    value={data.department_id}
+                                    onChange={(e) => setData('department_id', e.target.value)}
+                                >
+                                    <option value="">未設定</option>
+                                    {departments.map((d) => (
+                                        <option key={d.id} value={String(d.id)}>
+                                            {d.name} ({d.code})
+                                        </option>
+                                    ))}
+                                </select>
+                                <InputError message={(errors as any).department_id} className="mt-2" />
+                            </div>
                             <PrimaryButton
                                 className="w-full justify-center bg-gradient-to-r from-purple-500 to-cyan-400 text-[#0b1020] hover:brightness-110 shadow-[0_0_22px_rgba(34,211,238,0.22)]"
                                 disabled={processing}
@@ -197,13 +238,14 @@ export default function Index({ users }: { users: UsersProp }) {
                                     <th className="p-3 border-b border-white/10 font-bold tracking-widest">CODE</th>
                                     <th className="p-3 border-b border-white/10 font-bold tracking-widest">EMAIL</th>
                                     <th className="p-3 border-b border-white/10 font-bold tracking-widest">ROLE</th>
+                                    <th className="p-3 border-b border-white/10 font-bold tracking-widest">DEPT</th>
                                     <th className="p-3 border-b border-white/10 font-bold tracking-widest">ACTIONS</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {users.data.length === 0 && (
                                     <tr>
-                                        <td colSpan={5} className="text-center py-10 text-sm text-white/45">
+                                        <td colSpan={6} className="text-center py-10 text-sm text-white/45">
                                             ユーザーが登録されていません
                                         </td>
                                     </tr>
@@ -224,6 +266,13 @@ export default function Index({ users }: { users: UsersProp }) {
                                             >
                                                 {user.role === 'admin' ? '管理者' : user.role === 'general' ? '一般' : user.role}
                                             </span>
+                                        </td>
+                                        <td className="p-3 border-b border-white/10 text-sm text-white/70">
+                                            {user.department ? (
+                                                <span className="font-mono text-xs">{user.department.name}</span>
+                                            ) : (
+                                                '—'
+                                            )}
                                         </td>
                                         <td className="p-3 border-b border-white/10 text-sm">
                                             <div className="flex items-center gap-2">
@@ -299,6 +348,22 @@ export default function Index({ users }: { users: UsersProp }) {
                                     <option value="admin">管理者</option>
                                 </select>
                             </div>
+                            <div>
+                                <InputLabel htmlFor="edit_department_id" value="部署" />
+                                <select
+                                    id="edit_department_id"
+                                    className="mt-1 block w-full rounded-2xl border border-white/10 bg-[#0b1020]/60 px-4 py-3 text-sm font-semibold text-white/90 shadow-[0_0_0_1px_rgba(255,255,255,0.06)] focus:outline-none focus:ring-2 focus:ring-cyan-400/30 focus:bg-white focus:text-black transition-colors"
+                                    value={editDepartmentId}
+                                    onChange={(e) => setEditDepartmentId(e.target.value)}
+                                >
+                                    <option value="">未設定</option>
+                                    {departments.map((d) => (
+                                        <option key={d.id} value={String(d.id)}>
+                                            {d.name} ({d.code})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
                             <label className="flex items-center gap-2 text-sm font-semibold text-white/75">
                                 <input
                                     type="checkbox"
@@ -323,6 +388,7 @@ export default function Index({ users }: { users: UsersProp }) {
                                             name: editName,
                                             role: editRole,
                                             is_active: editActive,
+                                            department_id: editDepartmentId ? Number(editDepartmentId) : null,
                                         });
                                         setEditingUserId(null);
                                     }}

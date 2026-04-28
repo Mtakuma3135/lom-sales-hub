@@ -70,7 +70,7 @@ class SendCsvToGasJob implements ShouldQueue
         try {
             $secret = (string) config('services.gas.signing_secret', '');
             $body = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?: '';
-            $ts = (string) now()->timestamp;
+            $ts = (string) ($payload['timestamp'] ?? now()->timestamp);
             $nonce = (string) Str::uuid();
 
             $signature = $secret === '' ? '' : hash_hmac('sha256', "{$ts}.{$nonce}.{$body}", $secret);
