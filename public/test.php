@@ -1,0 +1,1 @@
+<?php echo "MAMP is looking at public!";
