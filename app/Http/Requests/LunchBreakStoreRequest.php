@@ -18,7 +18,7 @@ class LunchBreakStoreRequest extends FormRequest
     {
         return [
             'date' => ['required', 'date_format:Y-m-d'],
-            'start_time' => ['required', 'regex:/^\d{2}:(00|30)$/'],
+            'start_time' => ['required', 'regex:/^\d{2}:00$/'],
         ];
     }
 

@@ -1,6 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
+import NeonCard from '@/Components/NeonCard';
 
 type RecordItem = {
     id: number;
@@ -10,12 +11,17 @@ type RecordItem = {
 };
 
 export default function Records() {
-    const [keyword, setKeyword] = useState<string>('');
-    const [status, setStatus] = useState<string>('');
-    const [dateFrom, setDateFrom] = useState<string>('');
-    const [dateTo, setDateTo] = useState<string>('');
+    const initialParams = useMemo(() => new URLSearchParams(window.location.search), []);
 
-    const [page, setPage] = useState<number>(1);
+    const [keyword, setKeyword] = useState<string>(() => initialParams.get('keyword') ?? '');
+    const [status, setStatus] = useState<string>(() => initialParams.get('status') ?? '');
+    const [dateFrom, setDateFrom] = useState<string>(() => initialParams.get('date_from') ?? '');
+    const [dateTo, setDateTo] = useState<string>(() => initialParams.get('date_to') ?? '');
+
+    const [page, setPage] = useState<number>(() => {
+        const v = Number(initialParams.get('page') ?? 1);
+        return Number.isFinite(v) && v >= 1 ? v : 1;
+    });
     const [items, setItems] = useState<RecordItem[]>([]);
     const [total, setTotal] = useState<number>(0);
     const [lastPage, setLastPage] = useState<number>(1);
@@ -60,26 +66,29 @@ export default function Records() {
         };
     }, [qs]);
 
+    const pageBtn =
+        'rounded-xl border border-stone-200 bg-white/90 px-3 py-2 text-xs font-black tracking-widest text-stone-700 shadow-sm transition hover:bg-emerald-50/50 disabled:opacity-40';
+
     return (
         <AuthenticatedLayout header={<h2 className="text-sm font-black tracking-tight">SALES / RECORDS</h2>}>
             <Head title="案件一覧" />
-            <div className="mx-auto max-w-6xl px-6 py-6 text-slate-100">
+            <div className="mx-auto max-w-6xl px-6 py-6 text-stone-800">
                 <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
                     <div>
-                        <div className="text-xs font-bold tracking-widest text-white/60">LIST</div>
-                        <div className="mt-1 text-lg font-black tracking-tight text-white">案件データ一覧</div>
+                        <div className="text-xs font-bold tracking-widest text-stone-500">LIST</div>
+                        <div className="mt-1 text-lg font-black tracking-tight text-stone-900">案件データ一覧</div>
                     </div>
                     <Link
                         href={route('sales.summary')}
-                        className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-black tracking-widest text-white/80 hover:bg-white/10"
+                        className="rounded-xl border border-stone-200 bg-white/90 px-4 py-2 text-xs font-black tracking-widest text-stone-700 shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50/50"
                     >
                         KPIへ戻る
                     </Link>
                 </div>
 
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_18px_60px_rgba(0,0,0,0.55)] backdrop-blur-md">
-                        <div className="text-xs font-bold tracking-widest text-white/60">FILTER</div>
+                    <NeonCard elevate={false}>
+                        <div className="text-xs font-bold tracking-widest text-stone-500">FILTER</div>
                         <div className="mt-3 space-y-3">
                             <input
                                 value={keyword}
@@ -88,7 +97,7 @@ export default function Records() {
                                     setKeyword(e.target.value);
                                 }}
                                 placeholder="担当者名で検索"
-                                className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/30 shadow-[0_0_0_1px_rgba(255,255,255,0.06)] transition-colors focus:bg-white focus:text-black"
+                                className="nordic-field"
                             />
                             <select
                                 value={status}
@@ -96,7 +105,7 @@ export default function Records() {
                                     setPage(1);
                                     setStatus(e.target.value);
                                 }}
-                                className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white shadow-[0_0_0_1px_rgba(255,255,255,0.06)] transition-colors focus:bg-white focus:text-black"
+                                className="nordic-field"
                             >
                                 <option value="">ステータス（全て）</option>
                                 <option value="ok">OK</option>
@@ -110,7 +119,7 @@ export default function Records() {
                                         setPage(1);
                                         setDateFrom(e.target.value);
                                     }}
-                                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white shadow-[0_0_0_1px_rgba(255,255,255,0.06)] transition-colors focus:bg-white focus:text-black"
+                                    className="nordic-field"
                                 />
                                 <input
                                     type="date"
@@ -119,7 +128,7 @@ export default function Records() {
                                         setPage(1);
                                         setDateTo(e.target.value);
                                     }}
-                                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white shadow-[0_0_0_1px_rgba(255,255,255,0.06)] transition-colors focus:bg-white focus:text-black"
+                                    className="nordic-field"
                                 />
                             </div>
                             <button
@@ -131,33 +140,28 @@ export default function Records() {
                                     setDateTo('');
                                     setPage(1);
                                 }}
-                                className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs font-black tracking-widest text-white/75 hover:bg-white/10"
+                                className="w-full rounded-xl border border-stone-200 bg-white/90 px-4 py-3 text-xs font-black tracking-widest text-stone-600 shadow-sm transition hover:bg-stone-50"
                             >
                                 RESET
                             </button>
                         </div>
-                    </div>
+                    </NeonCard>
 
-                    <div className="lg:col-span-2 rounded-2xl border border-white/10 bg-white/5 p-6 shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_18px_60px_rgba(0,0,0,0.55)] backdrop-blur-md">
+                    <NeonCard className="lg:col-span-2" elevate={false}>
                         <div className="flex items-center justify-between gap-4">
-                            <div className="text-xs font-semibold text-white/55">TOTAL {total.toLocaleString()}</div>
+                            <div className="text-xs font-semibold text-stone-600">TOTAL {total.toLocaleString()}</div>
                             <div className="flex items-center gap-2">
-                                <button
-                                    type="button"
-                                    disabled={page <= 1}
-                                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                                    className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-black tracking-widest text-white/80 hover:bg-white/10 disabled:opacity-40"
-                                >
+                                <button type="button" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className={pageBtn}>
                                     PREV
                                 </button>
-                                <div className="text-xs text-white/55">
+                                <div className="text-xs text-stone-500">
                                     {page} / {lastPage}
                                 </div>
                                 <button
                                     type="button"
                                     disabled={page >= lastPage}
                                     onClick={() => setPage((p) => Math.min(lastPage, p + 1))}
-                                    className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-black tracking-widest text-white/80 hover:bg-white/10 disabled:opacity-40"
+                                    className={pageBtn}
                                 >
                                     NEXT
                                 </button>
@@ -165,14 +169,14 @@ export default function Records() {
                         </div>
 
                         {errorMessage ? (
-                            <div className="mt-4 rounded-2xl border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-xs text-rose-100/80">
+                            <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-800">
                                 {errorMessage}
                             </div>
                         ) : null}
 
-                        <div className="mt-4 overflow-hidden rounded-2xl border border-white/10">
+                        <div className="mt-4 overflow-hidden rounded-xl border border-stone-200">
                             <table className="w-full text-left text-sm">
-                                <thead className="bg-white/5 text-xs font-bold tracking-widest text-white/55">
+                                <thead className="bg-stone-100/80 text-xs font-bold tracking-widest text-stone-600">
                                     <tr>
                                         <th className="px-4 py-3">ID</th>
                                         <th className="px-4 py-3">担当者</th>
@@ -180,36 +184,36 @@ export default function Records() {
                                         <th className="px-4 py-3">DATE</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-white/10 bg-[#0b1020]/35">
+                                <tbody className="divide-y divide-stone-200 bg-white/60">
                                     {isLoading ? (
                                         <tr>
-                                            <td className="px-4 py-6 text-sm text-white/40" colSpan={4}>
+                                            <td className="px-4 py-6 text-sm text-stone-500" colSpan={4}>
                                                 読み込み中…
                                             </td>
                                         </tr>
                                     ) : items.length ? (
                                         items.map((r) => (
-                                            <tr key={r.id} className="hover:bg-white/5">
-                                                <td className="px-4 py-3 font-mono text-xs text-white/70">{r.id}</td>
-                                                <td className="px-4 py-3 font-semibold text-white">{r.staff_name}</td>
+                                            <tr key={r.id} className="hover:bg-emerald-50/30">
+                                                <td className="px-4 py-3 font-mono text-xs text-stone-600">{r.id}</td>
+                                                <td className="px-4 py-3 font-semibold text-stone-900">{r.staff_name}</td>
                                                 <td className="px-4 py-3">
                                                     <span
                                                         className={
                                                             'inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-black tracking-widest ring-1 ring-inset ' +
                                                             (r.status === 'ok'
-                                                                ? 'bg-emerald-400/10 text-emerald-200 ring-emerald-400/25'
-                                                                : 'bg-rose-400/10 text-rose-200 ring-rose-400/25')
+                                                                ? 'bg-emerald-50 text-emerald-800 ring-emerald-200'
+                                                                : 'bg-rose-50 text-rose-800 ring-rose-200')
                                                         }
                                                     >
                                                         {r.status.toUpperCase()}
                                                     </span>
                                                 </td>
-                                                <td className="px-4 py-3 font-mono text-xs text-white/55">{r.date}</td>
+                                                <td className="px-4 py-3 font-mono text-xs text-stone-600">{r.date}</td>
                                             </tr>
                                         ))
                                     ) : (
                                         <tr>
-                                            <td className="px-4 py-6 text-sm text-white/40" colSpan={4}>
+                                            <td className="px-4 py-6 text-sm text-stone-500" colSpan={4}>
                                                 データがありません
                                             </td>
                                         </tr>
@@ -217,10 +221,9 @@ export default function Records() {
                                 </tbody>
                             </table>
                         </div>
-                    </div>
+                    </NeonCard>
                 </div>
             </div>
         </AuthenticatedLayout>
     );
 }
-

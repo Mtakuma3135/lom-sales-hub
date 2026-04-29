@@ -32,8 +32,8 @@ export default forwardRef(function TextInput(
             {...props}
             type={type}
             className={
-                'rounded-md border-slate-300 bg-white shadow-sm placeholder:text-slate-400 focus:border-blue-500 focus:ring-blue-500 ' +
-                'transition-colors focus:bg-white focus:text-black ' +
+                'rounded-xl border-stone-200 bg-white shadow-sm placeholder:text-stone-400 focus:border-emerald-500 focus:ring-emerald-500 ' +
+                'transition-all duration-200 focus:outline-none focus:shadow-[inset_0_0_0_1px_rgba(16,185,129,0.2),inset_0_0_14px_rgba(110,231,183,0.22)] ' +
                 className
             }
             ref={localRef}

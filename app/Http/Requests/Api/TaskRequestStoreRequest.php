@@ -16,7 +16,7 @@ class TaskRequestStoreRequest extends FormRequest
         return [
             'title' => ['required', 'string', 'max:100'],
             'to_user_id' => ['required', 'integer', 'min:1', 'exists:users,id'],
-            'priority' => ['required', 'in:urgent,normal'],
+            'priority' => ['required', 'in:urgent,important,normal'],
             'body' => ['required', 'string', 'max:2000'],
         ];
     }

@@ -13,7 +13,11 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['Figtree', ...defaultTheme.fontFamily.sans],
+                sans: ['Inter', 'ui-sans-serif', 'system-ui', ...defaultTheme.fontFamily.sans],
+            },
+            boxShadow: {
+                nordic: '0 8px 30px rgb(28 25 23 / 0.04)',
+                'nordic-hover': '0 12px 36px rgb(28 25 23 / 0.07)',
             },
         },
     },

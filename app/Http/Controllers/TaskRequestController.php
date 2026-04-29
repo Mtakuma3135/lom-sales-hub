@@ -62,7 +62,8 @@ class TaskRequestController extends Controller
         if (! is_array($task)) {
             abort(404);
         }
-        Gate::authorize('taskRequest.update', $task);
+        // IMPORTANT: associative array would be treated as named arguments in PHP8
+        Gate::authorize('taskRequest.update', [$task]);
 
         $taskRequestService->updateStatus($actor, $id, $request->status());
 

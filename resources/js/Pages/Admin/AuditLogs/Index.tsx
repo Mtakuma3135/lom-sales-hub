@@ -1,6 +1,10 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head } from '@inertiajs/react';
-import { useEffect, useMemo, useState } from 'react';
+import { Head, Link, usePage } from '@inertiajs/react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Fragment, useState } from 'react';
+import NordicCard from '@/Components/UI/NordicCard';
+import StatusBadge from '@/Components/StatusBadge';
+import JsonCodeBlock from '@/Components/JsonCodeBlock';
 
 type Row = {
     id: number;
@@ -10,7 +14,7 @@ type Row = {
     status_code: number | null;
     error_message: string | null;
     actor_id: number | null;
-    related_type: string | null;
+    user?: { id: number; name: string } | null;
     related_id: number | null;
     created_at: string;
 };
@@ -22,258 +26,238 @@ type Detail = Row & {
     updated_at: string;
 };
 
-function statusBadge(status: string): { label: string; className: string } {
-    const s = (status || '').toLowerCase();
-    if (s === 'success') {
-        return { label: 'SUCCESS', className: 'border-cyan-400/20 bg-cyan-500/10 text-cyan-100/85' };
-    }
-    if (s === 'skipped') {
-        return { label: 'SKIPPED', className: 'border-white/10 bg-white/5 text-white/70' };
-    }
-    if (s === 'pending') {
-        return { label: 'PENDING', className: 'border-white/10 bg-white/5 text-white/70' };
-    }
-    return { label: status?.toUpperCase?.() ?? 'FAILED', className: 'border-rose-400/20 bg-rose-500/10 text-rose-100/85' };
+function statusCodeVariant(code: number | null): { label: string; variant: 'success' | 'danger' | 'muted' } {
+    if (code === null) return { label: '—', variant: 'muted' };
+    if (code >= 200 && code < 300) return { label: String(code), variant: 'success' };
+    return { label: String(code), variant: 'danger' };
+}
+
+type Paginator<T> = {
+    data: T[];
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+    links: Array<{ url: string | null; label: string; active: boolean }>;
+};
+
+function actionLabel(integration: string, eventType: string): string {
+    const key = `${integration}:${eventType}`;
+    if (key.startsWith('kot:')) return 'KOT Punch';
+    if (key.startsWith('gas:')) return 'GAS Upload';
+    return `${integration.toUpperCase()} ${eventType}`;
+}
+
+function formatJst(dt: string): string {
+    const d = new Date(dt);
+    if (Number.isNaN(d.getTime())) return dt;
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
 export default function Index() {
-    const [items, setItems] = useState<Row[]>([]);
-    const [isLoading, setIsLoading] = useState<boolean>(true);
-    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const { props } = usePage<{ logs: Paginator<Row> }>();
+    const items = props.logs?.data ?? [];
+    const [expandedId, setExpandedId] = useState<number | null>(null);
+    const [cache, setCache] = useState<Record<number, Detail | 'loading' | 'error'>>({});
 
-    const [filterIntegration, setFilterIntegration] = useState<string>('');
-    const [filterEventType, setFilterEventType] = useState<string>('');
-    const [filterStatus, setFilterStatus] = useState<string>('failed');
-    const [filterActorId, setFilterActorId] = useState<string>('');
-    const [filterDateFrom, setFilterDateFrom] = useState<string>('');
-    const [filterDateTo, setFilterDateTo] = useState<string>('');
-
-    const [detailId, setDetailId] = useState<number | null>(null);
-    const [detail, setDetail] = useState<Detail | null>(null);
-    const [isDetailLoading, setIsDetailLoading] = useState<boolean>(false);
-
-    const api = useMemo(() => {
-        return {
-            index: (params: {
-                integration?: string;
-                event_type?: string;
-                status?: string;
-                actor_id?: string;
-                date_from?: string;
-                date_to?: string;
-            }) => {
-                const qs = new URLSearchParams();
-                if (params.integration) qs.set('integration', params.integration);
-                if (params.event_type) qs.set('event_type', params.event_type);
-                if (params.status) qs.set('status', params.status);
-                if (params.actor_id) qs.set('actor_id', params.actor_id);
-                if (params.date_from) qs.set('date_from', params.date_from);
-                if (params.date_to) qs.set('date_to', params.date_to);
-                const url = `${route('portal.api.audit-logs.index')}?${qs.toString()}`;
-                return fetch(url, { headers: { Accept: 'application/json' } });
-            },
-            show: (id: number) => fetch(route('portal.api.audit-logs.show', { id }), { headers: { Accept: 'application/json' } }),
-        };
-    }, []);
-
-    const load = async () => {
-        setIsLoading(true);
-        setErrorMessage(null);
+    const toggleRow = async (id: number) => {
+        if (expandedId === id) {
+            setExpandedId(null);
+            return;
+        }
+        setExpandedId(id);
+        const prev = cache[id];
+        if (prev && prev !== 'loading' && prev !== 'error') return;
+        setCache((c) => ({ ...c, [id]: 'loading' }));
         try {
-            const res = await api.index({
-                integration: filterIntegration || undefined,
-                event_type: filterEventType || undefined,
-                status: filterStatus || undefined,
-                actor_id: filterActorId || undefined,
-                date_from: filterDateFrom || undefined,
-                date_to: filterDateTo || undefined,
+            const res = await fetch(route('admin.audit-logs.show', { audit_log: id }), {
+                headers: { Accept: 'application/json' },
             });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const json = (await res.json()) as unknown;
-            setItems(Array.isArray(json) ? (json as Row[]) : []);
+            if (!res.ok) throw new Error();
+            const json = (await res.json()) as Detail;
+            setCache((c) => ({ ...c, [id]: json }));
         } catch {
-            setErrorMessage('監査ログ一覧の取得に失敗しました。再読み込みしてください。');
-        } finally {
-            setIsLoading(false);
+            setCache((c) => ({ ...c, [id]: 'error' }));
         }
     };
 
-    useEffect(() => {
-        void load();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
-    const uniqueIntegrations = useMemo(() => {
-        const set = new Set(items.map((x) => x.integration));
-        return Array.from(set).sort();
-    }, [items]);
-
-    const uniqueEventTypes = useMemo(() => {
-        const set = new Set(items.map((x) => x.event_type));
-        return Array.from(set).sort();
-    }, [items]);
-
     return (
-        <AuthenticatedLayout header={<h2 className="text-sm font-black tracking-tight">AUDIT LOG (ADMIN)</h2>}>
+        <AuthenticatedLayout header={<h2 className="text-sm font-semibold tracking-tight text-stone-800">監査ログ</h2>}>
             <Head title="監査ログ（管理者）" />
-            <div className="mx-auto max-w-6xl px-6 py-6 text-slate-100">
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_18px_60px_rgba(0,0,0,0.55)] backdrop-blur-md">
-                    <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="mx-auto max-w-6xl text-stone-700">
+                <NordicCard elevate={false} className="p-8">
+                    <div className="flex flex-wrap items-start justify-between gap-6">
                         <div>
-                            <div className="text-xs font-bold tracking-widest text-white/60">LIST</div>
-                            <div className="mt-1 text-lg font-black tracking-tight text-white">監査ログ</div>
+                            <div className="text-xs font-semibold uppercase tracking-widest text-stone-400">一覧</div>
+                            <div className="mt-2 text-xl font-semibold tracking-tight text-stone-800">
+                                外部連携の監査ログ
+                            </div>
+                            <p className="mt-2 max-w-xl text-sm leading-relaxed text-stone-500">
+                                行をクリックすると、この場で詳細が開きます。JSON はライトテーマ向けに強調表示します。
+                            </p>
                         </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                            <select
-                                value={filterIntegration}
-                                onChange={(e) => setFilterIntegration(e.target.value)}
-                                className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-black tracking-tight text-white/80 focus:bg-white focus:text-black"
-                            >
-                                <option value="">INTEGRATION: ALL</option>
-                                {uniqueIntegrations.map((t) => (
-                                    <option key={t} value={t}>
-                                        {t}
-                                    </option>
-                                ))}
-                            </select>
-                            <select
-                                value={filterEventType}
-                                onChange={(e) => setFilterEventType(e.target.value)}
-                                className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-black tracking-tight text-white/80 focus:bg-white focus:text-black"
-                            >
-                                <option value="">EVENT: ALL</option>
-                                {uniqueEventTypes.map((t) => (
-                                    <option key={t} value={t}>
-                                        {t}
-                                    </option>
-                                ))}
-                            </select>
-                            <select
-                                value={filterStatus}
-                                onChange={(e) => setFilterStatus(e.target.value)}
-                                className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-black tracking-tight text-white/80 focus:bg-white focus:text-black"
-                            >
-                                <option value="">STATUS: ALL</option>
-                                <option value="success">SUCCESS</option>
-                                <option value="failed">FAILED</option>
-                                <option value="pending">PENDING</option>
-                                <option value="skipped">SKIPPED</option>
-                            </select>
-                            <input
-                                value={filterActorId}
-                                onChange={(e) => setFilterActorId(e.target.value)}
-                                placeholder="actor_id"
-                                className="w-28 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-black tracking-tight text-white/80 placeholder:text-white/30 focus:bg-white focus:text-black"
-                            />
-                            <input
-                                type="date"
-                                value={filterDateFrom}
-                                onChange={(e) => setFilterDateFrom(e.target.value)}
-                                className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-black tracking-tight text-white/80 focus:bg-white focus:text-black"
-                            />
-                            <input
-                                type="date"
-                                value={filterDateTo}
-                                onChange={(e) => setFilterDateTo(e.target.value)}
-                                className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-black tracking-tight text-white/80 focus:bg-white focus:text-black"
-                            />
-                            <button
-                                type="button"
-                                onClick={() => void load()}
-                                className="rounded-xl bg-gradient-to-r from-purple-500/30 to-cyan-400/20 px-3 py-2 text-xs font-black tracking-tight text-white shadow-[0_0_0_1px_rgba(34,211,238,0.14)] hover:brightness-110"
-                            >
-                                REFRESH
-                            </button>
+                        <div className="rounded-full bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-800 ring-1 ring-emerald-100">
+                            {props.logs?.total ?? 0} 件
                         </div>
                     </div>
 
-                    {errorMessage ? (
-                        <div className="mt-4 rounded-2xl border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-xs text-rose-100/80">
-                            {errorMessage}
-                        </div>
-                    ) : null}
-
-                    <div className="mt-4 overflow-hidden rounded-2xl border border-white/10">
+                    <div className="mt-10 overflow-hidden rounded-2xl border border-stone-100 bg-stone-50/50">
                         <table className="w-full text-left text-sm">
-                            <thead className="bg-white/5 text-xs font-bold tracking-widest text-white/55">
+                            <thead className="bg-white text-xs font-semibold uppercase tracking-wider text-stone-500">
                                 <tr>
-                                    <th className="px-4 py-3">ID</th>
-                                    <th className="px-4 py-3">INTEG</th>
-                                    <th className="px-4 py-3">EVENT</th>
-                                    <th className="px-4 py-3">STATUS</th>
-                                    <th className="px-4 py-3">ACTOR</th>
-                                    <th className="px-4 py-3">RELATED</th>
-                                    <th className="px-4 py-3">AT</th>
-                                    <th className="px-4 py-3">ACTION</th>
+                                    <th className="px-5 py-4">実行日時</th>
+                                    <th className="px-5 py-4">ユーザー</th>
+                                    <th className="px-5 py-4">アクション</th>
+                                    <th className="px-5 py-4">ステータス</th>
+                                    <th className="px-5 py-4">対象ID</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-white/10 bg-[#0b1020]/35">
-                                {isLoading ? (
-                                    <tr>
-                                        <td className="px-4 py-6 text-sm text-white/40" colSpan={8}>
-                                            読み込み中…
-                                        </td>
-                                    </tr>
-                                ) : items.length ? (
+                            <tbody className="divide-y divide-stone-100 bg-white">
+                                {items.length ? (
                                     items.map((x) => {
-                                        const badge = statusBadge(x.status);
+                                        const badge = statusCodeVariant(x.status_code);
+                                        const open = expandedId === x.id;
+                                        const rowDetail = cache[x.id];
                                         return (
-                                            <tr key={x.id} className="hover:bg-white/5">
-                                                <td className="px-4 py-3 font-mono text-xs text-white/80">{x.id}</td>
-                                                <td className="px-4 py-3 text-white/80">{x.integration}</td>
-                                                <td className="px-4 py-3 text-white/80">{x.event_type}</td>
-                                                <td className="px-4 py-3">
-                                                    <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-black ${badge.className}`}>
-                                                        {badge.label}
-                                                    </span>
-                                                    {x.status_code !== null ? (
-                                                        <span className="ml-2 font-mono text-[11px] text-white/55">{x.status_code}</span>
+                                            <Fragment key={x.id}>
+                                                <tr
+                                                    className={
+                                                        'cursor-pointer transition-colors ' +
+                                                        (open ? 'bg-emerald-50/40' : 'hover:bg-stone-50')
+                                                    }
+                                                    onClick={() => toggleRow(x.id)}
+                                                >
+                                                    <td className="px-5 py-4 font-mono text-xs text-stone-500">
+                                                        {formatJst(x.created_at)}
+                                                    </td>
+                                                    <td className="px-5 py-4 text-stone-700">
+                                                        {x.user?.name ?? (x.actor_id ? `#${x.actor_id}` : '—')}
+                                                    </td>
+                                                    <td className="px-5 py-4 font-medium text-stone-800">
+                                                        {actionLabel(x.integration, x.event_type)}
+                                                    </td>
+                                                    <td className="px-5 py-4">
+                                                        <StatusBadge variant={badge.variant}>{badge.label}</StatusBadge>
+                                                    </td>
+                                                    <td className="px-5 py-4 font-mono text-xs text-stone-500">
+                                                        {x.related_id ?? '—'}
+                                                    </td>
+                                                </tr>
+                                                <AnimatePresence initial={false}>
+                                                    {open ? (
+                                                        <tr className="bg-stone-50/80">
+                                                            <td colSpan={5} className="p-0">
+                                                                <motion.div
+                                                                    initial={{ height: 0, opacity: 0 }}
+                                                                    animate={{ height: 'auto', opacity: 1 }}
+                                                                    exit={{ height: 0, opacity: 0 }}
+                                                                    transition={{
+                                                                        duration: 0.35,
+                                                                        ease: [0.16, 1, 0.3, 1],
+                                                                    }}
+                                                                    className="overflow-hidden border-t border-stone-100"
+                                                                >
+                                                                    <div className="space-y-6 px-5 py-8">
+                                                                        {rowDetail === 'loading' ? (
+                                                                            <p className="text-sm text-stone-500">
+                                                                                読み込み中…
+                                                                            </p>
+                                                                        ) : rowDetail === 'error' ? (
+                                                                            <p className="text-sm text-red-700">
+                                                                                取得に失敗しました。
+                                                                            </p>
+                                                                        ) : typeof rowDetail === 'object' ? (
+                                                                            <>
+                                                                                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                                                                                    <div className="rounded-xl border border-stone-100 bg-white p-4 shadow-sm">
+                                                                                        <div className="text-xs font-semibold uppercase tracking-wide text-stone-400">
+                                                                                            Integration
+                                                                                        </div>
+                                                                                        <div className="mt-1 text-stone-800">
+                                                                                            {rowDetail.integration}
+                                                                                        </div>
+                                                                                    </div>
+                                                                                    <div className="rounded-xl border border-stone-100 bg-white p-4 shadow-sm">
+                                                                                        <div className="text-xs font-semibold uppercase tracking-wide text-stone-400">
+                                                                                            Event
+                                                                                        </div>
+                                                                                        <div className="mt-1 text-stone-800">
+                                                                                            {rowDetail.event_type}
+                                                                                        </div>
+                                                                                    </div>
+                                                                                    <div className="rounded-xl border border-stone-100 bg-white p-4 shadow-sm">
+                                                                                        <div className="text-xs font-semibold uppercase tracking-wide text-stone-400">
+                                                                                            Status
+                                                                                        </div>
+                                                                                        <div className="mt-1 flex flex-wrap items-center gap-2 text-stone-800">
+                                                                                            <span>{rowDetail.status}</span>
+                                                                                            <StatusBadge
+                                                                                                variant={
+                                                                                                    statusCodeVariant(
+                                                                                                        rowDetail.status_code
+                                                                                                    ).variant
+                                                                                                }
+                                                                                            >
+                                                                                                {rowDetail.status_code !== null
+                                                                                                    ? String(rowDetail.status_code)
+                                                                                                    : '—'}
+                                                                                            </StatusBadge>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                    <div className="rounded-xl border border-stone-100 bg-white p-4 shadow-sm">
+                                                                                        <div className="text-xs font-semibold uppercase tracking-wide text-stone-400">
+                                                                                            Actor
+                                                                                        </div>
+                                                                                        <div className="mt-1 font-mono text-stone-700">
+                                                                                            {rowDetail.actor_id ?? '—'}
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </div>
+
+                                                                                <div className="rounded-xl border border-stone-100 bg-white p-5 shadow-sm">
+                                                                                    <div className="text-xs font-semibold uppercase tracking-wide text-stone-400">
+                                                                                        Request
+                                                                                    </div>
+                                                                                    <JsonCodeBlock
+                                                                                        value={rowDetail.request_payload}
+                                                                                        theme="light"
+                                                                                    />
+                                                                                </div>
+                                                                                <div className="rounded-xl border border-stone-100 bg-white p-5 shadow-sm">
+                                                                                    <div className="text-xs font-semibold uppercase tracking-wide text-stone-400">
+                                                                                        Meta
+                                                                                    </div>
+                                                                                    <JsonCodeBlock value={rowDetail.meta} theme="light" />
+                                                                                </div>
+                                                                                <div className="rounded-xl border border-stone-100 bg-white p-5 shadow-sm">
+                                                                                    <div className="text-xs font-semibold uppercase tracking-wide text-stone-400">
+                                                                                        Response
+                                                                                    </div>
+                                                                                    <JsonCodeBlock
+                                                                                        value={rowDetail.response_body ?? '—'}
+                                                                                        theme="light"
+                                                                                    />
+                                                                                </div>
+                                                                                {rowDetail.error_message ? (
+                                                                                    <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-800">
+                                                                                        {rowDetail.error_message}
+                                                                                    </div>
+                                                                                ) : null}
+                                                                            </>
+                                                                        ) : null}
+                                                                    </div>
+                                                                </motion.div>
+                                                            </td>
+                                                        </tr>
                                                     ) : null}
-                                                    {x.error_message ? (
-                                                        <div className="mt-1 text-[11px] text-rose-100/70">{x.error_message}</div>
-                                                    ) : null}
-                                                </td>
-                                                <td className="px-4 py-3 font-mono text-xs text-white/55">{x.actor_id ?? '—'}</td>
-                                                <td className="px-4 py-3 font-mono text-xs text-white/55">
-                                                    {x.related_type ? (
-                                                        <span>
-                                                            {x.related_type.split('\\').pop()}#{x.related_id ?? '—'}
-                                                        </span>
-                                                    ) : (
-                                                        '—'
-                                                    )}
-                                                </td>
-                                                <td className="px-4 py-3 font-mono text-xs text-white/55">{x.created_at}</td>
-                                                <td className="px-4 py-3">
-                                                    <button
-                                                        type="button"
-                                                        onClick={async () => {
-                                                            setDetailId(x.id);
-                                                            setDetail(null);
-                                                            setIsDetailLoading(true);
-                                                            setErrorMessage(null);
-                                                            try {
-                                                                const res = await api.show(x.id);
-                                                                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                                                                const json = (await res.json()) as Detail;
-                                                                setDetail(json);
-                                                            } catch {
-                                                                setErrorMessage('詳細の取得に失敗しました。');
-                                                            } finally {
-                                                                setIsDetailLoading(false);
-                                                            }
-                                                        }}
-                                                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-black tracking-tight text-white/80 hover:bg-white/10"
-                                                    >
-                                                        DETAIL
-                                                    </button>
-                                                </td>
-                                            </tr>
+                                                </AnimatePresence>
+                                            </Fragment>
                                         );
                                     })
                                 ) : (
                                     <tr>
-                                        <td className="px-4 py-6 text-sm text-white/40" colSpan={8}>
+                                        <td className="px-5 py-10 text-center text-sm text-stone-500" colSpan={5}>
                                             ログがありません
                                         </td>
                                     </tr>
@@ -281,87 +265,35 @@ export default function Index() {
                             </tbody>
                         </table>
                     </div>
-                </div>
-            </div>
 
-            {detailId !== null ? (
-                <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 sm:items-center">
-                    <div className="w-full max-w-3xl overflow-hidden rounded-2xl border border-white/10 bg-[#050510] shadow-[0_0_60px_rgba(34,211,238,0.10)]">
-                        <div className="flex items-center justify-between border-b border-white/10 bg-white/5 px-5 py-4">
-                            <div className="text-sm font-black tracking-tight text-white">DETAIL #{detailId}</div>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setDetailId(null);
-                                    setDetail(null);
-                                    setIsDetailLoading(false);
-                                }}
-                                className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-black tracking-tight text-white/80 hover:bg-white/10"
-                            >
-                                CLOSE
-                            </button>
+                    <div className="mt-8 flex flex-wrap items-center justify-between gap-4 text-sm text-stone-500">
+                        <div>
+                            {props.logs ? (
+                                <span>
+                                    ページ {props.logs.current_page} / {props.logs.last_page}
+                                </span>
+                            ) : null}
                         </div>
-                        <div className="max-h-[70vh] space-y-4 overflow-auto p-5 text-sm">
-                            {isDetailLoading ? (
-                                <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-6 text-sm text-white/40">読み込み中…</div>
-                            ) : detail ? (
-                                <>
-                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                        <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                                            <div className="text-[11px] font-bold tracking-widest text-white/55">INTEGRATION</div>
-                                            <div className="mt-1 text-white/80">{detail.integration}</div>
-                                        </div>
-                                        <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                                            <div className="text-[11px] font-bold tracking-widest text-white/55">EVENT</div>
-                                            <div className="mt-1 text-white/80">{detail.event_type}</div>
-                                        </div>
-                                        <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                                            <div className="text-[11px] font-bold tracking-widest text-white/55">STATUS</div>
-                                            <div className="mt-1 text-white/80">
-                                                {detail.status} {detail.status_code !== null ? `(${detail.status_code})` : ''}
-                                            </div>
-                                        </div>
-                                        <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                                            <div className="text-[11px] font-bold tracking-widest text-white/55">ACTOR</div>
-                                            <div className="mt-1 font-mono text-white/80">{detail.actor_id ?? '—'}</div>
-                                        </div>
-                                    </div>
-
-                                    <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                                        <div className="text-[11px] font-bold tracking-widest text-white/55">REQUEST_PAYLOAD</div>
-                                        <pre className="mt-2 overflow-auto rounded-xl bg-black/40 p-3 text-xs text-white/80">
-                                            {JSON.stringify(detail.request_payload ?? null, null, 2)}
-                                        </pre>
-                                    </div>
-
-                                    <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                                        <div className="text-[11px] font-bold tracking-widest text-white/55">META</div>
-                                        <pre className="mt-2 overflow-auto rounded-xl bg-black/40 p-3 text-xs text-white/80">
-                                            {JSON.stringify(detail.meta ?? null, null, 2)}
-                                        </pre>
-                                    </div>
-
-                                    <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                                        <div className="text-[11px] font-bold tracking-widest text-white/55">RESPONSE</div>
-                                        <pre className="mt-2 overflow-auto rounded-xl bg-black/40 p-3 text-xs text-white/80">
-                                            {detail.response_body ?? '—'}
-                                        </pre>
-                                    </div>
-
-                                    {detail.error_message ? (
-                                        <div className="rounded-2xl border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-xs text-rose-100/80">
-                                            {detail.error_message}
-                                        </div>
-                                    ) : null}
-                                </>
-                            ) : (
-                                <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-6 text-sm text-white/40">データがありません</div>
-                            )}
+                        <div className="flex flex-wrap gap-2">
+                            {props.logs?.links?.map((l, idx) => (
+                                <Link
+                                    key={`${idx}-${l.label}`}
+                                    href={l.url ?? '#'}
+                                    preserveScroll
+                                    className={
+                                        'rounded-lg border px-3 py-2 text-xs font-semibold transition ' +
+                                        (l.active
+                                            ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
+                                            : 'border-stone-200 bg-white text-stone-600 hover:bg-stone-50') +
+                                        (!l.url ? ' pointer-events-none opacity-40' : '')
+                                    }
+                                    dangerouslySetInnerHTML={{ __html: l.label }}
+                                />
+                            ))}
                         </div>
                     </div>
-                </div>
-            ) : null}
+                </NordicCard>
+            </div>
         </AuthenticatedLayout>
     );
 }
-

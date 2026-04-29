@@ -86,7 +86,7 @@ class LunchBreakService
                 throw new \RuntimeException('Slot is full.', 409);
             }
 
-            $end = $start->addMinutes(30);
+            $end = $start->addMinutes(60);
 
             return LunchBreak::query()->create([
                 'user_id' => $actor->id,
@@ -166,7 +166,7 @@ class LunchBreakService
                 ->where('start_time', $startTime)
                 ->delete();
 
-            $end = $start->addMinutes(30);
+            $end = $start->addMinutes(60);
 
             $users = User::query()
                 ->whereIn('id', $userIds)
@@ -274,9 +274,9 @@ class LunchBreakService
         while ($cursor->lessThan($end)) {
             $slots->push([
                 'start_time' => $cursor->format('H:i'),
-                'end_time' => $cursor->addMinutes(30)->format('H:i'),
+                'end_time' => $cursor->addMinutes(60)->format('H:i'),
             ]);
-            $cursor = $cursor->addMinutes(30);
+            $cursor = $cursor->addMinutes(60);
         }
 
         return $slots;
@@ -284,7 +284,7 @@ class LunchBreakService
 
     private function assertTimeSlotRule(string $startTime): void
     {
-        if (! preg_match('/^\d{2}:(00|30)$/', $startTime)) {
+        if (! preg_match('/^\d{2}:00$/', $startTime)) {
             throw new \RuntimeException('Invalid slot.', 422);
         }
     }
@@ -302,14 +302,14 @@ class LunchBreakService
                 'user_id' => 1,
                 'date' => $date,
                 'start_time' => '12:00:00',
-                'end_time' => '12:30:00',
+                'end_time' => '13:00:00',
             ]),
             new LunchBreak([
                 'id' => 2,
                 'user_id' => 2,
                 'date' => $date,
-                'start_time' => '12:30:00',
-                'end_time' => '13:00:00',
+                'start_time' => '13:00:00',
+                'end_time' => '14:00:00',
             ]),
         ])->map(function (LunchBreak $lb) {
             // user relation ダミー

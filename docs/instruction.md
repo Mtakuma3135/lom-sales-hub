@@ -1,12 +1,11 @@
 # Instruction
 
-ここにプロジェクトの運用・開発手順（例: セットアップ、コーディング規約、デプロイ手順、よくあるトラブル対応など）を記載してください。
+このドキュメントは、LOM Sales Hub の運用・開発手順（セットアップ、規約、ルーティング、よくある落とし穴）をまとめたものです。
 
 ## 0. 前提
 バックエンド：Laravel
 フロントエンド：React + TypeScript
 認証：Laravel Sanctum（SPA）
-状態管理：Zustand + TanStack Query
 DB：MySQL
 
 ## 1. 実装ルール（最重要）
@@ -75,8 +74,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/mypage/password', [PasswordController::class, 'update']);
 });
 
-Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
+Route::middleware(['auth:sanctum'])->group(function () {
 
+    // 管理者権限は Policy で制御する（role middleware は使わない）
     Route::apiResource('/users', Admin\UserController::class);
 
     Route::post('/csv/upload', [Admin\CsvController::class, 'upload']);
@@ -172,17 +172,22 @@ Google Chat：失敗時 success=false
 GAS：Queue + リトライ
 KING OF TIME：キャッシュ60分
 
-## 18. APIレスポンス
+## 18. 監査ログ（外部連携ログ）
+- 管理者向けに監査ログ一覧を提供する
+- `audit_logs` に req/res/status を保存（KOT/GAS）
+- 画面: `/portal/admin/audit-logs`
+
+## 19. APIレスポンス
 {
   "data": {},
   "meta": {}
 }
 
-## 19. Resource
+## 20. Resource
 ・必ず data / meta 形式
 ・collection使用
 
-## 20. バリデーションエラー
+## 21. バリデーションエラー
 {
   "message": "Validation failed",
   "errors": {
@@ -190,45 +195,51 @@ KING OF TIME：キャッシュ60分
   }
 }
 
-## 21. 日付フォーマット
+## 22. 日付フォーマット
 datetime：ISO8601
 date：YYYY-MM-DD
 
-## 22. ページネーション
+## 23. ページネーション
 paginate() 使用
 
-## 23. 例外処理
+## 24. 例外処理
 ・Serviceでtry-catch
 ・Log出力
 ・詳細は返さない
 
-## 24. HTTPステータス
+## 25. HTTPステータス
 200 / 201 / 401 / 403 / 422 / 409 / 500
 
-## 25. 禁止事項
+## 26. 禁止事項
 ・Controllerにロジックを書くな
 ・ControllerでDB操作するな
 ・バリデーションをControllerに書くな
 ・CSVでトランザクション無しは禁止
 
-## 26. 出力形式
+## 27. 出力形式
 Controller / Service / Request / Resource / Model
 ※フルコードのみ
 
-## 27. 実行開始
+## 28. 実行開始
 認証機能を実装してください
 
-## 28. デザイン・ビジュアル規約
-・ベースはダークモード。背景 #0f172a / アクセントはネオン系グラデーション。
-・ガラスモーフィズム（backdrop-blur）を多用すること。
-・Input/Textarea：フォーカス時のみ「背景：白 / 文字：黒」にすること。
+## 29. デザイン・ビジュアル規約（Nordic Clean + High-End Clean）
+・ベースは Nordic Clean。背景は `stone-50` 系を維持し、ダーク全面塗りは原則禁止。
+・単なるフラットデザインは禁止。カードは `border-t-white/80`（上部の光）と、少し強めの `shadow-xl` を組み合わせて、物理的な存在感を出すこと。
+・カード面は「薄い単色」を基本とし、過剰な多色グラデーションは避けること（必要時のみごく弱い演出に限定）。
+・境界線と文字コントラストは明確に。カード境界はシャープに、本文テキストは `stone-800` 以上で淡白さを排除すること。
+・`emerald-600` は「面」ではなく「点」と「線」で使うこと。例：`border-l-4` のインジケーター、ドット、アイコンの微光彩（Glow）。
+・ボタンや入力欄は、hover/focus 時に「内側から発光する」ような微細な Inner Glow を与え、触感のある高級スイッチ感を出すこと。
+・詳細展開は瞬間表示ではなく、Framer Motion の `layoutId` を使った「カードの変形・連続遷移」を優先し、情報が流動的に入る体験にすること。
+・ガラスモーフィズム（`backdrop-blur`）は補助的に使用し、可読性を損なう多用は禁止。
+・Input/Textarea：通常時はクリーンな明色、focus時はコントラストと内側の光感を強める。
 ・KPI：サマリー・ランキング・トレンドを1画面に集約。個別メニューは作らない。
 
-## 29. 特殊演出（ネオンタイマー）
+## 30. 特殊演出（ネオンタイマー）
 ・休憩スロット確定時、外周を走る1時間のネオンゲージを表示。
 ・1時間かけてゲージが減少し、残り5分で赤色点滅（Pulse）させる。
 ・終了時にフロントからAPI経由でGoogle Chatへ通知。
 
-## 30. 業務フロー修正
+## 31. 業務フロー修正
 ・昼休憩：管理者がユーザーを複数選択して割り当てる形式（予約制ではない）。
 ・業務依頼：ステータス「完了」への変更と同時に、メイン一覧から非表示にする。
