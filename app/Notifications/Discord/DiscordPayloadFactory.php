@@ -40,8 +40,20 @@ class DiscordPayloadFactory
     }
 
     /**
+     * 業務依頼作成時の Discord 通知本文
+     *
      * @return array{content:string}
      */
+    public static function taskRequestCreated(string $fromName, string $toName, string $title): array
+    {
+        $text = "【業務依頼】\n".
+            "宛先: {$toName}\n".
+            "差出人: {$fromName}\n".
+            "件名: {$title}";
+
+        return ['content' => $text];
+    }
+
     public static function csvCompleted(int $uploadId, string $filename, int $successCount, int $failedCount): array
     {
         $text = "【CSV取込完了】\n".

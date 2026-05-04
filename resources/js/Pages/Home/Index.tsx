@@ -7,10 +7,49 @@ import NoticeFeedItem from '@/Components/NoticeFeedItem';
 import { PageProps } from '@/types';
 import { useEffect, useMemo, useState } from 'react';
 
-export default function Index({ title }: { title?: string }) {
+type NoticeRow = {
+    id: number;
+    title: string;
+    body?: string | null;
+    is_pinned: boolean;
+    published_at?: string | null;
+};
+
+type LunchReservation = {
+    user?: { id: number | null; name: string | null; role?: string | null };
+};
+
+type LunchSlot = {
+    start_time: string;
+    end_time: string;
+    capacity: number;
+    reservations: LunchReservation[];
+};
+
+type KpiPayload = {
+    summary: { ok: number; ng: number; contract_rate: number };
+};
+
+function formatTime(t: string | undefined): string {
+    if (!t) return '';
+    return t.length >= 8 ? t.slice(0, 5) : t.length >= 5 ? t.slice(0, 5) : t;
+}
+
+export default function Index({
+    title,
+    notices,
+    lunchBreaks,
+    kpi,
+}: {
+    title?: string;
+    notices: { data: NoticeRow[]; meta?: Record<string, unknown> };
+    lunchBreaks: { data: LunchSlot[]; meta?: { date?: string } };
+    kpi: { data: KpiPayload; meta?: Record<string, unknown> };
+}) {
     const pageTitle = title ?? 'ホーム';
     const { props } = usePage<PageProps>();
     const userId = props.auth?.user?.id ?? null;
+    const userName = props.auth?.user?.name ?? 'ゲスト';
 
     const go = (href: string) => router.visit(href, { preserveScroll: true });
     const onCardKeyDown =
@@ -20,7 +59,23 @@ export default function Index({ title }: { title?: string }) {
             go(href);
         };
 
-    // 昼休憩タイマー（localStorage）: 当日の自分のタイマーを拾って表示（リアルタイム更新）
+    const noticeRows = notices?.data ?? [];
+    const lunchSlots = lunchBreaks?.data ?? [];
+    const summary = kpi?.data?.summary ?? { ok: 0, ng: 0, contract_rate: 0 };
+
+    const lunchTableRows = useMemo(() => {
+        return lunchSlots.map((slot) => {
+            const names = slot.reservations
+                .map((r) => r.user?.name)
+                .filter((n): n is string => !!n && n !== '—');
+            const label = names.length > 0 ? names.join('、') : '—';
+            return {
+                time: `${formatTime(slot.start_time)} - ${formatTime(slot.end_time)}`,
+                name: label,
+            };
+        });
+    }, [lunchSlots]);
+
     const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
     const totalMs = 60 * 60 * 1000;
     const [timerState, setTimerState] = useState<{ startedAt: number; startTime: string } | null>(null);
@@ -67,11 +122,20 @@ export default function Index({ title }: { title?: string }) {
     const elapsedMs = timerState ? Math.max(0, nowMs - timerState.startedAt) : 0;
     const remainingMs = timerState ? Math.max(0, totalMs - elapsedMs) : totalMs;
     const pct = timerState ? Math.min(100, Math.max(0, (elapsedMs / totalMs) * 100)) : 0;
+    const isWarning = timerState ? remainingMs <= 5 * 60 * 1000 && remainingMs > 0 : false;
+
     const fmt = (ms: number) => {
         const s = Math.floor(ms / 1000);
         const mm = String(Math.floor(s / 60)).padStart(2, '0');
         const ss = String(s % 60).padStart(2, '0');
         return `${mm}:${ss}`;
+    };
+
+    const publishedLabel = (raw: string | null | undefined) => {
+        if (!raw) return undefined;
+        const d = new Date(raw);
+        if (Number.isNaN(d.getTime())) return String(raw);
+        return d.toLocaleString('ja-JP', { dateStyle: 'short', timeStyle: 'short' });
     };
 
     return (
@@ -94,7 +158,7 @@ export default function Index({ title }: { title?: string }) {
                     className="p-8 cursor-pointer"
                 >
                     <div className="text-xs font-semibold uppercase tracking-widest text-stone-400">ようこそ</div>
-                    <div className="mt-3 text-2xl font-semibold tracking-tight text-stone-800">山田太郎さん</div>
+                    <div className="mt-3 text-2xl font-semibold tracking-tight text-stone-800">{userName}さん</div>
                     <p className="mt-2 text-sm leading-relaxed text-stone-500">本日も無理のないペースで進めましょう。</p>
                 </NeonCard>
 
@@ -113,37 +177,26 @@ export default function Index({ title }: { title?: string }) {
                                 <div className="mt-2 text-lg font-semibold tracking-tight text-stone-800">新着のお知らせ</div>
                             </div>
                             <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-800 ring-1 ring-emerald-100">
-                                最新 3 件
+                                最新 {noticeRows.length} 件
                             </span>
                         </div>
 
                         <div className="mt-8 space-y-4">
-                            {[
-                                {
-                                    id: 2,
-                                    title: '新商材「光回線プラン」のトークスクリプト公開',
-                                    date: '2026-04-20 10:00',
-                                },
-                                {
-                                    id: 1,
-                                    title: '4月度の営業目標について',
-                                    date: '2026-04-18 14:30',
-                                },
-                                {
-                                    id: 3,
-                                    title: 'システムメンテナンスのお知らせ',
-                                    date: '2026-04-16 09:00',
-                                },
-                            ].map((n) => (
-                                <div key={n.id} onClick={(e) => e.stopPropagation()}>
-                                    <NoticeFeedItem
-                                        title={n.title}
-                                        publishedAt={n.date}
-                                        isPinned={n.id === 1}
-                                        onOpen={() => go(`${route('notices.index')}?open=${n.id}`)}
-                                    />
-                                </div>
-                            ))}
+                            {noticeRows.length === 0 ? (
+                                <div className="text-sm text-stone-500">表示できるお知らせはありません。</div>
+                            ) : (
+                                noticeRows.map((n) => (
+                                    <div key={n.id} onClick={(e) => e.stopPropagation()}>
+                                        <NoticeFeedItem
+                                            title={n.title}
+                                            body={n.body ?? undefined}
+                                            publishedAt={publishedLabel(n.published_at)}
+                                            isPinned={n.is_pinned}
+                                            onOpen={() => go(`${route('notices.index')}?open=${n.id}`)}
+                                        />
+                                    </div>
+                                ))
+                            )}
                         </div>
                     </NeonCard>
 
@@ -160,14 +213,34 @@ export default function Index({ title }: { title?: string }) {
                                 <div className="text-xs font-semibold uppercase tracking-widest text-stone-400">KPI</div>
                                 <div className="mt-2 text-lg font-semibold tracking-tight text-stone-800">今月</div>
                             </div>
-                            <span className="text-xs font-medium text-stone-400">MOCK</span>
                         </div>
 
                         <div className="mt-8 grid grid-cols-1 gap-4">
                             {[
-                                { label: '契約率', value: '68.5', suffix: '%', sub: '前月比 +5.2%', valClass: 'text-stone-800', href: `${route('sales.summary')}?tab=summary` },
-                                { label: 'OK', value: '137', suffix: '', sub: '今月合計', valClass: 'text-emerald-700', href: `${route('sales.records')}?status=ok` },
-                                { label: 'NG', value: '63', suffix: '', sub: '今月合計', valClass: 'text-red-700', href: `${route('sales.records')}?status=ng` },
+                                {
+                                    label: '契約率',
+                                    value: String(summary.contract_rate),
+                                    suffix: '%',
+                                    sub: 'OK / (OK + NG)',
+                                    valClass: 'text-stone-800',
+                                    href: `${route('sales.summary')}?tab=summary`,
+                                },
+                                {
+                                    label: 'OK',
+                                    value: String(summary.ok),
+                                    suffix: '',
+                                    sub: '今月合計',
+                                    valClass: 'text-emerald-700',
+                                    href: `${route('sales.records')}?status=ok`,
+                                },
+                                {
+                                    label: 'NG',
+                                    value: String(summary.ng),
+                                    suffix: '',
+                                    sub: '今月合計',
+                                    valClass: 'text-red-700',
+                                    href: `${route('sales.records')}?status=ng`,
+                                },
                             ].map((k) => (
                                 <div
                                     key={k.label}
@@ -212,7 +285,9 @@ export default function Index({ title }: { title?: string }) {
                             <div className="text-xs font-semibold uppercase tracking-widest text-stone-400">昼休憩</div>
                             <div className="mt-2 text-lg font-semibold tracking-tight text-stone-800">本日の予定</div>
                         </div>
-                        <span className="text-xs font-medium text-stone-400">MOCK</span>
+                        {lunchBreaks?.meta?.date ? (
+                            <span className="text-xs font-medium text-stone-500">{lunchBreaks.meta.date}</span>
+                        ) : null}
                     </div>
 
                     <div className="mt-6 rounded-xl border border-stone-100 bg-stone-50/80 p-4">
@@ -220,19 +295,31 @@ export default function Index({ title }: { title?: string }) {
                             <div className="text-xs font-semibold uppercase tracking-widest text-stone-400">
                                 60分タイマー（人が走る）
                             </div>
-                            <div className="text-xs font-semibold text-stone-600">
+                            <div
+                                className={
+                                    'text-xs font-semibold ' + (isWarning ? 'timer-breath text-red-600' : 'text-stone-600')
+                                }
+                            >
                                 {timerState ? `残り ${fmt(remainingMs)}` : '未開始'}
                             </div>
                         </div>
                         <div className="mt-3 h-3 w-full overflow-hidden rounded-full bg-stone-200">
                             <div
-                                className="h-full bg-emerald-500 transition-[width] duration-500 ease-out"
+                                className={
+                                    'h-full transition-[width] duration-500 ease-out ' +
+                                    (isWarning ? 'bg-red-500' : 'bg-emerald-500')
+                                }
                                 style={{ width: `${timerState ? pct : 0}%` }}
                             />
                         </div>
                         <div className="relative mt-3 h-6">
                             <div
-                                className="absolute top-0 -translate-x-1/2 text-emerald-700 drop-shadow-[0_0_10px_rgba(16,185,129,0.35)] transition-[left] duration-500 ease-out"
+                                className={
+                                    'absolute top-0 -translate-x-1/2 transition-[left] duration-500 ease-out ' +
+                                    (isWarning
+                                        ? 'text-red-600 drop-shadow-[0_0_10px_rgba(239,68,68,0.45)] timer-breath'
+                                        : 'text-emerald-700 drop-shadow-[0_0_10px_rgba(16,185,129,0.35)]')
+                                }
                                 style={{ left: `${timerState ? pct : 0}%` }}
                                 aria-hidden
                             >
@@ -253,21 +340,26 @@ export default function Index({ title }: { title?: string }) {
                                 </tr>
                             </thead>
                             <tbody>
-                                {[
-                                    { time: '12:00 - 13:00', name: '山田太郎' },
-                                    { time: '13:00 - 14:00', name: '佐藤花子' },
-                                ].map((r) => (
-                                    <tr key={r.time} className="transition-colors hover:bg-stone-50">
-                                        <td className="border-b border-stone-100 px-4 py-4 font-medium text-stone-800">
-                                            {r.time}
-                                        </td>
-                                        <td className="border-b border-stone-100 px-4 py-4">
-                                            <span className="inline-flex rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-stone-700 ring-1 ring-stone-200/80">
-                                                {r.name}
-                                            </span>
+                                {lunchTableRows.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={2} className="border-b border-stone-100 px-4 py-4 text-stone-500">
+                                            本日の枠はありません。
                                         </td>
                                     </tr>
-                                ))}
+                                ) : (
+                                    lunchTableRows.map((r) => (
+                                        <tr key={r.time} className="transition-colors hover:bg-stone-50">
+                                            <td className="border-b border-stone-100 px-4 py-4 font-medium text-stone-800">
+                                                {r.time}
+                                            </td>
+                                            <td className="border-b border-stone-100 px-4 py-4">
+                                                <span className="inline-flex rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-stone-700 ring-1 ring-stone-200/80">
+                                                    {r.name}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
                             </tbody>
                         </table>
                     </div>

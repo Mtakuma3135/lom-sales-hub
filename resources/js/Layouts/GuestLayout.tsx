@@ -4,7 +4,7 @@ import { PropsWithChildren } from 'react';
 
 export default function GuestLayout({ children }: PropsWithChildren) {
     return (
-        <div className="flex min-h-screen items-center justify-center bg-emerald-950 p-6 text-stone-700">
+        <div className="flex min-h-screen items-center justify-center bg-stone-50 p-6 text-stone-700">
             <div className="w-full max-w-md">
                 <div className="rounded-3xl border border-stone-100 bg-white px-8 py-10 shadow-nordic">
                     <div className="flex flex-col items-center">

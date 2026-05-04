@@ -4,6 +4,9 @@ import { PageProps } from '@/types';
 import { useEffect, useMemo, useState } from 'react';
 import NordicCard from '@/Components/UI/NordicCard';
 import ActionButton from '@/Components/ActionButton';
+import DetailDrawer from '@/Components/DetailDrawer';
+import LiveBreakTimer, { ActiveBreakRow } from '@/Components/LiveBreakTimer';
+import ActiveStatusPanel from '@/Components/ActiveStatusPanel';
 
 type ReservationUser = {
     id: number | null;
@@ -188,6 +191,90 @@ export default function Index({
 
     const progressPct = startedAt ? Math.min(100, Math.max(0, (elapsedMs / totalMs) * 100)) : 0;
 
+    // --- Monitoring: ActiveStatusPanel / LiveBreakTimer ---
+    const plannedWindow = useMemo(() => {
+        const first = slotRows[0];
+        const last = slotRows[slotRows.length - 1];
+        return {
+            start: first?.start_time ?? '12:00',
+            end: last?.end_time ?? '14:00',
+        };
+    }, [slotRows]);
+
+    const [monitorActive, setMonitorActive] = useState<ActiveBreakRow[]>([]);
+    const [monitorServerTime, setMonitorServerTime] = useState<string | null>(null);
+    const [monitorLoading, setMonitorLoading] = useState<boolean>(false);
+
+    const fetchMonitor = async () => {
+        setMonitorLoading(true);
+        try {
+            const res = await fetch(route('portal.api.lunch-breaks.status', { date }), {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            });
+            const json = await res.json();
+            const rows = (json?.data?.active ?? []) as ActiveBreakRow[];
+            setMonitorActive(Array.isArray(rows) ? rows : []);
+            setMonitorServerTime((json?.meta?.server_time ?? null) as string | null);
+        } catch {
+            // 監視は失敗しても画面の基本操作を阻害しない
+        } finally {
+            setMonitorLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchMonitor();
+        const t = window.setInterval(fetchMonitor, 60_000);
+        return () => window.clearInterval(t);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [date]);
+
+    // --- Quick action drawer ("今から休憩") ---
+    const [quickOpen, setQuickOpen] = useState<boolean>(false);
+    const [quickSlotStart, setQuickSlotStart] = useState<string>('12:00');
+    const [quickReason, setQuickReason] = useState<string>('on_time');
+    const [quickNote, setQuickNote] = useState<string>('');
+    const [quickUserId, setQuickUserId] = useState<number>(actorId ?? 0);
+    const [quickSubmitting, setQuickSubmitting] = useState<boolean>(false);
+
+    useEffect(() => {
+        if (!isAdmin && actorId) setQuickUserId(actorId);
+    }, [actorId, isAdmin]);
+
+    const openQuick = (slotStartTime: string) => {
+        setQuickSlotStart(slotStartTime);
+        setQuickReason('on_time');
+        setQuickNote('');
+        setQuickOpen(true);
+    };
+
+    const submitQuick = async () => {
+        setQuickSubmitting(true);
+        try {
+            const res = await fetch(route('portal.api.lunch-breaks.start'), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: JSON.stringify({
+                    date,
+                    planned_start_time: quickSlotStart,
+                    user_id: isAdmin ? quickUserId : undefined,
+                    reason: quickReason,
+                    note: quickNote || undefined,
+                }),
+            });
+
+            if (!res.ok) return;
+
+            setQuickOpen(false);
+            await fetchMonitor();
+        } finally {
+            setQuickSubmitting(false);
+        }
+    };
+
     return (
         <AuthenticatedLayout header={<h2 className="text-sm font-semibold tracking-tight text-stone-800">昼休憩</h2>}>
             <Head title="昼休憩管理" />
@@ -211,7 +298,7 @@ export default function Index({
                     </div>
                 </NordicCard>
 
-                <div className="mt-10 grid grid-cols-1 gap-8 lg:grid-cols-3 lg:gap-10">
+                <div className="mt-10 grid grid-cols-1 gap-8 lg:grid-cols-4 lg:gap-10">
                     <NordicCard elevate={false} className="p-8">
                         <div className="text-xs font-semibold uppercase tracking-widest text-stone-400">ルール</div>
                         <div className="mt-2 text-sm font-semibold text-stone-800">予約条件</div>
@@ -234,6 +321,19 @@ export default function Index({
                             <div className="text-xs font-medium text-stone-500">{processing ? '同期中…' : '準備完了'}</div>
                         </div>
 
+                        <div className="mt-7">
+                            <LiveBreakTimer
+                                timeWindow={plannedWindow}
+                                plannedSlots={slotRows.map((s) => ({ start_time: s.start_time, end_time: s.end_time }))}
+                                activeRows={monitorActive}
+                                serverNowISO={monitorServerTime}
+                                onOpenQuickAction={openQuick}
+                            />
+                            <div className="mt-2 text-right text-[11px] text-stone-500">
+                                {monitorLoading ? '更新中…' : '1分ごとに自動更新'}
+                            </div>
+                        </div>
+
                         {/* 自分のタイマー */}
                         {activeAssignment ? (
                             <div className="mt-8 rounded-2xl border border-stone-100 bg-stone-50/80 p-6">
@@ -253,7 +353,7 @@ export default function Index({
                                         <div
                                             className={
                                                 'mt-1 font-mono text-3xl font-semibold tracking-tight ' +
-                                                (isWarning ? 'timer-breath text-amber-600' : 'text-stone-800')
+                                                (isWarning ? 'timer-breath text-red-600' : 'text-stone-800')
                                             }
                                         >
                                             {startedAt ? formatMMSS(remainingMs) : '60:00'}
@@ -264,7 +364,7 @@ export default function Index({
                                     <div
                                         className={
                                             'h-full rounded-full transition-all duration-500 ease-out ' +
-                                            (isWarning ? 'bg-amber-500' : 'bg-emerald-500')
+                                            (isWarning ? 'bg-red-500' : 'bg-emerald-500')
                                         }
                                         style={{
                                             width: `${startedAt ? Math.min(100, Math.max(0, (elapsedMs / totalMs) * 100)) : 0}%`,
@@ -356,7 +456,7 @@ export default function Index({
                                                     ry="18"
                                                     fill="none"
                                                     pathLength={100}
-                                                    stroke={isWarning ? 'rgba(245,158,11,0.95)' : 'rgba(16,185,129,0.95)'}
+                                                    stroke={isWarning ? 'rgba(239,68,68,0.95)' : 'rgba(16,185,129,0.95)'}
                                                     strokeWidth="2.4"
                                                     strokeLinecap="round"
                                                     strokeDasharray={`${progressPct} 100`}
@@ -372,14 +472,14 @@ export default function Index({
                                                     ry="18"
                                                     fill="none"
                                                     pathLength={100}
-                                                    stroke={isWarning ? 'rgba(245,158,11,1)' : 'rgba(16,185,129,1)'}
+                                                    stroke={isWarning ? 'rgba(239,68,68,1)' : 'rgba(16,185,129,1)'}
                                                     strokeWidth="4.2"
                                                     strokeLinecap="round"
                                                     strokeDasharray="0.8 99.2"
                                                     strokeDashoffset={100 - progressPct}
                                                     className={
                                                         isWarning
-                                                            ? 'drop-shadow-[0_0_10px_rgba(245,158,11,0.5)]'
+                                                            ? 'drop-shadow-[0_0_10px_rgba(239,68,68,0.5)]'
                                                             : 'drop-shadow-[0_0_10px_rgba(16,185,129,0.45)]'
                                                     }
                                                 />
@@ -501,8 +601,88 @@ export default function Index({
                             })}
                         </div>
                     </NordicCard>
+
+                    <div className="lg:col-span-1">
+                        <ActiveStatusPanel
+                            activeRows={monitorActive}
+                            windowStart={plannedWindow.start}
+                            windowEnd={plannedWindow.end}
+                        />
+                    </div>
                 </div>
             </div>
+
+            <DetailDrawer open={quickOpen} onClose={() => setQuickOpen(false)} title="今から休憩（クイック）">
+                <div className="space-y-5">
+                    <div className="rounded-2xl border border-stone-200 bg-white/70 p-4">
+                        <div className="text-xs font-semibold uppercase tracking-widest text-stone-400">対象枠</div>
+                        <div className="mt-2 text-lg font-semibold tracking-tight text-stone-800">
+                            {quickSlotStart} -{' '}
+                            {(slotRows.find((s) => s.start_time === quickSlotStart)?.end_time ?? '—')}
+                        </div>
+                        <div className="mt-2 text-xs text-stone-500">
+                            予定とズレても「今から休憩」で実稼働として記録します。予定超過は自動で Amber 表示になります。
+                        </div>
+                    </div>
+
+                    {isAdmin ? (
+                        <div>
+                            <div className="text-xs font-semibold uppercase tracking-widest text-stone-400">休憩者</div>
+                            <select
+                                value={String(quickUserId || 0)}
+                                onChange={(e) => setQuickUserId(Number(e.target.value))}
+                                className="nordic-field mt-2 w-full py-2 text-sm font-semibold"
+                            >
+                                <option value="0">選択してください</option>
+                                {(users?.data ?? []).map((u) => (
+                                    <option key={u.id} value={u.id}>
+                                        {u.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    ) : null}
+
+                    <div>
+                        <div className="text-xs font-semibold uppercase tracking-widest text-stone-400">理由</div>
+                        <select
+                            value={quickReason}
+                            onChange={(e) => setQuickReason(e.target.value)}
+                            className="nordic-field mt-2 w-full py-2 text-sm font-semibold"
+                        >
+                            <option value="on_time">予定通り</option>
+                            <option value="delay_30">仕事都合で30分後ろ倒し</option>
+                            <option value="delay_60">仕事都合で60分後ろ倒し</option>
+                            <option value="call">電話対応</option>
+                            <option value="customer">来客対応</option>
+                            <option value="meeting">ミーティング</option>
+                            <option value="other">その他</option>
+                        </select>
+                        <textarea
+                            value={quickNote}
+                            onChange={(e) => setQuickNote(e.target.value)}
+                            placeholder="補足（任意）"
+                            className="nordic-field mt-2 min-h-[84px] w-full resize-y px-3 py-2 text-sm"
+                        />
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setQuickOpen(false)}
+                            className="rounded-xl bg-stone-100 px-4 py-2 text-sm font-semibold text-stone-700 ring-1 ring-stone-200 transition hover:bg-stone-100/80"
+                        >
+                            閉じる
+                        </button>
+                        <ActionButton
+                            onClick={submitQuick}
+                            disabled={quickSubmitting || (isAdmin && (!quickUserId || quickUserId <= 0))}
+                        >
+                            今から休憩
+                        </ActionButton>
+                    </div>
+                </div>
+            </DetailDrawer>
         </AuthenticatedLayout>
     );
 }

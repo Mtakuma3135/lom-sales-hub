@@ -19,6 +19,25 @@ type LogDetail = LogRow & {
     updated_at: string;
 };
 
+/** DB / API の日時を日本時間で表示（Discord や端末の体感時刻と揃える） */
+function formatLogAt(raw: string | null | undefined): string {
+    if (!raw) return '—';
+    const d = new Date(raw);
+    if (Number.isNaN(d.getTime())) return String(raw);
+    return (
+        d.toLocaleString('ja-JP', {
+            timeZone: 'Asia/Tokyo',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false,
+        }) + ' JST'
+    );
+}
+
 function statusBadge(statusCode: number | null): { label: string; className: string } {
     if (statusCode && statusCode >= 200 && statusCode < 300) {
         return { label: `OK ${statusCode}`, className: 'border-emerald-200 bg-emerald-50 text-emerald-800' };
@@ -37,7 +56,8 @@ export default function Index() {
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const [filterEventType, setFilterEventType] = useState<string>('');
-    const [filterStatus, setFilterStatus] = useState<string>('failed');
+    // デフォルトは絞り込みなし（成功通知が failed フィルタでは除外されるため）
+    const [filterStatus, setFilterStatus] = useState<string>('');
     const [filterTriggeredBy, setFilterTriggeredBy] = useState<string>('');
     const [filterDateFrom, setFilterDateFrom] = useState<string>('');
     const [filterDateTo, setFilterDateTo] = useState<string>('');
@@ -172,7 +192,7 @@ export default function Index() {
                                     <th className="px-4 py-3">EVENT</th>
                                     <th className="px-4 py-3">STATUS</th>
                                     <th className="px-4 py-3">BY</th>
-                                    <th className="px-4 py-3">AT</th>
+                                    <th className="px-4 py-3">AT（JST）</th>
                                     <th className="px-4 py-3">ACTION</th>
                                 </tr>
                             </thead>
@@ -205,7 +225,7 @@ export default function Index() {
                                                     ) : null}
                                                 </td>
                                                 <td className="px-4 py-3 font-mono text-xs text-stone-600">{x.triggered_by ?? '—'}</td>
-                                                <td className="px-4 py-3 font-mono text-xs text-stone-600">{x.created_at}</td>
+                                                <td className="px-4 py-3 font-mono text-xs text-stone-600">{formatLogAt(x.created_at)}</td>
                                                 <td className="px-4 py-3">
                                                     <button
                                                         type="button"
@@ -300,6 +320,17 @@ export default function Index() {
                                         <div className="rounded-xl border border-stone-200 bg-white/70 px-4 py-3">
                                             <div className="text-[11px] font-bold tracking-widest text-stone-500">STATUS</div>
                                             <div className="mt-1 text-stone-800">{detail.status_code ?? '—'}</div>
+                                        </div>
+                                        <div className="rounded-xl border border-stone-200 bg-white/70 px-4 py-3 sm:col-span-2">
+                                            <div className="text-[11px] font-bold tracking-widest text-stone-500">AT（JST）</div>
+                                            <div className="mt-1 font-mono text-xs text-stone-800">
+                                                {formatLogAt(detail.created_at)}
+                                                {detail.updated_at && detail.updated_at !== detail.created_at ? (
+                                                    <span className="ml-2 text-stone-500">
+                                                        （更新 {formatLogAt(detail.updated_at)}）
+                                                    </span>
+                                                ) : null}
+                                            </div>
                                         </div>
                                     </div>
 

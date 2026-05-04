@@ -28,9 +28,11 @@ class MypageService
                 $attendance = $this->attendance($user);
             }
 
+            $discordConfigured = (string) config('services.discord.webhook_url', '') !== '';
+
             $integrations = collect([
                 ['key' => 'king_of_time', 'label' => 'KING OF TIME', 'status' => 'connected'],
-                ['key' => 'google_chat', 'label' => 'Google Chat', 'status' => 'not_connected'],
+                ['key' => 'discord', 'label' => 'Discord（通知）', 'status' => $discordConfigured ? 'connected' : 'not_connected'],
             ]);
 
             $quickLinks = collect([

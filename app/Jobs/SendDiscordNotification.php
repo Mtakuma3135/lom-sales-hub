@@ -47,7 +47,7 @@ class SendDiscordNotification implements ShouldQueue
         try {
             $payload = is_array($log->payload) ? $log->payload : [];
 
-            $resp = Http::timeout(5)->post($webhook, $payload);
+            $resp = Http::timeout(5)->asJson()->post($webhook, $payload);
 
             $log->update([
                 'status_code' => $resp->status(),

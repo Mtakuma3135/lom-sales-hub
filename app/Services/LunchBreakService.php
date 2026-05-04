@@ -5,16 +5,19 @@ namespace App\Services;
 use App\Jobs\SendDiscordNotification;
 use App\Models\DiscordNotificationLog;
 use App\Models\LunchBreak;
+use App\Models\AuditLog;
 use App\Models\User;
 use App\Notifications\Discord\DiscordPayloadFactory;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Session;
 
 class LunchBreakService
 {
     private const CAPACITY_PER_SLOT = 3;
+    private const ACTIVE_SESSION_KEY = 'lunch_breaks.active';
 
     /**
      * @return Collection<int, array{start_time:string,end_time:string,capacity:int,reservations:\Illuminate\Support\Collection<int,\App\Models\LunchBreak>}>
@@ -254,6 +257,84 @@ class LunchBreakService
             ]);
             return false;
         }
+    }
+
+    /**
+     * 監視用: 今日の「実稼働（休憩中）」状態を返す（暫定: セッション永続）
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function activeStatus(string $date): array
+    {
+        $all = Session::get(self::ACTIVE_SESSION_KEY, []);
+        if (! is_array($all)) return [];
+        $rows = $all[$date] ?? [];
+        return is_array($rows) ? array_values($rows) : [];
+    }
+
+    /**
+     * 「今から休憩」を開始する（暫定: セッション永続 + AuditLog）
+     */
+    public function startBreak(User $actor, User $target, string $date, string $plannedStartTime, string $reason, ?string $note = null): array
+    {
+        $plannedStart = CarbonImmutable::createFromFormat('Y-m-d H:i', $date.' '.$plannedStartTime);
+        if ($plannedStart === false) {
+            throw new \RuntimeException('Invalid planned start time.', 422);
+        }
+        $plannedEnd = $plannedStart->addMinutes(60);
+
+        $now = now();
+
+        /** @var array<string, mixed> $all */
+        $all = Session::get(self::ACTIVE_SESSION_KEY, []);
+        $all = is_array($all) ? $all : [];
+        $all[$date] = is_array($all[$date] ?? null) ? $all[$date] : [];
+
+        $payload = [
+            'date' => $date,
+            'user' => [
+                'id' => (int) $target->id,
+                'name' => (string) ($target->name ?? ''),
+            ],
+            'planned' => [
+                'start_time' => $plannedStart->format('H:i'),
+                'end_time' => $plannedEnd->format('H:i'),
+            ],
+            'active' => [
+                'started_at' => $now->toISOString(),
+            ],
+            'reason' => $reason,
+            'note' => $note,
+            'updated_by' => (int) $actor->id,
+        ];
+
+        $all[$date][(string) $target->id] = $payload;
+        Session::put(self::ACTIVE_SESSION_KEY, $all);
+
+        AuditLog::query()->create([
+            'integration' => 'portal',
+            'event_type' => 'lunch_break.start',
+            'status' => 'ok',
+            'status_code' => 200,
+            'request_payload' => [
+                'date' => $date,
+                'planned_start_time' => $plannedStartTime,
+                'reason' => $reason,
+                'note' => $note,
+                'target_user_id' => (int) $target->id,
+            ],
+            'response_body' => null,
+            'error_message' => null,
+            'actor_id' => (int) $actor->id,
+            'related_type' => User::class,
+            'related_id' => (int) $target->id,
+            'meta' => [
+                'planned_end_time' => $plannedEnd->format('H:i'),
+                'at' => $now->toISOString(),
+            ],
+        ]);
+
+        return $payload;
     }
 
     /**

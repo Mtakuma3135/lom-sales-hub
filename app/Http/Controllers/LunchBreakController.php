@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\LunchBreakAssignRequest;
 use App\Http\Requests\LunchBreakCompleteRequest;
+use App\Http\Requests\LunchBreakStartRequest;
 use App\Http\Requests\LunchBreakStoreRequest;
 use App\Http\Resources\LunchBreakSlotResource;
 use App\Services\LunchBreakService;
@@ -128,6 +129,69 @@ class LunchBreakController extends Controller
         $success = $lunchBreakService->complete($actor, $request->lunchDate());
 
         return response()->json(['data' => ['success' => $success], 'meta' => []], $success ? 200 : 500);
+    }
+
+    public function status(Request $request, LunchBreakService $lunchBreakService)
+    {
+        $this->authorize('viewAny', LunchBreak::class);
+
+        $date = (string) ($request->query('date') ?? now()->toDateString());
+
+        $slots = $lunchBreakService->index($date);
+        $slotsResource = LunchBreakSlotResource::collection($slots)
+            ->additional(['meta' => ['date' => $date]])
+            ->response()
+            ->getData(true);
+
+        $active = $lunchBreakService->activeStatus($date);
+
+        return response()->json([
+            'data' => [
+                'slots' => $slotsResource,
+                'active' => $active,
+            ],
+            'meta' => [
+                'date' => $date,
+                'server_time' => now()->toISOString(),
+            ],
+        ]);
+    }
+
+    public function start(LunchBreakStartRequest $request, LunchBreakService $lunchBreakService)
+    {
+        $this->authorize('viewAny', LunchBreak::class);
+
+        $actor = $request->user();
+        if ($actor === null) {
+            return response()->json(['data' => ['success' => false], 'meta' => []], 401);
+        }
+
+        $targetUserId = $request->targetUserId() ?? (int) $actor->id;
+        // 管理者だけ user_id を指定可能
+        if ($targetUserId !== (int) $actor->id && (($actor->role ?? 'general') !== 'admin')) {
+            return response()->json(['data' => ['success' => false], 'meta' => ['message' => 'Forbidden']], 403);
+        }
+
+        $target = \App\Models\User::query()->findOrFail($targetUserId);
+
+        $row = $lunchBreakService->startBreak(
+            actor: $actor,
+            target: $target,
+            date: $request->lunchDate(),
+            plannedStartTime: $request->plannedStartTime(),
+            reason: $request->reason(),
+            note: $request->note(),
+        );
+
+        return response()->json([
+            'data' => [
+                'success' => true,
+                'active' => $row,
+            ],
+            'meta' => [
+                'date' => $request->lunchDate(),
+            ],
+        ]);
     }
 }
 

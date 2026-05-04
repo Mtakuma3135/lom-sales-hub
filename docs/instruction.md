@@ -2,10 +2,30 @@
 
 このドキュメントは、LOM Sales Hub の運用・開発手順（セットアップ、規約、ルーティング、よくある落とし穴）をまとめたものです。
 
+## 改訂履歴
+
+| 版数 | 日付 | 改訂者 | 改訂内容 |
+|------|------|--------|----------|
+| 1.0 | 2026/03/29 | 箕迫 拓真 | 初版作成 |
+| 1.1 | 2026/05/-- | 箕迫 拓真 | 認証（社員番号ログイン）、部署マスタ正規化、昼休憩カラム・スロット粒度の明文化、業務依頼 priority 3 択、AuditLog / DiscordNotificationLog の追記、Inertia 方針と Props 目標の注記、セッション 180 分統一（`.env`）、ルーティング注記 |
+
+### 1.0 → 1.1 変更サマリー（対照）
+
+| # | 項目 | 旧 | 新 |
+|---|------|----|----|
+| ① | 認証方式 | email + password | **employee_code** + password |
+| ② | 部署 | `users.department`（文字列） | **`departments` テーブル** + `users.department_id`（FK） |
+| ③ | 昼休憩（DB・枠長） | `time_slot` 単一カラム想定／30分単位（1.0 記載） | **`start_time` + `end_time`**（時刻型）。**スロット長【正】＝60分（1時間）・開始は HH:00 のみ** |
+| ④ | 業務依頼 priority | urgent / normal（2 択） | **urgent / important / normal**（3 択） |
+| ⑤ | ログ系モデル | 設計書に未記載だった | **AuditLog**（`audit_logs`）、**DiscordNotificationLog**（`discord_notification_logs`）を明記 |
+| ⑥ | フレームワーク | React 純 SPA 想定 | **Inertia.js**（サーバードリブン SPA） |
+| ⑦ | セッション無操作 | 記載ゆれあり | **Web セッション・API トークンとも 180 分**で統一（運用は `.env` の `SESSION_LIFETIME` とミドルウェアを参照） |
+
 ## 0. 前提
-バックエンド：Laravel
-フロントエンド：React + TypeScript
-認証：Laravel Sanctum（SPA）
+バックエンド：Laravel  
+フロントエンド：React + TypeScript  
+画面：**Inertia.js**（Laravel から React へ Props 受け渡し）  
+認証：**Laravel Sanctum**（API トークン）および **Web セッション**（ポータル `/portal`）  
 DB：MySQL
 
 ## 1. 実装ルール（最重要）
@@ -43,6 +63,10 @@ update：更新
 destroy：削除
 
 ## 5. ルーティング
+
+**注記（1.1）**  
+以下は **REST API 契約の例示**である。本ポータルの UI は **Inertia** により主に **`/portal` 配下**で配信し、画面用の JSON は必要に応じて **`/portal/api/*`** など Web セッション認証下で提供する。実装時は `routes/web.php` を正とする。
+
 Route::prefix('auth')->group(function () {
     Route::post('/login', [LoginController::class, 'login']);
     Route::post('/logout', [LogoutController::class, 'logout']);
@@ -115,28 +139,39 @@ POST /api/auth/logout
 GET /api/auth/me
 
 要件：
+・ログイン識別子は **employee_code（社員番号）** と password（**email ログインではない**）
 ・bcryptでパスワード管理
 ・Sanctumトークン発行
-・180分無操作で失効
-・last_used_at を基準にミドルウェアで制御
+・**180分無操作で失効**（API トークンは `last_used_at` を基準にミドルウェアで制御）
+・**Web セッション**の有効期限も **180 分**に揃える（`SESSION_LIFETIME=180`。`config/session.php` / `.env.example` 参照）
 
 ## 9. ユーザー管理
 ・管理者のみ
 ・employee_code 一意
 ・role：admin / general
 ・is_activeで論理削除
+・所属部署は **`departments.id` を `users.department_id` で参照**（文字列カラム `users.department` は使用しない）
+
+### 9.1 部署マスタ（departments）
+
+| カラム | 型 | 備考 |
+|--------|-----|------|
+| id | bigint PK | |
+| name | string | 部署名 |
+| created_at / updated_at | datetime | |
 
 ## 10. 昼休憩
-・30分単位（HH:00 / HH:30）
+・**DB カラムは `start_time` と `end_time`**（開始・終了の時刻を保持する。**単一の `time_slot` カラムは用いない**）
+・**スロット長【正】**：**60 分（1 時間）／枠**。開始時刻は **HH:00 のみ**とし、`end_time` は **`start_time` から 60 分後**（30 分刻みの枠は採用しない）
 ・同一ユーザー重複不可
 ・一般ユーザーは自分のみ操作
 ・管理者は全操作可能
 ・人数制限あり（例：3人）
 ・開始後は変更・削除不可
 
-Chat通知：
-・1日最大5回
-・失敗時 success=false
+Discord 通知（昼休憩・割当など）：
+・Webhook 経由で送信する（**Google Chat は採用しない**／有料化に伴い Discord に統一）
+・レート制限・失敗時の扱いは運用で調整（失敗時は `DiscordNotificationLog` に記録し、ジョブでリトライ）
 
 ## 11. KPI
 contract_rate = ok / (ok + ng) × 100
@@ -158,7 +193,9 @@ contract_rate = ok / (ok + ng) × 100
 ・published_at対応
 
 ## 14. 業務依頼
-pending / in_progress / completed / rejected
+・ステータス：pending / in_progress / completed / rejected  
+・**priority：urgent / important / normal**（3 択）  
+・**完了（completed）にしたタスクはメイン一覧に表示しない**（§31）
 
 ## 15. 商材
 一覧 / 詳細 / 更新
@@ -168,14 +205,19 @@ pending / in_progress / completed / rejected
 ・パスワード変更時トークン全失効
 
 ## 17. 外部連携
-Google Chat：失敗時 success=false
-GAS：Queue + リトライ
+**Discord（業務通知）**：昼休憩の割当・終了、業務依頼の新規作成など、チャット通知が必要な処理は **Discord Webhook** と `discord_notification_logs` を用いる（旧 Google Chat は廃止）。  
+GAS：Queue + リトライ  
 KING OF TIME：キャッシュ60分
 
-## 18. 監査ログ（外部連携ログ）
+## 18. 監査ログ・通知ログ
+### 18.1 監査ログ（AuditLog / `audit_logs`）
 - 管理者向けに監査ログ一覧を提供する
-- `audit_logs` に req/res/status を保存（KOT/GAS）
+- `audit_logs` に req/res/status を保存（主に **KOT / GAS 等の外部連携**。ポータル内部イベントを記録する場合は `integration` / `event_type` で区別できること）
 - 画面: `/portal/admin/audit-logs`
+
+### 18.2 Discord 通知ログ（DiscordNotificationLog / `discord_notification_logs`）
+- 通知送信の履歴・再試行などに利用する
+- 将来、監査ログと統合または整理する場合がある（テーブル名・責務は本節を正とする）
 
 ## 19. APIレスポンス
 {
@@ -238,8 +280,25 @@ Controller / Service / Request / Resource / Model
 ## 30. 特殊演出（ネオンタイマー）
 ・休憩スロット確定時、外周を走る1時間のネオンゲージを表示。
 ・1時間かけてゲージが減少し、残り5分で赤色点滅（Pulse）させる。
-・終了時にフロントからAPI経由でGoogle Chatへ通知。
+・終了時にフロントから **`POST /portal/lunch-breaks/complete`**（`lunch-breaks.complete`）を呼び出し、サーバー側で **Discord** へ通知する（`SendDiscordNotification` ジョブ／`DiscordNotificationLog`）。
 
 ## 31. 業務フロー修正
 ・昼休憩：管理者がユーザーを複数選択して割り当てる形式（予約制ではない）。
 ・業務依頼：ステータス「完了」への変更と同時に、メイン一覧から非表示にする。
+
+## 32. Inertia 画面と Props（目標アーキテクチャと現状注記）
+
+**方針**  
+サーバー側でデータを組み立て、**Resource 等で整形したうえで Inertia Props として渡す**ことを標準とする。
+
+**目標（1.1 で明文化）**
+
+| 画面 | 受け渡し Props（目標） | 備考 |
+|------|------------------------|------|
+| Home/Index | notices, lunchBreaks, kpi | ホーム用一覧・サマリー |
+| Admin/Users/Index | users（UserResource 形式）, flash | `auth` は共有ミドルウェア |
+| Sales/Summary（KPI） | summary / ranking / trend 相当のデータ | §29「1 画面集約」を目標とする |
+
+**現状注記（2026/05 時点）**  
+- **Home/Index**：`HomeController` → `HomeService` → Resource 経由で **`notices` / `lunchBreaks` / `kpi`** を Inertia Props として渡す（§32 目標どおり）。  
+- **Sales**：一覧ドリルダウン用に `sales.records` ルートがある場合がある。KPI のサマリー・ランキング・トレンドの「1 画面集約」は `Sales/Summary` を正とし、必要に応じてナビ・導線を整理する。

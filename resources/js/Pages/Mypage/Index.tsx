@@ -30,7 +30,7 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
         mypage?.data.integrations ??
         [
             { key: 'king_of_time', label: 'KING OF TIME', status: 'connected' },
-            { key: 'google_chat', label: 'Google Chat', status: 'not_connected' },
+            { key: 'discord', label: 'Discord（通知）', status: 'not_connected' },
         ];
 
     const links =

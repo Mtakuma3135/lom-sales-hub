@@ -74,7 +74,7 @@ export default function AuthenticatedLayout({
     };
 
     return (
-        <div className="min-h-screen bg-emerald-950 text-stone-700">
+        <div className="min-h-screen bg-stone-50 text-stone-700">
             <div className="flex min-h-screen gap-6 px-4 py-6 md:px-8 md:py-8">
                 <aside className="flex w-72 shrink-0 flex-col">
                     <div className="flex h-full flex-col rounded-3xl border border-stone-100 bg-white p-4 shadow-nordic">
@@ -183,7 +183,7 @@ export default function AuthenticatedLayout({
                                 <div className="text-xs font-medium text-stone-500">接続中</div>
                             </div>
                         </div>
-                        <div className="bg-emerald-950/5 px-4 py-8 sm:px-8 sm:py-10">{children}</div>
+                        <div className="bg-stone-100/40 px-4 py-8 sm:px-8 sm:py-10">{children}</div>
                     </div>
                 </main>
             </div>

@@ -59,6 +59,10 @@ Route::middleware('auth')->group(function () {
         Route::post('/lunch-breaks/assign', [LunchBreakController::class, 'assign'])->name('lunch-breaks.assign');
         Route::post('/lunch-breaks/complete', [LunchBreakController::class, 'complete'])->name('lunch-breaks.complete');
 
+        // Lunch breaks monitoring (web-session JSON API)
+        Route::get('/api/lunch-breaks/status', [LunchBreakController::class, 'status'])->name('portal.api.lunch-breaks.status');
+        Route::post('/api/lunch-breaks/start', [LunchBreakController::class, 'start'])->name('portal.api.lunch-breaks.start');
+
         Route::get('/sales', [SalesController::class, 'summary'])->name('sales.summary');
         Route::get('/sales/records', [SalesRecordController::class, 'page'])->name('sales.records');
 
