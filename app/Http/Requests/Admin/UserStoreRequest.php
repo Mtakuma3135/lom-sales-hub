@@ -19,11 +19,10 @@ class UserStoreRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'employee_code' => ['required', 'string', 'max:255', 'unique:users,employee_code'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+            'email' => ['nullable', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'max:255'],
             'role' => ['required', 'in:admin,general'],
             'is_active' => ['sometimes', 'boolean'],
-            'department_id' => ['sometimes', 'nullable', 'integer', 'exists:departments,id'],
         ];
     }
 }

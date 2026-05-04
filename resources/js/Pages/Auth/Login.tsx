@@ -44,7 +44,7 @@ export default function Login({
             <form onSubmit={submit} className="space-y-5">
                 {/* 社員コード入力 */}
                 <div>
-                    <InputLabel htmlFor="employee_code" value="社員コード" />
+                    <InputLabel htmlFor="employee_code" value="社員番号" />
                     <TextInput
                         id="employee_code"
                         type="text"

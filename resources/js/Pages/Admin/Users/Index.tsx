@@ -11,7 +11,7 @@ type UserRow = {
     id: number;
     name: string;
     employee_code: string | null;
-    email: string;
+    email: string | null;
     role: 'admin' | 'general' | string;
     is_active?: boolean;
     department?: { id: number; name: string; code: string } | null;
@@ -25,28 +25,9 @@ export default function Index({ users }: { users: UsersProp }) {
     const { data, setData, post, processing, errors, reset } = useForm({
         name: '',
         employee_code: '',
-        email: '',
         password: '',
         role: 'general' as 'admin' | 'general',
-        department_id: '' as string,
     });
-
-    const [departments, setDepartments] = useState<Array<{ id: number; name: string; code: string }>>([]);
-    const [departmentsLoaded, setDepartmentsLoaded] = useState<boolean>(false);
-
-    const loadDepartments = async () => {
-        if (departmentsLoaded) return;
-        try {
-            const res = await fetch(route('portal.api.departments.index'), { headers: { Accept: 'application/json' } });
-            if (!res.ok) throw new Error();
-            const json = (await res.json()) as Array<{ id: number; name: string; code: string }>;
-            setDepartments(Array.isArray(json) ? json : []);
-            setDepartmentsLoaded(true);
-        } catch {
-            setDepartments([]);
-            setDepartmentsLoaded(true);
-        }
-    };
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -78,15 +59,12 @@ export default function Index({ users }: { users: UsersProp }) {
     const [editName, setEditName] = useState<string>('');
     const [editRole, setEditRole] = useState<'admin' | 'general'>('general');
     const [editActive, setEditActive] = useState<boolean>(true);
-    const [editDepartmentId, setEditDepartmentId] = useState<string>('');
 
     const openEdit = (u: UserRow) => {
         setEditingUserId(u.id);
         setEditName(u.name ?? '');
         setEditRole((u.role === 'admin' ? 'admin' : 'general') as 'admin' | 'general');
         setEditActive(u.is_active !== false);
-        setEditDepartmentId(u.department?.id ? String(u.department.id) : '');
-        void loadDepartments();
     };
 
     return (
@@ -98,7 +76,7 @@ export default function Index({ users }: { users: UsersProp }) {
                     <div className="text-xs font-bold tracking-widest text-stone-500">CONTROL</div>
                     <div className="mt-2 text-lg font-black tracking-tight text-stone-900">ユーザー一覧（管理者用）</div>
                     <div className="mt-1 text-sm text-stone-600">
-                        社員の追加・一覧確認を行います（権限制御は後で厳密化できます）。
+                        社員コードとパスワードでログインします（メール・部署は使いません）。
                     </div>
                 </NeonCard>
 
@@ -129,20 +107,9 @@ export default function Index({ users }: { users: UsersProp }) {
                                     className="mt-1 block w-full"
                                     value={data.employee_code}
                                     onChange={(e) => setData('employee_code', e.target.value)}
-                                />
-                                <InputError message={errors.employee_code} className="mt-2" />
-                            </div>
-                            <div>
-                                <InputLabel htmlFor="email" value="メールアドレス" />
-                                <TextInput
-                                    id="email"
-                                    type="email"
-                                    className="mt-1 block w-full"
-                                    value={data.email}
-                                    onChange={(e) => setData('email', e.target.value)}
                                     required
                                 />
-                                <InputError message={errors.email} className="mt-2" />
+                                <InputError message={errors.employee_code} className="mt-2" />
                             </div>
                             <div>
                                 <InputLabel htmlFor="password" value="パスワード" />
@@ -170,24 +137,6 @@ export default function Index({ users }: { users: UsersProp }) {
                                 </select>
                                 <InputError message={errors.role} className="mt-2" />
                             </div>
-                            <div>
-                                <InputLabel htmlFor="department_id" value="部署" />
-                                <select
-                                    id="department_id"
-                                    onFocus={() => void loadDepartments()}
-                                    className="nordic-field mt-1 block w-full"
-                                    value={data.department_id}
-                                    onChange={(e) => setData('department_id', e.target.value)}
-                                >
-                                    <option value="">未設定</option>
-                                    {departments.map((d) => (
-                                        <option key={d.id} value={String(d.id)}>
-                                            {d.name} ({d.code})
-                                        </option>
-                                    ))}
-                                </select>
-                                <InputError message={(errors as any).department_id} className="mt-2" />
-                            </div>
                             <PrimaryButton className="w-full justify-center" disabled={processing}>
                                 登録
                             </PrimaryButton>
@@ -208,16 +157,14 @@ export default function Index({ users }: { users: UsersProp }) {
                                 <tr className="text-xs text-stone-500">
                                     <th className="border-b border-stone-200 p-3 font-bold tracking-widest">NAME</th>
                                     <th className="border-b border-stone-200 p-3 font-bold tracking-widest">CODE</th>
-                                    <th className="border-b border-stone-200 p-3 font-bold tracking-widest">EMAIL</th>
                                     <th className="border-b border-stone-200 p-3 font-bold tracking-widest">ROLE</th>
-                                    <th className="border-b border-stone-200 p-3 font-bold tracking-widest">DEPT</th>
                                     <th className="border-b border-stone-200 p-3 font-bold tracking-widest">ACTIONS</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {users.data.length === 0 && (
                                     <tr>
-                                        <td colSpan={6} className="py-10 text-center text-sm text-stone-500">
+                                        <td colSpan={4} className="py-10 text-center text-sm text-stone-500">
                                             ユーザーが登録されていません
                                         </td>
                                     </tr>
@@ -230,7 +177,6 @@ export default function Index({ users }: { users: UsersProp }) {
                                         <td className="border-b border-stone-200 p-3 text-sm text-stone-600">
                                             {user.employee_code || '-'}
                                         </td>
-                                        <td className="border-b border-stone-200 p-3 text-sm text-stone-600">{user.email}</td>
                                         <td className="border-b border-stone-200 p-3 text-sm">
                                             <span
                                                 className={
@@ -242,13 +188,6 @@ export default function Index({ users }: { users: UsersProp }) {
                                             >
                                                 {user.role === 'admin' ? '管理者' : user.role === 'general' ? '一般' : user.role}
                                             </span>
-                                        </td>
-                                        <td className="border-b border-stone-200 p-3 text-sm text-stone-600">
-                                            {user.department ? (
-                                                <span className="font-mono text-xs">{user.department.name}</span>
-                                            ) : (
-                                                '—'
-                                            )}
                                         </td>
                                         <td className="border-b border-stone-200 p-3 text-sm">
                                             <div className="flex items-center gap-2">
@@ -287,7 +226,7 @@ export default function Index({ users }: { users: UsersProp }) {
                                 <div className="text-xs font-bold tracking-widest text-stone-500">EDIT</div>
                                 <div className="mt-1 text-lg font-black tracking-tight text-stone-900">ユーザー編集</div>
                                 <div className="mt-1 text-xs text-stone-600">
-                                    {editingUser.employee_code || '—'} / {editingUser.email}
+                                    社員コード: {editingUser.employee_code || '—'}
                                 </div>
                             </div>
                             <button
@@ -322,22 +261,6 @@ export default function Index({ users }: { users: UsersProp }) {
                                     <option value="admin">管理者</option>
                                 </select>
                             </div>
-                            <div>
-                                <InputLabel htmlFor="edit_department_id" value="部署" />
-                                <select
-                                    id="edit_department_id"
-                                    className="nordic-field mt-1 block w-full"
-                                    value={editDepartmentId}
-                                    onChange={(e) => setEditDepartmentId(e.target.value)}
-                                >
-                                    <option value="">未設定</option>
-                                    {departments.map((d) => (
-                                        <option key={d.id} value={String(d.id)}>
-                                            {d.name} ({d.code})
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
                             <label className="flex items-center gap-2 text-sm font-semibold text-stone-700">
                                 <input
                                     type="checkbox"
@@ -363,7 +286,6 @@ export default function Index({ users }: { users: UsersProp }) {
                                             name: editName,
                                             role: editRole,
                                             is_active: editActive,
-                                            department_id: editDepartmentId ? Number(editDepartmentId) : null,
                                         });
                                         setEditingUserId(null);
                                     }}

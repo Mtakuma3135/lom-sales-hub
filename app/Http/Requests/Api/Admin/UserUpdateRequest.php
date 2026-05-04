@@ -20,7 +20,6 @@ class UserUpdateRequest extends FormRequest
             'name' => ['sometimes', 'string', 'max:255'],
             'role' => ['sometimes', 'in:admin,general'],
             'is_active' => ['sometimes', 'boolean'],
-            'department_id' => ['sometimes', 'nullable', 'integer', 'exists:departments,id'],
         ];
     }
 }

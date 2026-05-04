@@ -88,15 +88,19 @@ class DatabaseSeeder extends Seeder
         Credential::query()->updateOrCreate(
             ['label' => 'KING OF TIME API Token'],
             [
+                'login_id' => '',
                 'value' => 'Bearer xxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
                 'is_password' => true,
+                'visible_on_credentials_page' => true,
             ],
         );
         Credential::query()->updateOrCreate(
             ['label' => 'Google Sheets GAS URL'],
             [
+                'login_id' => null,
                 'value' => 'https://script.google.com/macros/s/xxxxx/exec',
                 'is_password' => false,
+                'visible_on_credentials_page' => false,
             ],
         );
 

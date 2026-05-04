@@ -51,6 +51,8 @@ return [
         'dummy_url' => env('GAS_DUMMY_URL', ''),
         // 監査ログ・手動テストなど（未設定時は dummy_url と同じ）
         'audit_log_url' => env('GAS_AUDIT_LOG_URL', ''),
+        // ID/パス一覧の取得・更新（未設定時は dummy_url で pull / push を試行）
+        'credentials_url' => env('GAS_CREDENTIALS_URL', ''),
         'signing_secret' => env('GAS_SIGNING_SECRET', ''),
     ],
 
