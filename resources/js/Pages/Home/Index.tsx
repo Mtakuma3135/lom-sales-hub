@@ -81,6 +81,11 @@ function addMinutesHHMM(hhmm: string, minutes: number): string {
     return `${hh}:${mm}`;
 }
 
+function localYmd(d: Date = new Date()): string {
+    // sv-SE gives YYYY-MM-DD in local timezone
+    return d.toLocaleDateString('sv-SE');
+}
+
 const priorityLabel = (p: string): string => {
     switch (p) {
         case 'urgent': return '至急';
@@ -170,7 +175,7 @@ export default function Index({
         });
     }, [lunchSlots]);
 
-    const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+    const dateYmd = useMemo(() => lunchBreaks?.meta?.date ?? localYmd(), [lunchBreaks?.meta?.date]);
     const totalMs = 60 * 60 * 1000;
     const [serverOffsetMs, setServerOffsetMs] = useState<number>(0);
     const [nowMs, setNowMs] = useState<number>(() => Date.now());
@@ -178,7 +183,7 @@ export default function Index({
 
     const fetchLunchStatus = useCallback(async () => {
         try {
-            const url = `${route('portal.api.lunch-breaks.status')}?date=${encodeURIComponent(today)}`;
+            const url = `${route('portal.api.lunch-breaks.status')}?date=${encodeURIComponent(dateYmd)}`;
             const res = await fetch(url, {
                 headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 credentials: 'same-origin',
@@ -196,7 +201,7 @@ export default function Index({
                 setServerOffsetMs(serverMs - Date.now());
             }
         } catch { /* ignore */ }
-    }, [today]);
+    }, [dateYmd]);
 
     useEffect(() => {
         void fetchLunchStatus();
@@ -207,12 +212,12 @@ export default function Index({
     useEffect(() => {
         const onUpdated = (e: Event) => {
             const d = (e as CustomEvent<{ date?: string }>).detail;
-            if (d?.date && d.date !== today) return;
+            if (d?.date && d.date !== dateYmd) return;
             void fetchLunchStatus();
         };
         window.addEventListener('lunch-schedule-updated', onUpdated as EventListener);
         return () => window.removeEventListener('lunch-schedule-updated', onUpdated as EventListener);
-    }, [fetchLunchStatus, today]);
+    }, [fetchLunchStatus, dateYmd]);
 
     useEffect(() => {
         const id = window.setInterval(() => setNowMs(Date.now() + serverOffsetMs), 1000);
