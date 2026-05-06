@@ -119,6 +119,7 @@ export default function Index({
     lunchBreaks,
     kpi,
     tasks,
+    personalKpi,
 }: {
     title?: string;
     notices: { data: NoticeRow[]; meta?: Record<string, unknown> };
