@@ -75,6 +75,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/tasks', [TaskRequestController::class, 'index'])->name('task-requests.index');
         Route::post('/tasks', [TaskRequestController::class, 'store'])->name('task-requests.store');
         Route::patch('/tasks/{id}', [TaskRequestController::class, 'update'])->name('task-requests.update');
+
+        Route::patch('/api/daily-tasks/{id}/status', [TaskRequestController::class, 'dailyUpdateStatus'])->name('portal.api.daily-tasks.status');
+        Route::post('/api/daily-tasks/templates', [TaskRequestController::class, 'dailyAddTemplate'])->name('portal.api.daily-tasks.templates.store');
+        Route::delete('/api/daily-tasks/templates/{id}', [TaskRequestController::class, 'dailyRemoveTemplate'])->name('portal.api.daily-tasks.templates.destroy');
         Route::get('/mypage', [MypageController::class, 'index'])->name('mypage.index');
         Route::patch('/mypage/password', [MypageController::class, 'updatePassword'])->name('mypage.password.update');
 
