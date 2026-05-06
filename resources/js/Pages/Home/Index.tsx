@@ -7,6 +7,7 @@ import BreakRunner from '@/Components/BreakRunner';
 import StatusBadge from '@/Components/StatusBadge';
 import { PageProps } from '@/types';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import SectionHeader from '@/Components/UI/SectionHeader';
 
 type NoticeRow = {
     id: number;
@@ -119,6 +120,7 @@ export default function Index({
     lunchBreaks,
     kpi,
     tasks,
+    personalKpi,
 }: {
     title?: string;
     notices: { data: NoticeRow[]; meta?: Record<string, unknown> };
@@ -144,7 +146,7 @@ export default function Index({
             const names = slot.reservations
                 .map((r) => r.user?.name)
                 .filter((n): n is string => !!n && n !== '—');
-            const label = names.length > 0 ? names.join('、') : '—';
+            const label = names.length > 0 ? names[0] : '—';
             return {
                 time: `${formatTime(slot.start_time)} - ${formatTime(slot.end_time)}`,
                 name: label,
@@ -174,9 +176,19 @@ export default function Index({
 
     useEffect(() => {
         void fetchLunchStatus();
-        const id = window.setInterval(() => void fetchLunchStatus(), 15000);
+        const id = window.setInterval(() => void fetchLunchStatus(), 5000);
         return () => window.clearInterval(id);
     }, [fetchLunchStatus]);
+
+    useEffect(() => {
+        const onUpdated = (e: Event) => {
+            const d = (e as CustomEvent<{ date?: string }>).detail;
+            if (d?.date && d.date !== today) return;
+            void fetchLunchStatus();
+        };
+        window.addEventListener('lunch-schedule-updated', onUpdated as EventListener);
+        return () => window.removeEventListener('lunch-schedule-updated', onUpdated as EventListener);
+    }, [fetchLunchStatus, today]);
 
     useEffect(() => {
         if (!userId) return;
@@ -266,35 +278,19 @@ export default function Index({
         >
             <Head title={pageTitle} />
 
-            <div className="mx-auto max-w-6xl px-6 py-6 text-wa-body wa-body-track space-y-6">
+            <div className="mx-auto max-w-6xl text-wa-body wa-body-track space-y-6">
                 {/* ── 1. 周知事項 ── */}
-                <NeonCard elevate={false}>
-                    <div className="flex items-center justify-between gap-4">
-                        <div>
-                            <div className="text-xs font-bold tracking-widest text-wa-muted">
-                                NOTICES
-                            </div>
-                            <div className="mt-1 text-sm font-black tracking-tight text-wa-body">
-                                周知事項
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <span className="text-[10px] text-wa-muted">
-                                {noticeRows.length > 0 ? `最新 ${noticeRows.length} 件` : ''}
-                            </span>
-                            <button
-                                type="button"
-                                onClick={() => go(route('notices.index'))}
-                                className="rounded-sm border border-wa-accent/25 bg-wa-ink px-3 py-1.5 text-xs font-black tracking-tight text-wa-body transition hover:border-wa-accent/40"
-                            >
-                                すべて見る
-                            </button>
-                        </div>
-                    </div>
+                <NeonCard elevate={false} className="p-8">
+                    <SectionHeader
+                        eyebrow="NOTICES"
+                        title="周知事項"
+                        meta={noticeRows.length > 0 ? `最新 ${noticeRows.length} 件` : ''}
+                        action={{ label: 'すべて見る', onClick: () => go(route('notices.index')), variant: 'secondary' }}
+                    />
 
-                    <div className="mt-4 space-y-3">
+                    <div className="mt-5 space-y-3">
                         {noticeRows.length === 0 ? (
-                            <div className="rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-6 text-center text-sm text-wa-muted">
+                            <div className="rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-6 text-center text-sm text-wa-muted">
                                 表示できるお知らせはありません
                             </div>
                         ) : (
@@ -313,140 +309,45 @@ export default function Index({
                 </NeonCard>
 
                 {/* ── 2. 昼休憩 ── */}
-                <NeonCard elevate={false}>
-                    <div className="flex flex-wrap items-center justify-between gap-4">
-                        <div>
-                            <div className="text-xs font-bold tracking-widest text-wa-muted">
-                                LUNCH BREAK
-                            </div>
-                            <div className="mt-1 text-sm font-black tracking-tight text-wa-body">
-                                昼休憩
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            {lunchBreaks?.meta?.date && (
-                                <span className="text-[10px] text-wa-muted">
-                                    {lunchBreaks.meta.date}
-                                </span>
-                            )}
-                            <button
-                                type="button"
-                                onClick={() => go(route('lunch-breaks.index'))}
-                                className="rounded-sm border border-wa-accent/25 bg-wa-ink px-3 py-1.5 text-xs font-black tracking-tight text-wa-body transition hover:border-wa-accent/40"
-                            >
-                                詳細を見る
-                            </button>
-                        </div>
-                    </div>
+                <NeonCard elevate={false} className="p-8">
+                    <SectionHeader
+                        eyebrow="LUNCH BREAK"
+                        title="昼休憩"
+                        meta={lunchBreaks?.meta?.date ?? ''}
+                        action={{ label: '詳細を見る', onClick: () => go(route('lunch-breaks.index')), variant: 'secondary' }}
+                    />
 
-                    <div className="mt-4 space-y-4">
-                        <BreakRunner
-                            active={runnerActive}
-                            remainingMs={remainingMs}
-                            totalMs={totalMs}
-                            label={
-                                activeNamesLabel ??
-                                (timerState
-                                    ? `ローカルタイマー（開始 ${timerState.startTime}）`
-                                    : '休憩が始まるとランナーが走ります')
-                            }
-                        />
-
-                        <div className="rounded-sm border border-wa-accent/20 bg-wa-ink p-4">
-                            <div className="flex items-center justify-between gap-3">
-                                <div className="text-xs font-semibold uppercase tracking-widest text-wa-muted">
-                                    60分プログレス
-                                </div>
-                                <div
-                                    className={
-                                        'text-xs font-semibold ' +
-                                        (isWarning ? 'timer-breath text-red-400' : 'text-wa-muted')
-                                    }
-                                >
-                                    {runnerActive ? `残り ${fmt(remainingMs)}` : '未開始'}
-                                </div>
-                            </div>
-                            <div className="mt-3 h-2 w-full bg-wa-subtle">
-                                <div
-                                    className={
-                                        'h-full transition-[width] duration-500 ease-out ' +
-                                        (isWarning ? 'bg-red-500' : 'bg-wa-accent')
-                                    }
-                                    style={{
-                                        width: `${
-                                            runnerActive
-                                                ? Math.min(100, Math.max(0, ((totalMs - remainingMs) / totalMs) * 100))
-                                                : 0
-                                        }%`,
-                                    }}
-                                />
-                            </div>
-                        </div>
-
-                        <div className="overflow-x-auto">
-                            <table className="min-w-full border-separate border-spacing-0 text-sm">
-                                <thead>
-                                    <tr className="text-left text-xs font-semibold uppercase tracking-wider text-wa-muted">
-                                        <th className="border-b border-wa-accent/20 px-4 py-2">
-                                            時間
-                                        </th>
-                                        <th className="border-b border-wa-accent/20 px-4 py-2">
-                                            休憩者
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {lunchTableRows.length === 0 ? (
-                                        <tr>
-                                            <td
-                                                colSpan={2}
-                                                className="border-b border-wa-accent/15 px-4 py-4 text-wa-muted"
-                                            >
-                                                本日の枠はありません
-                                            </td>
-                                        </tr>
-                                    ) : (
-                                        lunchTableRows.map((r) => (
-                                            <tr
-                                                key={r.time}
-                                                className="transition-colors hover:bg-wa-ink/80"
-                                            >
-                                                <td className="border-b border-wa-accent/15 px-4 py-3 font-medium text-wa-body">
-                                                    {r.time}
-                                                </td>
-                                                <td className="border-b border-wa-accent/15 px-4 py-3">
-                                                    <span className="inline-flex rounded-sm border border-wa-accent/25 bg-wa-card px-3 py-1 text-xs font-semibold text-wa-muted">
-                                                        {r.name}
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
+                    <div className="mt-5 space-y-4">
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+                            {[1, 2, 3, 4, 5].map((lane) => {
+                                const row = lanesFromApi.find((r) => r.lane === lane) ?? null;
+                                const rem = row ? laneRemainingMs(row, nowMs, totalMs) : null;
+                                const active = rem !== null && rem > 0 && rem < totalMs;
+                                const currentName = row?.current?.user?.name ?? '—';
+                                const nextName = row?.next?.user?.name ?? '—';
+                                return (
+                                    <BreakRunner
+                                        key={lane}
+                                        active={active}
+                                        remainingMs={active ? rem! : totalMs}
+                                        totalMs={totalMs}
+                                        label={`枠${lane}: ${currentName}（次: ${nextName}）`}
+                                    />
+                                );
+                            })}
                         </div>
                     </div>
                 </NeonCard>
 
                 {/* ── 3. KPI ── */}
-                <NeonCard elevate={false}>
-                    <div className="flex items-center justify-between gap-4">
-                        <div>
-                            <div className="text-xs font-bold tracking-widest text-wa-muted">KPI</div>
-                            <div className="mt-1 text-sm font-black tracking-tight text-wa-body">
-                                今月の実績
-                            </div>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => go(route('sales.summary'))}
-                            className="rounded-sm border border-wa-accent/25 bg-wa-ink px-3 py-1.5 text-xs font-black tracking-tight text-wa-body transition hover:border-wa-accent/40"
-                        >
-                            詳細を見る
-                        </button>
-                    </div>
+                <NeonCard elevate={false} className="p-8">
+                    <SectionHeader
+                        eyebrow="KPI"
+                        title="今月の実績"
+                        action={{ label: '詳細を見る', onClick: () => go(route('sales.summary')), variant: 'secondary' }}
+                    />
 
-                    <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+                    <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
                         {/* Team KPI */}
                         <div>
                             <div className="mb-2 text-[10px] font-bold uppercase tracking-widest text-wa-muted">
@@ -475,7 +376,7 @@ export default function Index({
                                 ].map((k) => (
                                     <div
                                         key={`team-${k.label}`}
-                                        className="rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-4"
+                                        className="rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-5"
                                     >
                                         <div className="text-[10px] font-semibold uppercase tracking-wide text-wa-muted">
                                             {k.label}
@@ -517,7 +418,7 @@ export default function Index({
                                 ].map((k) => (
                                     <div
                                         key={`personal-${k.label}`}
-                                        className="rounded-sm border border-teal-500/20 bg-wa-ink px-4 py-4"
+                                        className="rounded-xl border border-teal-500/18 bg-wa-ink px-4 py-5"
                                     >
                                         <div className="text-[10px] font-semibold uppercase tracking-wide text-wa-muted">
                                             {k.label}
@@ -534,38 +435,20 @@ export default function Index({
                 </NeonCard>
 
                 {/* ── 4. タスク管理 ── */}
-                <NeonCard elevate={false}>
-                    <div className="flex items-center justify-between gap-4">
-                        <div>
-                            <div className="text-xs font-bold tracking-widest text-wa-muted">
-                                TASKS
-                            </div>
-                            <div className="mt-1 text-sm font-black tracking-tight text-wa-body">
-                                タスク管理
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <span className="text-[10px] text-wa-muted">
-                                {activeTasks.length > 0
-                                    ? `未完了 ${activeTasks.length} 件`
-                                    : ''}
-                            </span>
-                            <button
-                                type="button"
-                                onClick={() => go(route('task-requests.index'))}
-                                className="rounded-sm border border-wa-accent/25 bg-wa-ink px-3 py-1.5 text-xs font-black tracking-tight text-wa-body transition hover:border-wa-accent/40"
-                            >
-                                すべて見る
-                            </button>
-                        </div>
-                    </div>
+                <NeonCard elevate={false} className="p-8">
+                    <SectionHeader
+                        eyebrow="TASKS"
+                        title="タスク管理"
+                        meta={activeTasks.length > 0 ? `未完了 ${activeTasks.length} 件` : ''}
+                        action={{ label: 'すべて見る', onClick: () => go(route('task-requests.index')), variant: 'secondary' }}
+                    />
 
                     {activeTasks.length === 0 ? (
-                        <div className="mt-4 rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-6 text-center text-sm text-wa-muted">
+                        <div className="mt-5 rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-6 text-center text-sm text-wa-muted">
                             未対応のタスクはありません
                         </div>
                     ) : (
-                        <div className="mt-4 space-y-3">
+                        <div className="mt-5 space-y-3">
                             {activeTasks.map((t) => (
                                 <div
                                     key={t.id}
@@ -577,7 +460,7 @@ export default function Index({
                                         e.preventDefault();
                                         go(route('task-requests.index'));
                                     }}
-                                    className="group rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-4 transition hover:border-wa-accent/35 cursor-pointer"
+                                    className="group cursor-pointer rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-4 transition hover:border-wa-accent/30"
                                 >
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="min-w-0 flex-1">
