@@ -90,6 +90,7 @@ export default function Index({
     const lanes = timetable?.lanes ?? 5;
 
     const [selections, setSelections] = useState<Record<string, number>>({});
+    const [serverOffsetMs, setServerOffsetMs] = useState<number>(0);
     const [tick, setTick] = useState(() => Date.now());
     const [activeRows, setActiveRows] = useState<ActiveRow[]>([]);
 
@@ -111,9 +112,9 @@ export default function Index({
     }, [rows, lanes]);
 
     useEffect(() => {
-        const t = window.setInterval(() => setTick(Date.now()), 1000);
+        const t = window.setInterval(() => setTick(Date.now() + serverOffsetMs), 1000);
         return () => window.clearInterval(t);
-    }, []);
+    }, [serverOffsetMs]);
 
     const fetchStatus = useCallback(async () => {
         try {
@@ -123,8 +124,16 @@ export default function Index({
                 credentials: 'same-origin',
             });
             if (!res.ok) return;
-            const json = (await res.json()) as { data?: { active?: ActiveRow[] } };
+            const json = (await res.json()) as {
+                data?: { active?: ActiveRow[] };
+                meta?: { server_time?: string };
+            };
             setActiveRows(Array.isArray(json.data?.active) ? json.data!.active! : []);
+
+            const ms = typeof json.meta?.server_time === 'string' ? new Date(json.meta.server_time).getTime() : NaN;
+            if (Number.isFinite(ms)) {
+                setServerOffsetMs(ms - Date.now());
+            }
         } catch {
             /* ignore */
         }
