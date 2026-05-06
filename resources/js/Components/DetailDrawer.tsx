@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { PropsWithChildren, useEffect } from 'react';
 
-/** 右スライドパネル（Nordic / light glass） */
+/** 右スライドパネル（モダン和風） */
 export default function DetailDrawer({
     open,
     title,
@@ -34,7 +34,7 @@ export default function DetailDrawer({
                 >
                     <button
                         type="button"
-                        className="absolute inset-0 backdrop-blur-sm bg-stone-900/20"
+                        className="absolute inset-0 bg-wa-ink/75 backdrop-blur-[2px]"
                         aria-label="閉じる"
                         onClick={onClose}
                     />
@@ -43,21 +43,21 @@ export default function DetailDrawer({
                         animate={{ x: 0 }}
                         exit={{ x: '100%' }}
                         transition={{ duration: 0.38, ease: [0.16, 1, 0.3, 1] }}
-                        className="absolute right-0 top-0 flex h-full w-full max-w-xl flex-col border-l border-emerald-100/60 border-t border-t-white/80 bg-emerald-50/55 shadow-xl shadow-stone-900/12 backdrop-blur-md"
+                        className="absolute right-0 top-0 flex h-full w-full max-w-xl flex-col border-l border-wa-accent/20 bg-wa-card"
                         role="dialog"
                         aria-modal="true"
                     >
-                        <div className="flex items-center justify-between border-b border-stone-100 px-5 py-4">
-                            <div className="text-sm font-semibold tracking-tight text-stone-800">{title}</div>
+                        <div className="flex items-center justify-between border-b border-wa-accent/20 px-5 py-4">
+                            <div className="wa-body-track text-sm font-semibold text-wa-body">{title}</div>
                             <button
                                 type="button"
                                 onClick={onClose}
-                                className="rounded-xl border border-stone-200 bg-white px-3 py-2 text-xs font-semibold text-stone-600 shadow-sm transition hover:bg-stone-50"
+                                className="rounded-sm border border-wa-accent/25 bg-wa-ink px-3 py-2 text-xs font-semibold text-wa-muted transition hover:border-wa-accent/40 hover:text-wa-body"
                             >
                                 閉じる
                             </button>
                         </div>
-                        <div className="min-h-0 flex-1 overflow-auto p-5 text-stone-700">{children}</div>
+                        <div className="min-h-0 flex-1 overflow-auto p-5 text-wa-body wa-body-track">{children}</div>
                     </motion.aside>
                 </motion.div>
             ) : null}

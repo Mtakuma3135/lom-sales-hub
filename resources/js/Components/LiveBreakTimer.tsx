@@ -60,11 +60,9 @@ export default function LiveBreakTimer({
     }, []);
 
     const now = useMemo(() => {
-        // サーバー時刻が来ていればそれを基準にする（フロント時計ズレを減らす）
         if (!serverNowISO) return new Date(tickMs);
         const server = new Date(serverNowISO).getTime();
         if (Number.isNaN(server)) return new Date(tickMs);
-        // 取得時点の server_time を now として使う（ポーリング間はローカル tick で進める）
         const drift = tickMs - Date.now();
         return new Date(server + drift);
     }, [serverNowISO, tickMs]);
@@ -79,15 +77,14 @@ export default function LiveBreakTimer({
     return (
         <div className="relative">
             <div className="flex items-center justify-between">
-                <div className="text-xs font-semibold uppercase tracking-widest text-stone-400">LIVE</div>
-                <div className="font-mono text-xs font-semibold text-stone-500">
+                <div className="text-xs font-semibold uppercase tracking-widest text-wa-muted">LIVE</div>
+                <div className="wa-nums font-mono text-xs font-semibold text-wa-muted">
                     {String(now.getHours()).padStart(2, '0')}:{String(now.getMinutes()).padStart(2, '0')}
                 </div>
             </div>
 
-            <div className="mt-3 rounded-2xl border border-stone-200/70 bg-stone-100/70 p-4 ring-1 ring-white/60">
-                <div className="relative h-14 overflow-hidden rounded-xl bg-white/65 ring-1 ring-stone-200">
-                    {/* planned slots (Stone-100) */}
+            <div className="mt-3 rounded-sm border border-wa-accent/20 bg-wa-card p-4">
+                <div className="relative h-14 overflow-hidden rounded-sm bg-wa-ink ring-1 ring-wa-accent/15">
                     {plannedSlots.map((s) => {
                         const a = hhmmToMinutes(s.start_time);
                         const b = hhmmToMinutes(s.end_time);
@@ -98,14 +95,13 @@ export default function LiveBreakTimer({
                                 key={s.start_time}
                                 type="button"
                                 onClick={() => onOpenQuickAction(s.start_time)}
-                                className="absolute top-2 bottom-2 rounded-lg bg-stone-100/95 ring-1 ring-stone-200/80 transition hover:bg-stone-100 hover:ring-emerald-200"
+                                className="absolute top-2 bottom-2 rounded-sm bg-wa-subtle/90 ring-1 ring-wa-accent/20 transition hover:bg-wa-subtle hover:ring-wa-accent/40"
                                 style={{ left: `${left}%`, width: `${Math.max(0, right - left)}%` }}
-                                aria-label={`予定枠 ${s.start_time}-${s.end_time}`}
+                                aria-label={`時間帯 ${s.start_time}〜${s.end_time}`}
                             />
                         );
                     })}
 
-                    {/* active rows */}
                     <AnimatePresence initial={false}>
                         {sortedActive.map((row, idx) => {
                             const started = new Date(row.active.started_at).getTime();
@@ -119,7 +115,7 @@ export default function LiveBreakTimer({
                             const plannedEndMin = hhmmToMinutes(row.planned.end_time);
                             const overtime = nowMin > plannedEndMin + 0.5;
 
-                            const top = 9 + idx * 10; // stack
+                            const top = 9 + idx * 10;
                             return (
                                 <motion.div
                                     key={row.user.id}
@@ -134,45 +130,41 @@ export default function LiveBreakTimer({
                                         className={
                                             'absolute h-2 rounded-full ' +
                                             (overtime
-                                                ? 'bg-gradient-to-r from-emerald-500 via-emerald-400 to-amber-400 shadow-[0_0_14px_rgba(16,185,129,0.35)]'
-                                                : 'bg-emerald-500 shadow-[0_0_14px_rgba(16,185,129,0.35)]')
+                                                ? 'bg-gradient-to-r from-teal-500 via-teal-400 to-amber-400 shadow-[0_0_14px_rgba(20,184,166,0.35)]'
+                                                : 'bg-teal-500 shadow-[0_0_14px_rgba(20,184,166,0.35)]')
                                         }
                                         style={{ left: `${left}%`, width: `${Math.max(0, head - left)}%` }}
                                     />
 
                                     <motion.div
                                         layoutId={`break-avatar-${row.user.id}`}
-                                        className="absolute -top-2 h-6 w-6 rounded-full bg-white text-[10px] font-black text-stone-900 ring-1 ring-stone-200 shadow-sm"
+                                        className="absolute -top-2 h-6 w-6 rounded-full border border-wa-accent/25 bg-wa-card text-[10px] font-semibold text-wa-body ring-1 ring-wa-accent/20"
                                         style={{ left: `calc(${head}% - 12px)` }}
                                         title={row.user.name}
                                     >
-                                        <div className="grid h-full w-full place-items-center">
-                                            {initials(row.user.name)}
-                                        </div>
+                                        <div className="grid h-full w-full place-items-center">{initials(row.user.name)}</div>
                                     </motion.div>
                                 </motion.div>
                             );
                         })}
                     </AnimatePresence>
 
-                    {/* sweep line */}
                     <div
                         aria-hidden
-                        className="pointer-events-none absolute top-1 bottom-1 w-[2px] bg-emerald-600/60 shadow-[0_0_18px_rgba(16,185,129,0.25)]"
+                        className="pointer-events-none absolute top-1 bottom-1 w-[2px] bg-teal-400/70 shadow-[0_0_18px_rgba(45,212,191,0.35)]"
                         style={{ left: `calc(${sweepLeft}% - 1px)` }}
                     />
                 </div>
 
-                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-stone-500">
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-wa-muted">
                     <div>
-                        予定: <span className="font-semibold text-stone-700">{plannedSlots.length}枠</span>
+                        時間帯: <span className="font-semibold text-wa-body">{plannedSlots.length}</span>
                     </div>
                     <div>
-                        実稼働: <span className="font-semibold text-stone-700">{activeRows.length}名</span>
+                        実際に休憩中: <span className="font-semibold text-wa-body">{activeRows.length}名</span>
                     </div>
                 </div>
             </div>
         </div>
     );
 }
-

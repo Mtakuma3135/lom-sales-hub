@@ -71,10 +71,10 @@ const priorityLabel = (p: Task['priority']): string => {
 };
 
 const tabBtn = (active: boolean) =>
-    'rounded-xl px-4 py-2 text-xs font-black tracking-widest transition-all duration-200 hover:scale-[1.02] ' +
+    'rounded-sm px-4 py-2 text-xs font-black tracking-widest transition-all duration-200 hover:scale-[1.02] ' +
     (active
-        ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-900/15 ring-1 ring-emerald-500/30'
-        : 'bg-white/80 text-stone-600 ring-1 ring-stone-200 hover:bg-emerald-50/60');
+        ? 'border border-wa-accent/45 bg-wa-accent text-wa-ink shadow-sm ring-1 ring-wa-accent/30'
+        : 'border border-wa-accent/20 bg-wa-ink text-wa-muted ring-1 ring-wa-accent/10 hover:border-wa-accent/35 hover:bg-wa-card hover:text-wa-body');
 
 export default function Index({ tasks }: { tasks?: TasksProp }) {
     const { props } = usePage<{ userOptions?: UserOption[] }>();
@@ -161,13 +161,13 @@ export default function Index({ tasks }: { tasks?: TasksProp }) {
     const [formBody, setFormBody] = useState<string>('');
 
     return (
-        <AuthenticatedLayout header={<h2 className="text-sm font-black tracking-tight">TASK / REQUESTS</h2>}>
+        <AuthenticatedLayout header={<h2 className="text-sm font-black tracking-tight text-wa-body">TASK / REQUESTS</h2>}>
             <Head title="業務依頼" />
-            <div className="mx-auto max-w-6xl px-6 py-6 text-stone-800">
+            <div className="mx-auto max-w-6xl px-6 py-6 text-wa-body wa-body-track">
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                     <NeonCard>
-                        <div className="text-xs font-bold tracking-widest text-stone-500">NEW</div>
-                        <div className="mt-2 text-sm font-black tracking-tight text-stone-900">依頼を作成</div>
+                        <div className="text-xs font-bold tracking-widest text-wa-muted">NEW</div>
+                        <div className="mt-2 text-sm font-black tracking-tight text-wa-body">依頼を作成</div>
                         <div className="mt-4 space-y-3">
                             <input
                                 type="text"
@@ -235,8 +235,8 @@ export default function Index({ tasks }: { tasks?: TasksProp }) {
                     <NeonCard className="lg:col-span-2 overflow-x-auto" elevate={false}>
                         <div className="flex flex-wrap items-center justify-between gap-3">
                             <div>
-                                <div className="text-xs font-bold tracking-widest text-stone-500">LIST</div>
-                                <div className="mt-1 text-lg font-black tracking-tight text-stone-900">依頼一覧</div>
+                                <div className="text-xs font-bold tracking-widest text-wa-muted">LIST</div>
+                                <div className="mt-1 text-lg font-black tracking-tight text-wa-body">依頼一覧</div>
                             </div>
                             <div className="flex flex-wrap items-center gap-2">
                                 <button type="button" onClick={() => setTab('active')} className={tabBtn(tab === 'active')}>
@@ -251,37 +251,37 @@ export default function Index({ tasks }: { tasks?: TasksProp }) {
 
                         <table className="mt-4 w-full border-collapse">
                             <thead>
-                                <tr className="text-left text-xs text-stone-500">
-                                    <th className="border-b border-stone-200 px-3 py-2 font-bold tracking-widest">ID</th>
-                                    <th className="border-b border-stone-200 px-3 py-2 font-bold tracking-widest">TITLE</th>
-                                    <th className="border-b border-stone-200 px-3 py-2 font-bold tracking-widest">STATUS</th>
-                                    <th className="border-b border-stone-200 px-3 py-2 font-bold tracking-widest">PRIORITY</th>
-                                    <th className="border-b border-stone-200 px-3 py-2 font-bold tracking-widest">DUE</th>
-                                    <th className="border-b border-stone-200 px-3 py-2 font-bold tracking-widest">ACTIONS</th>
+                                <tr className="text-left text-xs text-wa-muted">
+                                    <th className="border-b border-wa-accent/20 px-3 py-2 font-bold tracking-widest">ID</th>
+                                    <th className="border-b border-wa-accent/20 px-3 py-2 font-bold tracking-widest">TITLE</th>
+                                    <th className="border-b border-wa-accent/20 px-3 py-2 font-bold tracking-widest">STATUS</th>
+                                    <th className="border-b border-wa-accent/20 px-3 py-2 font-bold tracking-widest">PRIORITY</th>
+                                    <th className="border-b border-wa-accent/20 px-3 py-2 font-bold tracking-widest">DUE</th>
+                                    <th className="border-b border-wa-accent/20 px-3 py-2 font-bold tracking-widest">ACTIONS</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {(tab === 'done' ? doneItems : activeItems).map((t) => (
                                     <tr
                                         key={t.id}
-                                        className="cursor-pointer text-sm transition-colors hover:bg-white/70"
+                                        className="cursor-pointer text-sm transition-colors hover:bg-wa-ink/80"
                                         onClick={() => setSelectedTaskId(t.id)}
                                     >
-                                        <td className="border-b border-stone-200 px-3 py-3 text-stone-500">#{t.id}</td>
-                                        <td className="border-b border-stone-200 px-3 py-3">
-                                            <div className="font-black tracking-tight text-stone-900">{t.title}</div>
-                                            <div className="mt-1 text-xs text-stone-500">
+                                        <td className="border-b border-wa-accent/20 px-3 py-3 text-wa-muted">#{t.id}</td>
+                                        <td className="border-b border-wa-accent/20 px-3 py-3">
+                                            <div className="font-black tracking-tight text-wa-body">{t.title}</div>
+                                            <div className="mt-1 text-xs text-wa-muted">
                                                 依頼元: {t.requester} / 作成: {t.created_at}
                                             </div>
                                         </td>
-                                        <td className="border-b border-stone-200 px-3 py-3">
+                                        <td className="border-b border-wa-accent/20 px-3 py-3">
                                             <StatusBadge variant={statusVariant(t.status)}>{statusLabel(t.status)}</StatusBadge>
                                         </td>
-                                        <td className="border-b border-stone-200 px-3 py-3">
+                                        <td className="border-b border-wa-accent/20 px-3 py-3">
                                             <StatusBadge variant={priorityVariant(t.priority)}>{priorityLabel(t.priority)}</StatusBadge>
                                         </td>
-                                        <td className="border-b border-stone-200 px-3 py-3 text-stone-700">{t.due_date}</td>
-                                        <td className="border-b border-stone-200 px-3 py-3">
+                                        <td className="border-b border-wa-accent/20 px-3 py-3 text-wa-body">{t.due_date}</td>
+                                        <td className="border-b border-wa-accent/20 px-3 py-3">
                                             <div className="flex items-center gap-2">
                                                 <select
                                                     value={t.status}
@@ -311,25 +311,25 @@ export default function Index({ tasks }: { tasks?: TasksProp }) {
                 {selectedTask ? (
                     <div className="space-y-4">
                         <div>
-                            <div className="text-xs font-bold tracking-widest text-stone-500">TITLE</div>
-                            <div className="mt-1 text-base font-black tracking-tight text-stone-900">{selectedTask.title}</div>
-                            <div className="mt-2 text-xs text-stone-500">
+                            <div className="text-xs font-bold tracking-widest text-wa-muted">TITLE</div>
+                            <div className="mt-1 text-base font-black tracking-tight text-wa-body">{selectedTask.title}</div>
+                            <div className="mt-2 text-xs text-wa-muted">
                                 依頼元: {selectedTask.requester} / 作成: {selectedTask.created_at} / 期限:{' '}
                                 {selectedTask.due_date}
                             </div>
                         </div>
 
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                            <div className="rounded-xl border border-stone-200 bg-white/70 px-4 py-3">
-                                <div className="text-[11px] font-bold tracking-widest text-stone-500">STATUS</div>
+                            <div className="rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-3">
+                                <div className="text-[11px] font-bold tracking-widest text-wa-muted">STATUS</div>
                                 <div className="mt-2">
                                     <StatusBadge variant={statusVariant(selectedTask.status)}>
                                         {statusLabel(selectedTask.status)}
                                     </StatusBadge>
                                 </div>
                             </div>
-                            <div className="rounded-xl border border-stone-200 bg-white/70 px-4 py-3">
-                                <div className="text-[11px] font-bold tracking-widest text-stone-500">PRIORITY</div>
+                            <div className="rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-3">
+                                <div className="text-[11px] font-bold tracking-widest text-wa-muted">PRIORITY</div>
                                 <div className="mt-2">
                                     <StatusBadge variant={priorityVariant(selectedTask.priority)}>
                                         {priorityLabel(selectedTask.priority)}
@@ -338,8 +338,8 @@ export default function Index({ tasks }: { tasks?: TasksProp }) {
                             </div>
                         </div>
 
-                        <div className="rounded-xl border border-stone-200 bg-white/70 px-4 py-3">
-                            <div className="text-[11px] font-bold tracking-widest text-stone-500">UPDATE STATUS</div>
+                        <div className="rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-3">
+                            <div className="text-[11px] font-bold tracking-widest text-wa-muted">UPDATE STATUS</div>
                             <div className="mt-3 flex flex-wrap items-center gap-3">
                                 <select
                                     value={selectedTask.status}
@@ -361,7 +361,7 @@ export default function Index({ tasks }: { tasks?: TasksProp }) {
                         </div>
                     </div>
                 ) : (
-                    <div className="rounded-xl border border-stone-200 bg-stone-50 px-4 py-6 text-sm text-stone-500">
+                    <div className="rounded-sm border border-wa-accent/20 bg-wa-card px-4 py-6 text-sm text-wa-muted">
                         データがありません
                     </div>
                 )}

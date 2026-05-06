@@ -4,11 +4,11 @@ import { PropsWithChildren } from 'react';
 
 export default function GuestLayout({ children }: PropsWithChildren) {
     return (
-        <div className="flex min-h-screen items-center justify-center bg-stone-50 p-6 text-stone-700">
+        <div className="flex min-h-screen items-center justify-center bg-wa-ink p-6 text-wa-body wa-body-track">
             <div className="w-full max-w-md">
-                <div className="rounded-3xl border border-stone-100 bg-white px-8 py-10 shadow-nordic">
+                <div className="rounded-sm border border-wa-accent/20 bg-wa-card px-8 py-12">
                     <div className="flex flex-col items-center">
-                        <div className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-sm shadow-stone-900/10 ring-1 ring-emerald-500/25">
+                        <div className="grid h-12 w-12 place-items-center rounded-sm border border-wa-accent/30 bg-wa-ink text-wa-accent">
                             <svg
                                 className="h-6 w-6"
                                 viewBox="0 0 24 24"
@@ -27,30 +27,28 @@ export default function GuestLayout({ children }: PropsWithChildren) {
                             </svg>
                         </div>
 
-                        <div className="mt-4 text-center">
-                            <div className="text-lg font-semibold tracking-tight text-stone-800">
-                                営業ポータル<span className="text-emerald-600">.</span>
+                        <div className="mt-5 text-center">
+                            <div className="text-lg font-semibold text-wa-body">
+                                営業ポータル<span className="text-wa-accent">.</span>
                             </div>
-                            <div className="mt-1 text-xs font-medium text-stone-500">
-                                Sales Activity Management System
-                            </div>
+                            <div className="mt-1 text-xs font-medium text-wa-muted">Sales Activity Management System</div>
                         </div>
                     </div>
 
                     <div className="mt-8">{children}</div>
 
-                    <div className="mt-8 border-t border-stone-100 pt-4 text-xs text-stone-500">
-                        <div className="font-semibold text-stone-700">テストアカウント:</div>
-                        <div className="mt-1">
-                            管理者: <span className="font-mono">12345</span> /{' '}
-                            <span className="font-mono">password</span>
+                    <div className="mt-8 border-t border-wa-accent/20 pt-5 text-xs text-wa-muted">
+                        <div className="font-semibold text-wa-body">テストアカウント:</div>
+                        <div className="mt-2">
+                            管理者: <span className="wa-nums font-mono">12345</span> /{' '}
+                            <span className="wa-nums font-mono">password</span>
                         </div>
                     </div>
                 </div>
 
-                <div className="mt-4 text-center text-xs text-stone-400">
+                <div className="mt-5 text-center text-xs text-wa-muted">
                     <Link href="/">
-                        <ApplicationLogo className="mx-auto h-8 w-8 fill-current text-stone-300" />
+                        <ApplicationLogo className="mx-auto h-8 w-8 fill-current text-wa-accent/40" />
                     </Link>
                 </div>
             </div>

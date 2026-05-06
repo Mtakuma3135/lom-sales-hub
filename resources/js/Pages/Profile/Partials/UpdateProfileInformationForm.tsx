@@ -33,9 +33,9 @@ export default function UpdateProfileInformation({
     return (
         <section className={className}>
             <header>
-                <h2 className="text-lg font-medium text-gray-900">プロフィール</h2>
+                <h2 className="text-lg font-medium text-wa-body">プロフィール</h2>
 
-                <p className="mt-1 text-sm text-gray-600">表示名を更新できます。</p>
+                <p className="mt-1 text-sm text-wa-muted">表示名を更新できます。</p>
             </header>
 
             <form onSubmit={submit} className="mt-6 space-y-6">
@@ -65,7 +65,7 @@ export default function UpdateProfileInformation({
                         leave="transition ease-in-out"
                         leaveTo="opacity-0"
                     >
-                        <p className="text-sm text-gray-600">保存しました。</p>
+                        <p className="text-sm text-teal-400">保存しました。</p>
                     </Transition>
                 </div>
             </form>

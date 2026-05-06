@@ -16,20 +16,20 @@ export default function InformationTrigger({
     const [open, setOpen] = useState(defaultOpen);
 
     return (
-        <div className="rounded-xl border border-emerald-100/70 bg-white/70">
+        <div className="rounded-sm border border-wa-accent/20 bg-wa-ink">
             <button
                 type="button"
                 id={`${id}-trigger`}
                 aria-expanded={open}
                 aria-controls={`${id}-panel`}
                 onClick={() => setOpen((v) => !v)}
-                className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm font-medium text-stone-700 transition-colors hover:bg-white/90"
+                className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm font-medium text-wa-body wa-body-track transition-colors hover:bg-wa-subtle/60"
             >
                 <span>{label}</span>
                 <motion.span
                     animate={{ rotate: open ? 180 : 0 }}
                     transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                    className="text-emerald-600"
+                    className="text-wa-accent"
                     aria-hidden
                 >
                     ▼
@@ -45,9 +45,9 @@ export default function InformationTrigger({
                         animate={{ height: 'auto', opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
                         transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-                        className="overflow-hidden border-t border-stone-100"
+                        className="overflow-hidden border-t border-wa-accent/20"
                     >
-                        <div className="px-4 py-4 text-sm leading-relaxed text-stone-600">{children}</div>
+                        <div className="px-4 py-4 text-sm leading-relaxed text-wa-muted wa-body-track">{children}</div>
                     </motion.div>
                 ) : null}
             </AnimatePresence>

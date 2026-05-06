@@ -67,48 +67,48 @@ export default function Show({ id }: { id: number }) {
     }, [api]);
 
     return (
-        <AuthenticatedLayout header={<h2 className="text-sm font-black tracking-tight">PRODUCT / DETAIL</h2>}>
+        <AuthenticatedLayout header={<h2 className="text-sm font-black tracking-tight text-wa-body">PRODUCT / DETAIL</h2>}>
             <Head title="商材詳細" />
-            <div className="mx-auto max-w-6xl px-6 py-6 text-stone-800">
+            <div className="mx-auto max-w-6xl px-6 py-6 text-wa-body wa-body-track">
                 <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
                     <div>
-                        <div className="text-xs font-bold tracking-widest text-stone-500">DETAIL</div>
-                        <div className="mt-1 text-lg font-black tracking-tight text-stone-900">
+                        <div className="text-xs font-bold tracking-widest text-wa-muted">DETAIL</div>
+                        <div className="mt-1 text-lg font-black tracking-tight text-wa-body">
                             {item?.name ?? `#${id}`}
                         </div>
                     </div>
                     <Link
                         href={route('products.index')}
-                        className="rounded-xl border border-stone-200 bg-white/90 px-4 py-2 text-xs font-black tracking-widest text-stone-700 shadow-sm transition-all duration-200 hover:border-emerald-200 hover:bg-emerald-50/50"
+                        className="rounded-sm border border-wa-accent/25 bg-wa-ink px-4 py-2 text-xs font-black tracking-widest text-wa-body transition hover:border-wa-accent/45"
                     >
                         一覧へ戻る
                     </Link>
                 </div>
 
                 {errorMessage ? (
-                    <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-800">
+                    <div className="mb-4 rounded-sm border border-red-500/35 bg-wa-ink px-4 py-3 text-xs text-red-300">
                         {errorMessage}
                     </div>
                 ) : null}
                 {successMessage ? (
-                    <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-900">
+                    <div className="mb-4 rounded-sm border border-teal-500/35 bg-wa-ink px-4 py-3 text-xs text-teal-300">
                         {successMessage}
                     </div>
                 ) : null}
 
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                     <NeonCard>
-                        <div className="text-xs font-bold tracking-widest text-stone-500">META</div>
-                        <div className="mt-4 space-y-2 text-sm text-stone-700">
+                        <div className="text-xs font-bold tracking-widest text-wa-muted">META</div>
+                        <div className="mt-4 space-y-2 text-sm text-wa-muted">
                             <div>
-                                <span className="text-stone-500">カテゴリ</span>：{item?.category ?? '—'}
+                                <span className="text-wa-body/80">カテゴリ</span>：{item?.category ?? '—'}
                             </div>
                             <div>
-                                <span className="text-stone-500">料金</span>：
+                                <span className="text-wa-body/80">料金</span>：
                                 {item ? (item.price === 0 ? '無料' : `¥${item.price.toLocaleString()}`) : '—'}
                             </div>
                             <div>
-                                <span className="text-stone-500">状態</span>：
+                                <span className="text-wa-body/80">状態</span>：
                                 <span className="ml-2">
                                     <StatusBadge variant={item?.is_active ? 'success' : 'muted'}>
                                         {item?.is_active ? '有効' : '停止'}
@@ -116,14 +116,14 @@ export default function Show({ id }: { id: number }) {
                                 </span>
                             </div>
                             <div>
-                                <span className="text-stone-500">更新</span>：{item?.updated_at ?? '—'}
+                                <span className="text-wa-body/80">更新</span>：{item?.updated_at ?? '—'}
                             </div>
                         </div>
                     </NeonCard>
 
                     <div className="space-y-6 lg:col-span-2">
                         <NeonCard>
-                            <div className="text-xs font-bold tracking-widest text-stone-500">TALK SCRIPT</div>
+                            <div className="text-xs font-bold tracking-widest text-wa-muted">TALK SCRIPT</div>
                             <textarea
                                 value={draftScript}
                                 onChange={(e) => setDraftScript(e.target.value)}
@@ -133,11 +133,11 @@ export default function Show({ id }: { id: number }) {
                                     'nordic-field mt-3 min-h-[200px] ' + (!isAdmin ? 'opacity-70' : '')
                                 }
                             />
-                            <div className="mt-4 text-xs text-stone-500">管理者のみ編集可能</div>
+                            <div className="mt-4 text-xs text-wa-muted">管理者のみ編集可能</div>
                         </NeonCard>
 
                         <NeonCard>
-                            <div className="text-xs font-bold tracking-widest text-stone-500">MANUAL URL</div>
+                            <div className="text-xs font-bold tracking-widest text-wa-muted">MANUAL URL</div>
                             <input
                                 value={draftManualUrl}
                                 onChange={(e) => setDraftManualUrl(e.target.value)}
@@ -149,7 +149,7 @@ export default function Show({ id }: { id: number }) {
                                     href={draftManualUrl || '#'}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="text-xs font-black tracking-widest text-emerald-700 hover:text-emerald-600"
+                                    className="text-xs font-black tracking-widest text-wa-accent transition hover:text-wa-accent/80"
                                 >
                                     OPEN
                                 </a>
@@ -183,7 +183,7 @@ export default function Show({ id }: { id: number }) {
                     </div>
                 </div>
 
-                {isLoading ? <div className="mt-6 text-sm text-stone-500">読み込み中…</div> : null}
+                {isLoading ? <div className="mt-6 text-sm text-wa-muted">読み込み中…</div> : null}
             </div>
         </AuthenticatedLayout>
     );

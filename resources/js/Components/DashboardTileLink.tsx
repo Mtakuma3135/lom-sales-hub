@@ -13,18 +13,17 @@ export default function DashboardTileLink({
     description: string;
     href: string;
     badge?: { label: string; variant: 'success' | 'danger' | 'primary' | 'muted'; pulse?: boolean };
-    /** Nordic では未使用（互換のため残置） */
     accent?: boolean | string;
 }) {
     void accent;
     return (
-        <Link href={href} className="group block transition-transform duration-200 ease-out hover:scale-[1.02]">
-            <NordicCard elevate className="h-full p-5">
+        <Link href={href} className="group block">
+            <NordicCard elevate className="h-full p-6">
                 <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                        <div className="mb-2 h-1 w-8 rounded-full bg-emerald-600/90 shadow-[0_0_10px_rgba(16,185,129,0.35)]" />
-                        <div className="truncate text-sm font-semibold tracking-tight text-stone-800">{title}</div>
-                        <div className="mt-1 text-xs leading-relaxed text-stone-500">{description}</div>
+                        <div className="mb-3 h-px w-10 bg-wa-accent/50 transition-colors group-hover:bg-wa-accent/70" />
+                        <div className="truncate text-sm font-semibold text-wa-body">{title}</div>
+                        <div className="mt-2 text-xs leading-relaxed text-wa-muted">{description}</div>
                     </div>
                     {badge ? (
                         <StatusBadge variant={badge.variant} pulse={badge.pulse}>
@@ -32,7 +31,7 @@ export default function DashboardTileLink({
                         </StatusBadge>
                     ) : null}
                 </div>
-                <div className="mt-4 h-px w-full bg-stone-200 transition-colors duration-300 group-hover:bg-emerald-200" />
+                <div className="mt-5 h-px w-full bg-wa-accent/15 transition-colors group-hover:bg-wa-accent/30" />
             </NordicCard>
         </Link>
     );

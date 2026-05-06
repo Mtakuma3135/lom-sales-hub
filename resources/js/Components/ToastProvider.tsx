@@ -32,7 +32,7 @@ export default function ToastProvider({ children }: PropsWithChildren) {
                 {toasts.map((t) => (
                     <div
                         key={t.id}
-                        className="pointer-events-auto animate-[toastIn_0.35s_ease-out] rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-lg shadow-slate-200/80"
+                        className="pointer-events-auto animate-[toastIn_0.35s_ease-out] rounded-sm border border-wa-accent/25 bg-wa-card px-4 py-3 text-sm font-medium text-wa-body shadow-lg shadow-black/40"
                     >
                         {t.message}
                     </div>

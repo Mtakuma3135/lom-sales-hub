@@ -83,28 +83,28 @@ export default function Index() {
     };
 
     return (
-        <AuthenticatedLayout header={<h2 className="text-sm font-semibold tracking-tight text-stone-800">監査ログ</h2>}>
+        <AuthenticatedLayout header={<h2 className="text-sm font-semibold tracking-tight text-wa-body">監査ログ</h2>}>
             <Head title="監査ログ（管理者）" />
-            <div className="mx-auto max-w-6xl text-stone-700">
+            <div className="mx-auto max-w-6xl text-wa-body wa-body-track">
                 <NordicCard elevate={false} className="p-8">
                     <div className="flex flex-wrap items-start justify-between gap-6">
                         <div>
-                            <div className="text-xs font-semibold uppercase tracking-widest text-stone-400">一覧</div>
-                            <div className="mt-2 text-xl font-semibold tracking-tight text-stone-800">
+                            <div className="text-xs font-semibold uppercase tracking-widest text-wa-muted">一覧</div>
+                            <div className="mt-2 text-xl font-semibold tracking-tight text-wa-body">
                                 外部連携の監査ログ
                             </div>
-                            <p className="mt-2 max-w-xl text-sm leading-relaxed text-stone-500">
-                                行をクリックすると、この場で詳細が開きます。JSON はライトテーマ向けに強調表示します。
+                            <p className="mt-2 max-w-xl text-sm leading-relaxed text-wa-muted">
+                                行をクリックすると、この場で詳細が開きます。JSON は墨面（ダーク）上で読みやすく表示します。
                             </p>
                         </div>
-                        <div className="rounded-full bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-800 ring-1 ring-emerald-100">
+                        <div className="rounded-full border border-teal-500/35 bg-wa-ink px-4 py-2 text-sm font-medium text-teal-300 ring-1 ring-teal-500/20">
                             {props.logs?.total ?? 0} 件
                         </div>
                     </div>
 
-                    <div className="mt-10 overflow-hidden rounded-2xl border border-stone-100 bg-stone-50/50">
+                    <div className="mt-10 overflow-hidden rounded-sm border border-wa-accent/20 bg-wa-ink">
                         <table className="w-full text-left text-sm">
-                            <thead className="bg-white text-xs font-semibold uppercase tracking-wider text-stone-500">
+                            <thead className="bg-wa-card text-xs font-semibold uppercase tracking-wider text-wa-muted">
                                 <tr>
                                     <th className="px-5 py-4">実行日時</th>
                                     <th className="px-5 py-4">ユーザー</th>
@@ -113,7 +113,7 @@ export default function Index() {
                                     <th className="px-5 py-4">対象ID</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-stone-100 bg-white">
+                            <tbody className="divide-y divide-wa-accent/15 bg-wa-card">
                                 {items.length ? (
                                     items.map((x) => {
                                         const badge = statusCodeVariant(x.status_code);
@@ -124,29 +124,29 @@ export default function Index() {
                                                 <tr
                                                     className={
                                                         'cursor-pointer transition-colors ' +
-                                                        (open ? 'bg-emerald-50/40' : 'hover:bg-stone-50')
+                                                        (open ? 'bg-teal-500/10' : 'hover:bg-wa-ink/80')
                                                     }
                                                     onClick={() => toggleRow(x.id)}
                                                 >
-                                                    <td className="px-5 py-4 font-mono text-xs text-stone-500">
+                                                    <td className="px-5 py-4 font-mono text-xs text-wa-muted">
                                                         {formatJst(x.created_at)}
                                                     </td>
-                                                    <td className="px-5 py-4 text-stone-700">
+                                                    <td className="px-5 py-4 text-wa-body">
                                                         {x.user?.name ?? (x.actor_id ? `#${x.actor_id}` : '—')}
                                                     </td>
-                                                    <td className="px-5 py-4 font-medium text-stone-800">
+                                                    <td className="px-5 py-4 font-medium text-wa-body">
                                                         {actionLabel(x.integration, x.event_type)}
                                                     </td>
                                                     <td className="px-5 py-4">
                                                         <StatusBadge variant={badge.variant}>{badge.label}</StatusBadge>
                                                     </td>
-                                                    <td className="px-5 py-4 font-mono text-xs text-stone-500">
+                                                    <td className="px-5 py-4 font-mono text-xs text-wa-muted">
                                                         {x.related_id ?? '—'}
                                                     </td>
                                                 </tr>
                                                 <AnimatePresence initial={false}>
                                                     {open ? (
-                                                        <tr className="bg-stone-50/80">
+                                                        <tr className="bg-wa-ink/90">
                                                             <td colSpan={5} className="p-0">
                                                                 <motion.div
                                                                     initial={{ height: 0, opacity: 0 }}
@@ -156,41 +156,41 @@ export default function Index() {
                                                                         duration: 0.35,
                                                                         ease: [0.16, 1, 0.3, 1],
                                                                     }}
-                                                                    className="overflow-hidden border-t border-stone-100"
+                                                                    className="overflow-hidden border-t border-wa-accent/15"
                                                                 >
                                                                     <div className="space-y-6 px-5 py-8">
                                                                         {rowDetail === 'loading' ? (
-                                                                            <p className="text-sm text-stone-500">
+                                                                            <p className="text-sm text-wa-muted">
                                                                                 読み込み中…
                                                                             </p>
                                                                         ) : rowDetail === 'error' ? (
-                                                                            <p className="text-sm text-red-700">
+                                                                            <p className="text-sm text-red-300">
                                                                                 取得に失敗しました。
                                                                             </p>
                                                                         ) : typeof rowDetail === 'object' ? (
                                                                             <>
                                                                                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                                                                                    <div className="rounded-xl border border-stone-100 bg-white p-4 shadow-sm">
-                                                                                        <div className="text-xs font-semibold uppercase tracking-wide text-stone-400">
+                                                                                    <div className="rounded-sm border border-wa-accent/20 bg-wa-ink p-4">
+                                                                                        <div className="text-xs font-semibold uppercase tracking-wide text-wa-muted">
                                                                                             Integration
                                                                                         </div>
-                                                                                        <div className="mt-1 text-stone-800">
+                                                                                        <div className="mt-1 text-wa-body">
                                                                                             {rowDetail.integration}
                                                                                         </div>
                                                                                     </div>
-                                                                                    <div className="rounded-xl border border-stone-100 bg-white p-4 shadow-sm">
-                                                                                        <div className="text-xs font-semibold uppercase tracking-wide text-stone-400">
+                                                                                    <div className="rounded-sm border border-wa-accent/20 bg-wa-ink p-4">
+                                                                                        <div className="text-xs font-semibold uppercase tracking-wide text-wa-muted">
                                                                                             Event
                                                                                         </div>
-                                                                                        <div className="mt-1 text-stone-800">
+                                                                                        <div className="mt-1 text-wa-body">
                                                                                             {rowDetail.event_type}
                                                                                         </div>
                                                                                     </div>
-                                                                                    <div className="rounded-xl border border-stone-100 bg-white p-4 shadow-sm">
-                                                                                        <div className="text-xs font-semibold uppercase tracking-wide text-stone-400">
+                                                                                    <div className="rounded-sm border border-wa-accent/20 bg-wa-ink p-4">
+                                                                                        <div className="text-xs font-semibold uppercase tracking-wide text-wa-muted">
                                                                                             Status
                                                                                         </div>
-                                                                                        <div className="mt-1 flex flex-wrap items-center gap-2 text-stone-800">
+                                                                                        <div className="mt-1 flex flex-wrap items-center gap-2 text-wa-body">
                                                                                             <span>{rowDetail.status}</span>
                                                                                             <StatusBadge
                                                                                                 variant={
@@ -205,18 +205,18 @@ export default function Index() {
                                                                                             </StatusBadge>
                                                                                         </div>
                                                                                     </div>
-                                                                                    <div className="rounded-xl border border-stone-100 bg-white p-4 shadow-sm">
-                                                                                        <div className="text-xs font-semibold uppercase tracking-wide text-stone-400">
+                                                                                    <div className="rounded-sm border border-wa-accent/20 bg-wa-ink p-4">
+                                                                                        <div className="text-xs font-semibold uppercase tracking-wide text-wa-muted">
                                                                                             Actor
                                                                                         </div>
-                                                                                        <div className="mt-1 font-mono text-stone-700">
+                                                                                        <div className="mt-1 font-mono text-wa-body">
                                                                                             {rowDetail.actor_id ?? '—'}
                                                                                         </div>
                                                                                     </div>
                                                                                 </div>
 
-                                                                                <div className="rounded-xl border border-stone-100 bg-white p-5 shadow-sm">
-                                                                                    <div className="text-xs font-semibold uppercase tracking-wide text-stone-400">
+                                                                                <div className="rounded-sm border border-wa-accent/20 bg-wa-ink p-5">
+                                                                                    <div className="text-xs font-semibold uppercase tracking-wide text-wa-muted">
                                                                                         Request
                                                                                     </div>
                                                                                     <JsonCodeBlock
@@ -224,14 +224,14 @@ export default function Index() {
                                                                                         theme="light"
                                                                                     />
                                                                                 </div>
-                                                                                <div className="rounded-xl border border-stone-100 bg-white p-5 shadow-sm">
-                                                                                    <div className="text-xs font-semibold uppercase tracking-wide text-stone-400">
+                                                                                <div className="rounded-sm border border-wa-accent/20 bg-wa-ink p-5">
+                                                                                    <div className="text-xs font-semibold uppercase tracking-wide text-wa-muted">
                                                                                         Meta
                                                                                     </div>
                                                                                     <JsonCodeBlock value={rowDetail.meta} theme="light" />
                                                                                 </div>
-                                                                                <div className="rounded-xl border border-stone-100 bg-white p-5 shadow-sm">
-                                                                                    <div className="text-xs font-semibold uppercase tracking-wide text-stone-400">
+                                                                                <div className="rounded-sm border border-wa-accent/20 bg-wa-ink p-5">
+                                                                                    <div className="text-xs font-semibold uppercase tracking-wide text-wa-muted">
                                                                                         Response
                                                                                     </div>
                                                                                     <JsonCodeBlock
@@ -240,7 +240,7 @@ export default function Index() {
                                                                                     />
                                                                                 </div>
                                                                                 {rowDetail.error_message ? (
-                                                                                    <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-800">
+                                                                                    <div className="rounded-sm border border-red-500/35 bg-wa-ink px-4 py-3 text-sm text-red-300">
                                                                                         {rowDetail.error_message}
                                                                                     </div>
                                                                                 ) : null}
@@ -257,7 +257,7 @@ export default function Index() {
                                     })
                                 ) : (
                                     <tr>
-                                        <td className="px-5 py-10 text-center text-sm text-stone-500" colSpan={5}>
+                                        <td className="px-5 py-10 text-center text-sm text-wa-muted" colSpan={5}>
                                             ログがありません
                                         </td>
                                     </tr>
@@ -266,7 +266,7 @@ export default function Index() {
                         </table>
                     </div>
 
-                    <div className="mt-8 flex flex-wrap items-center justify-between gap-4 text-sm text-stone-500">
+                    <div className="mt-8 flex flex-wrap items-center justify-between gap-4 text-sm text-wa-muted">
                         <div>
                             {props.logs ? (
                                 <span>
@@ -283,8 +283,8 @@ export default function Index() {
                                     className={
                                         'rounded-lg border px-3 py-2 text-xs font-semibold transition ' +
                                         (l.active
-                                            ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
-                                            : 'border-stone-200 bg-white text-stone-600 hover:bg-stone-50') +
+                                            ? 'border-wa-accent/45 bg-wa-accent text-wa-ink'
+                                            : 'border-wa-accent/25 bg-wa-ink text-wa-muted hover:border-wa-accent/35 hover:bg-wa-card hover:text-wa-body') +
                                         (!l.url ? ' pointer-events-none opacity-40' : '')
                                     }
                                     dangerouslySetInnerHTML={{ __html: l.label }}

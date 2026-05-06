@@ -1,12 +1,11 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import DashboardTileLink from '@/Components/DashboardTileLink';
 import DetailDrawer from '@/Components/DetailDrawer';
-import NeonCard from '@/Components/NeonCard';
 import StatusBadge from '@/Components/StatusBadge';
 import InformationTrigger from '@/Components/UI/InformationTrigger';
 import SlotNumber from '@/Components/UI/SlotNumber';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import {
     CartesianGrid,
     ComposedChart,
@@ -48,6 +47,20 @@ const defaultPayload: SalesPayload = {
     },
 };
 
+const CHART_GRID = 'rgba(192, 132, 87, 0.14)';
+const CHART_AXIS = '#a8a29e';
+const CHART_OK = '#5eead4';
+const CHART_NG = '#f87171';
+const CHART_RATE = '#C08457';
+
+function WaCard({ className = '', children }: { className?: string; children: ReactNode }) {
+    return (
+        <div className={`border border-wa-accent/20 bg-wa-card ${className}`}>
+            {children}
+        </div>
+    );
+}
+
 export default function Summary() {
     const { props } = usePage<{ sales?: SalesPayload }>();
     const payload = (props.sales ?? defaultPayload) as SalesPayload;
@@ -78,7 +91,6 @@ export default function Summary() {
 
     const go = (href: string) => router.visit(href, { preserveScroll: true });
 
-    // タブ状態をURLに同期（共有しやすくする）
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         params.set('tab', tab);
@@ -87,293 +99,301 @@ export default function Summary() {
     }, [tab]);
 
     return (
-        <AuthenticatedLayout header={<h2 className="text-sm font-semibold tracking-tight text-stone-800">案件・KPI</h2>}>
+        <AuthenticatedLayout
+            header={
+                <h2 className="wa-body-track text-sm font-semibold text-wa-body">案件・KPI</h2>
+            }
+        >
             <Head title="案件・KPI（サマリー）" />
-            <div className="mx-auto max-w-6xl space-y-10 text-stone-700">
-                <div className="flex flex-wrap items-center justify-between gap-6">
-                    <div className="flex items-center gap-3">
-                        <div className="text-xs font-semibold uppercase tracking-widest text-stone-400">ダッシュボード</div>
-                        <StatusBadge variant="muted">MOCK</StatusBadge>
-                    </div>
-                    <Link
-                        href={route('sales.records')}
-                        className="rounded-xl bg-gradient-to-b from-emerald-500 to-emerald-600 px-5 py-2.5 text-xs font-semibold uppercase tracking-widest text-white shadow-sm shadow-stone-900/10 ring-1 ring-emerald-500/25 transition hover:from-emerald-500/95 hover:to-emerald-600/95"
-                    >
-                        案件一覧へ
-                    </Link>
-                </div>
-
-                <div className="flex flex-wrap gap-3">
-                    {[
-                        { key: 'summary' as const, label: 'サマリー' },
-                        { key: 'ranking' as const, label: 'ランキング' },
-                        { key: 'trend' as const, label: 'トレンド' },
-                    ].map((t) => (
-                        <button
-                            key={t.key}
-                            type="button"
-                            onClick={() => setTab(t.key)}
-                            className={
-                                'rounded-xl px-5 py-2.5 text-xs font-semibold tracking-tight transition ' +
-                                (tab === t.key
-                                    ? 'bg-emerald-600 text-white shadow-sm ring-1 ring-emerald-500/30'
-                                    : 'border border-stone-200 bg-white text-stone-600 shadow-sm hover:bg-stone-50')
-                            }
+            <div className="mx-auto max-w-6xl wa-body-track space-y-14 sm:space-y-16">
+                    <div className="flex flex-wrap items-center justify-between gap-9">
+                        <div className="flex items-center gap-4">
+                            <div className="text-xs font-semibold uppercase tracking-widest text-wa-muted">
+                                ダッシュボード
+                            </div>
+                            <StatusBadge
+                                variant="muted"
+                                className="!rounded-sm !border-wa-accent/25 !bg-wa-ink !text-wa-muted !ring-0"
+                            >
+                                MOCK
+                            </StatusBadge>
+                        </div>
+                        <Link
+                            href={route('sales.records')}
+                            className="rounded-sm border border-wa-accent/30 px-6 py-3 text-xs font-semibold uppercase tracking-widest text-wa-accent transition hover:border-wa-accent/50 hover:bg-wa-accent/10"
                         >
-                            {t.label}
-                        </button>
-                    ))}
-                </div>
+                            案件一覧へ
+                        </Link>
+                    </div>
 
-                <div className="grid grid-cols-1 gap-8 lg:grid-cols-3 lg:gap-10">
-                    <NeonCard elevate={false} className="relative p-8">
-                        <div className="text-xs font-semibold uppercase tracking-widest text-stone-400">成約率</div>
-                        <div className="mt-4 flex items-baseline gap-1">
-                            <span className="text-5xl font-semibold tracking-tight text-stone-800">
-                                <SlotNumber value={kpi.contract_rate.toFixed(1)} />
-                            </span>
-                            <span className="text-xl font-medium text-stone-500">%</span>
-                        </div>
-                        <div className="mt-8 grid grid-cols-2 gap-4">
-                            <div
-                                role="button"
-                                tabIndex={0}
-                                onClick={() => go(`${route('sales.records')}?status=ok`)}
-                                onKeyDown={(e) => {
-                                    if (e.key !== 'Enter' && e.key !== ' ') return;
-                                    e.preventDefault();
-                                    go(`${route('sales.records')}?status=ok`);
-                                }}
-                                className="cursor-pointer rounded-xl border border-stone-100 bg-stone-50 p-4 transition hover:border-emerald-200 hover:bg-white"
+                    <div className="flex flex-wrap gap-4">
+                        {[
+                            { key: 'summary' as const, label: 'サマリー' },
+                            { key: 'ranking' as const, label: 'ランキング' },
+                            { key: 'trend' as const, label: 'トレンド' },
+                        ].map((t) => (
+                            <button
+                                key={t.key}
+                                type="button"
+                                onClick={() => setTab(t.key)}
+                                className={
+                                    'rounded-sm px-6 py-3 text-xs font-semibold transition ' +
+                                    (tab === t.key
+                                        ? 'border border-wa-accent/45 bg-wa-card text-wa-accent'
+                                        : 'border border-wa-accent/20 bg-transparent text-wa-muted hover:border-wa-accent/30 hover:text-wa-body')
+                                }
                             >
-                                <div className="text-xs font-semibold uppercase tracking-wide text-stone-400">OK</div>
-                                <div className="mt-1 text-2xl font-semibold tabular-nums text-emerald-700">
-                                    <SlotNumber value={kpi.ok} />
-                                </div>
+                                {t.label}
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-12 lg:grid-cols-3 lg:gap-14">
+                        <WaCard className="p-12">
+                            <div className="text-xs font-semibold uppercase tracking-widest text-wa-muted">成約率</div>
+                            <div className="mt-6 flex items-baseline gap-2">
+                                <span className="wa-nums text-5xl font-semibold tracking-tight text-wa-body">
+                                    <SlotNumber value={kpi.contract_rate.toFixed(1)} />
+                                </span>
+                                <span className="text-xl font-medium text-wa-muted">%</span>
                             </div>
-                            <div
-                                role="button"
-                                tabIndex={0}
-                                onClick={() => go(`${route('sales.records')}?status=ng`)}
-                                onKeyDown={(e) => {
-                                    if (e.key !== 'Enter' && e.key !== ' ') return;
-                                    e.preventDefault();
-                                    go(`${route('sales.records')}?status=ng`);
-                                }}
-                                className="cursor-pointer rounded-xl border border-stone-100 bg-stone-50 p-4 transition hover:border-rose-200 hover:bg-white"
-                            >
-                                <div className="text-xs font-semibold uppercase tracking-wide text-stone-400">NG</div>
-                                <div className="mt-1 text-2xl font-semibold tabular-nums text-red-700">
-                                    <SlotNumber value={kpi.ng} />
-                                </div>
-                            </div>
-                        </div>
-                        <div className="mt-8 h-2.5 w-full overflow-hidden rounded-full bg-stone-200">
-                            <div
-                                className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-emerald-600 transition-all"
-                                style={{ width: `${Math.min(100, Math.max(0, kpi.contract_rate))}%` }}
-                            />
-                        </div>
-                        <div className="mt-6">
-                            <InformationTrigger label="指標の見方・計算式">
-                                成約率は OK ÷（OK + NG）× 100 で算出します。分母が 0 のときは 0 として扱います。数値が更新されると、上の数字がスロットのように切り替わる演出になります。
-                            </InformationTrigger>
-                        </div>
-                    </NeonCard>
-
-                    <NeonCard elevate={false} className="space-y-8 p-8 lg:col-span-2">
-                        <div>
-                            <div className="text-xs font-semibold uppercase tracking-widest text-stone-400">チャート</div>
-                            <div className="mt-2 text-lg font-semibold tracking-tight text-stone-800">週次の推移と成約率</div>
-                        </div>
-
-                        <div className="h-72 w-full min-w-0">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <ComposedChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-                                    <CartesianGrid stroke="#e7e5e4" vertical={false} />
-                                    <XAxis dataKey="label" tick={{ fill: '#78716c', fontSize: 11 }} />
-                                    <YAxis
-                                        yAxisId="left"
-                                        tick={{ fill: '#78716c', fontSize: 11 }}
-                                        allowDecimals={false}
-                                    />
-                                    <YAxis
-                                        yAxisId="right"
-                                        orientation="right"
-                                        domain={[0, 100]}
-                                        tick={{ fill: '#78716c', fontSize: 11 }}
-                                        tickFormatter={(v) => `${v}%`}
-                                    />
-                                    <Tooltip
-                                        contentStyle={{
-                                            background: '#fafaf9',
-                                            border: '1px solid #e7e5e4',
-                                            borderRadius: '12px',
-                                        }}
-                                        labelStyle={{ color: '#44403c' }}
-                                        itemStyle={{ fontSize: 12, color: '#57534e' }}
-                                    />
-                                    <Legend
-                                        wrapperStyle={{ fontSize: 11, color: '#78716c' }}
-                                        formatter={(value) => <span className="text-stone-600">{value}</span>}
-                                    />
-                                    <Line
-                                        yAxisId="left"
-                                        type="monotone"
-                                        dataKey="ok"
-                                        name="OK"
-                                        stroke="#059669"
-                                        strokeWidth={2}
-                                        dot={{ r: 3, fill: '#059669' }}
-                                        activeDot={{ r: 5 }}
-                                    />
-                                    <Line
-                                        yAxisId="left"
-                                        type="monotone"
-                                        dataKey="ng"
-                                        name="NG"
-                                        stroke="#dc2626"
-                                        strokeWidth={2}
-                                        dot={{ r: 3, fill: '#dc2626' }}
-                                        activeDot={{ r: 5 }}
-                                    />
-                                    <Line
-                                        yAxisId="right"
-                                        type="monotone"
-                                        dataKey="rate"
-                                        name="成約率"
-                                        stroke="#0d9488"
-                                        strokeWidth={2}
-                                        dot={{ r: 3, fill: '#0d9488' }}
-                                        activeDot={{ r: 5 }}
-                                    />
-                                </ComposedChart>
-                            </ResponsiveContainer>
-                        </div>
-
-                        <div className="overflow-x-auto">
-                            {tab === 'summary' ? (
-                                <div className="space-y-3 rounded-2xl border border-stone-100 bg-stone-50 p-6 text-sm leading-relaxed text-stone-600">
-                                    <div>
-                                        合計件数:{' '}
-                                        <span className="font-semibold text-stone-800">
-                                            <SlotNumber value={kpi.ok + kpi.ng} />
-                                        </span>
-                                        （OK <SlotNumber value={kpi.ok} /> / NG <SlotNumber value={kpi.ng} />）
+                            <div className="mt-10 grid grid-cols-2 gap-6">
+                                <div
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={() => go(`${route('sales.records')}?status=ok`)}
+                                    onKeyDown={(e) => {
+                                        if (e.key !== 'Enter' && e.key !== ' ') return;
+                                        e.preventDefault();
+                                        go(`${route('sales.records')}?status=ok`);
+                                    }}
+                                    className="cursor-pointer border border-wa-accent/20 bg-wa-ink p-6 transition hover:border-wa-accent/35"
+                                >
+                                    <div className="text-xs font-semibold uppercase tracking-wide text-wa-muted">OK</div>
+                                    <div className="wa-nums mt-2 text-2xl font-semibold text-teal-300">
+                                        <SlotNumber value={kpi.ok} />
                                     </div>
-                                    {peakWeek ? (
-                                        <div>
-                                            直近の成約率ピーク:{' '}
-                                            <span className="font-semibold text-emerald-700">
-                                                {peakWeek.label}（{peakWeek.rate.toFixed(1)}%）
-                                            </span>
-                                        </div>
-                                    ) : null}
                                 </div>
-                            ) : null}
+                                <div
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={() => go(`${route('sales.records')}?status=ng`)}
+                                    onKeyDown={(e) => {
+                                        if (e.key !== 'Enter' && e.key !== ' ') return;
+                                        e.preventDefault();
+                                        go(`${route('sales.records')}?status=ng`);
+                                    }}
+                                    className="cursor-pointer border border-wa-accent/20 bg-wa-ink p-6 transition hover:border-wa-accent/35"
+                                >
+                                    <div className="text-xs font-semibold uppercase tracking-wide text-wa-muted">NG</div>
+                                    <div className="wa-nums mt-2 text-2xl font-semibold text-red-400">
+                                        <SlotNumber value={kpi.ng} />
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="mt-10 h-2 w-full bg-wa-subtle">
+                                <div
+                                    className="h-full bg-wa-accent transition-all"
+                                    style={{ width: `${Math.min(100, Math.max(0, kpi.contract_rate))}%` }}
+                                />
+                            </div>
+                            <div className="mt-8">
+                                <InformationTrigger label="指標の見方・計算式">
+                                    成約率は OK ÷（OK + NG）× 100 で算出します。分母が 0 のときは 0 として扱います。数値が更新されると、上の数字がスロットのように切り替わる演出になります。
+                                </InformationTrigger>
+                            </div>
+                        </WaCard>
 
-                            {tab === 'ranking' ? (
-                                <table className="w-full border-collapse text-sm">
-                                    <thead>
-                                        <tr className="text-left text-xs font-semibold uppercase tracking-wider text-stone-500">
-                                            <th className="border-b border-stone-200 px-4 py-3">順位</th>
-                                            <th className="border-b border-stone-200 px-4 py-3">名前</th>
-                                            <th className="border-b border-stone-200 px-4 py-3">OK</th>
-                                            <th className="border-b border-stone-200 px-4 py-3">NG</th>
-                                            <th className="border-b border-stone-200 px-4 py-3">率</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {ranking.map((r) => (
-                                            <tr
-                                                key={r.rank}
-                                                className="cursor-pointer transition-colors hover:bg-stone-50"
-                                                onClick={() => setDrawerRank(r)}
-                                            >
-                                                <td className="border-b border-stone-100 px-4 py-4 text-stone-600">
-                                                    <span className="inline-flex min-w-9 items-center justify-center rounded-lg bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-100">
-                                                        {r.rank}
-                                                    </span>
-                                                </td>
-                                                <td className="border-b border-stone-100 px-4 py-4 font-medium text-stone-800">
-                                                    {r.name}
-                                                </td>
-                                                <td className="border-b border-stone-100 px-4 py-4 font-semibold text-emerald-700">
-                                                    {r.ok}
-                                                </td>
-                                                <td className="border-b border-stone-100 px-4 py-4 font-semibold text-red-700">
-                                                    {r.ng}
-                                                </td>
-                                                <td className="border-b border-stone-100 px-4 py-4 text-stone-700">
-                                                    {r.rate.toFixed(1)}%
-                                                </td>
+                        <WaCard className="space-y-10 p-12 lg:col-span-2">
+                            <div>
+                                <div className="text-xs font-semibold uppercase tracking-widest text-wa-muted">チャート</div>
+                                <div className="mt-3 text-lg font-semibold text-wa-body">週次の推移と成約率</div>
+                            </div>
+
+                            <div className="h-72 w-full min-w-0">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <ComposedChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                                        <CartesianGrid stroke={CHART_GRID} vertical={false} />
+                                        <XAxis dataKey="label" tick={{ fill: CHART_AXIS, fontSize: 11 }} />
+                                        <YAxis
+                                            yAxisId="left"
+                                            tick={{ fill: CHART_AXIS, fontSize: 11 }}
+                                            allowDecimals={false}
+                                        />
+                                        <YAxis
+                                            yAxisId="right"
+                                            orientation="right"
+                                            domain={[0, 100]}
+                                            tick={{ fill: CHART_AXIS, fontSize: 11 }}
+                                            tickFormatter={(v) => `${v}%`}
+                                        />
+                                        <Tooltip
+                                            contentStyle={{
+                                                background: '#222222',
+                                                border: '1px solid rgba(192, 132, 87, 0.22)',
+                                                borderRadius: '2px',
+                                            }}
+                                            labelStyle={{ color: '#d6d3d1' }}
+                                            itemStyle={{ fontSize: 12, color: '#a8a29e' }}
+                                        />
+                                        <Legend
+                                            wrapperStyle={{ fontSize: 11, color: CHART_AXIS }}
+                                            formatter={(value) => <span className="text-wa-muted">{value}</span>}
+                                        />
+                                        <Line
+                                            yAxisId="left"
+                                            type="monotone"
+                                            dataKey="ok"
+                                            name="OK"
+                                            stroke={CHART_OK}
+                                            strokeWidth={1.5}
+                                            dot={{ r: 2, fill: CHART_OK }}
+                                            activeDot={{ r: 4 }}
+                                        />
+                                        <Line
+                                            yAxisId="left"
+                                            type="monotone"
+                                            dataKey="ng"
+                                            name="NG"
+                                            stroke={CHART_NG}
+                                            strokeWidth={1.5}
+                                            dot={{ r: 2, fill: CHART_NG }}
+                                            activeDot={{ r: 4 }}
+                                        />
+                                        <Line
+                                            yAxisId="right"
+                                            type="monotone"
+                                            dataKey="rate"
+                                            name="成約率"
+                                            stroke={CHART_RATE}
+                                            strokeWidth={1.5}
+                                            dot={{ r: 2, fill: CHART_RATE }}
+                                            activeDot={{ r: 4 }}
+                                        />
+                                    </ComposedChart>
+                                </ResponsiveContainer>
+                            </div>
+
+                            <div className="overflow-x-auto">
+                                {tab === 'summary' ? (
+                                    <div className="space-y-4 border border-wa-accent/20 bg-wa-ink p-8 text-sm leading-relaxed text-wa-muted">
+                                        <div>
+                                            合計件数:{' '}
+                                            <span className="wa-nums font-semibold text-wa-body">
+                                                <SlotNumber value={kpi.ok + kpi.ng} />
+                                            </span>
+                                            （OK <SlotNumber value={kpi.ok} /> / NG <SlotNumber value={kpi.ng} />）
+                                        </div>
+                                        {peakWeek ? (
+                                            <div>
+                                                直近の成約率ピーク:{' '}
+                                                <span className="font-semibold text-wa-accent">
+                                                    {peakWeek.label}（{peakWeek.rate.toFixed(1)}%）
+                                                </span>
+                                            </div>
+                                        ) : null}
+                                    </div>
+                                ) : null}
+
+                                {tab === 'ranking' ? (
+                                    <table className="w-full border-collapse text-sm">
+                                        <thead>
+                                            <tr className="text-left text-xs font-semibold uppercase tracking-wider text-wa-muted">
+                                                <th className="border-b border-wa-accent/20 px-5 py-4">順位</th>
+                                                <th className="border-b border-wa-accent/20 px-5 py-4">名前</th>
+                                                <th className="border-b border-wa-accent/20 px-5 py-4">OK</th>
+                                                <th className="border-b border-wa-accent/20 px-5 py-4">NG</th>
+                                                <th className="border-b border-wa-accent/20 px-5 py-4">率</th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            ) : null}
+                                        </thead>
+                                        <tbody>
+                                            {ranking.map((r) => (
+                                                <tr
+                                                    key={r.rank}
+                                                    className="cursor-pointer transition-colors hover:bg-wa-ink"
+                                                    onClick={() => setDrawerRank(r)}
+                                                >
+                                                    <td className="border-b border-wa-accent/15 px-5 py-5 text-wa-muted">
+                                                        <span className="inline-flex min-w-9 items-center justify-center border border-wa-accent/25 bg-wa-ink px-2 py-1 text-xs font-semibold text-wa-accent">
+                                                            {r.rank}
+                                                        </span>
+                                                    </td>
+                                                    <td className="border-b border-wa-accent/15 px-5 py-5 font-medium text-wa-body">
+                                                        {r.name}
+                                                    </td>
+                                                    <td className="wa-nums border-b border-wa-accent/15 px-5 py-5 font-semibold text-teal-300">
+                                                        {r.ok}
+                                                    </td>
+                                                    <td className="wa-nums border-b border-wa-accent/15 px-5 py-5 font-semibold text-red-400">
+                                                        {r.ng}
+                                                    </td>
+                                                    <td className="wa-nums border-b border-wa-accent/15 px-5 py-5 text-wa-body">
+                                                        {r.rate.toFixed(1)}%
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                ) : null}
 
-                            {tab === 'trend' ? (
-                                <div className="space-y-4">
-                                    {trend.map((t) => {
-                                        const total = t.ok + t.ng;
-                                        const w = Math.round((total / maxTrend) * 100);
-                                        return (
-                                            <div
-                                                key={t.label}
-                                                className="rounded-2xl border border-stone-100 bg-white px-5 py-5 shadow-sm transition hover:shadow-nordic-hover"
-                                            >
-                                                <div className="flex items-center justify-between">
-                                                    <div className="text-sm font-semibold text-stone-800">{t.label}</div>
-                                                    <div className="text-xs font-medium text-stone-500">
-                                                        OK {t.ok} / NG {t.ng} / {t.rate.toFixed(1)}%
+                                {tab === 'trend' ? (
+                                    <div className="space-y-6">
+                                        {trend.map((t) => {
+                                            const total = t.ok + t.ng;
+                                            const w = Math.round((total / maxTrend) * 100);
+                                            return (
+                                                <div
+                                                    key={t.label}
+                                                    className="border border-wa-accent/20 bg-wa-ink px-8 py-8 transition hover:border-wa-accent/30"
+                                                >
+                                                    <div className="flex items-center justify-between gap-4">
+                                                        <div className="text-sm font-semibold text-wa-body">{t.label}</div>
+                                                        <div className="wa-nums text-xs font-medium text-wa-muted">
+                                                            OK {t.ok} / NG {t.ng} / {t.rate.toFixed(1)}%
+                                                        </div>
+                                                    </div>
+                                                    <div className="mt-6 h-2 w-full bg-wa-subtle">
+                                                        <div className="h-full bg-wa-accent" style={{ width: `${w}%` }} />
                                                     </div>
                                                 </div>
-                                                <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-stone-200">
-                                                    <div
-                                                        className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-emerald-600"
-                                                        style={{ width: `${w}%` }}
-                                                    />
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            ) : null}
-                        </div>
-                    </NeonCard>
-                </div>
-
-                <NeonCard elevate={false} className="p-8">
-                    <div className="text-xs font-semibold uppercase tracking-widest text-stone-400">ショートカット</div>
-                    <div className="mt-2 text-sm font-semibold text-stone-800">関連画面</div>
-                    <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                        <DashboardTileLink
-                            title="案件データ"
-                            description="一覧・検索・フィルタ"
-                            href={route('sales.records')}
-                            badge={{ label: 'LIST', variant: 'primary' }}
-                        />
-                        <DashboardTileLink
-                            title="業務依頼"
-                            description="タスク・依頼管理"
-                            href={route('task-requests.index')}
-                            badge={{ label: 'TASK', variant: 'success' }}
-                        />
-                        <DashboardTileLink
-                            title="商材カタログ"
-                            description="トーク・マニュアル"
-                            href={route('products.index')}
-                            badge={{ label: 'DOC', variant: 'muted' }}
-                        />
-                        <DashboardTileLink
-                            title="社内情報"
-                            description="周知・お知らせ"
-                            href={route('notices.index')}
-                            badge={{ label: 'INFO', variant: 'primary', pulse: true }}
-                        />
+                                            );
+                                        })}
+                                    </div>
+                                ) : null}
+                            </div>
+                        </WaCard>
                     </div>
-                </NeonCard>
+
+                    <div className="border border-wa-accent/20 bg-wa-card p-12">
+                        <div className="text-xs font-semibold uppercase tracking-widest text-wa-muted">ショートカット</div>
+                        <div className="mt-3 text-sm font-semibold text-wa-body">関連画面</div>
+                        <div className="mt-10 grid grid-cols-1 gap-9 sm:grid-cols-2 lg:grid-cols-4">
+                            <DashboardTileLink
+                                title="案件データ"
+                                description="一覧・検索・フィルタ"
+                                href={route('sales.records')}
+                                badge={{ label: 'LIST', variant: 'primary' }}
+                            />
+                            <DashboardTileLink
+                                title="業務依頼"
+                                description="タスク・依頼管理"
+                                href={route('task-requests.index')}
+                                badge={{ label: 'TASK', variant: 'success' }}
+                            />
+                            <DashboardTileLink
+                                title="商材カタログ"
+                                description="トーク・マニュアル"
+                                href={route('products.index')}
+                                badge={{ label: 'DOC', variant: 'muted' }}
+                            />
+                            <DashboardTileLink
+                                title="社内情報"
+                                description="周知・お知らせ"
+                                href={route('notices.index')}
+                                badge={{ label: 'INFO', variant: 'primary', pulse: true }}
+                            />
+                        </div>
+                    </div>
             </div>
 
             <DetailDrawer
@@ -382,24 +402,26 @@ export default function Summary() {
                 onClose={() => setDrawerRank(null)}
             >
                 {drawerRank ? (
-                    <div className="space-y-6 text-sm">
-                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                            <div className="rounded-xl border border-stone-100 bg-stone-50 px-4 py-4">
-                                <div className="text-xs font-semibold uppercase tracking-wide text-stone-400">OK</div>
-                                <div className="mt-1 text-2xl font-semibold text-emerald-700">{drawerRank.ok}</div>
+                    <div className="space-y-8 text-sm">
+                        <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+                            <div className="border border-wa-accent/20 bg-wa-ink px-5 py-5">
+                                <div className="text-xs font-semibold uppercase tracking-wide text-wa-muted">OK</div>
+                                <div className="wa-nums mt-2 text-2xl font-semibold text-teal-300">{drawerRank.ok}</div>
                             </div>
-                            <div className="rounded-xl border border-stone-100 bg-stone-50 px-4 py-4">
-                                <div className="text-xs font-semibold uppercase tracking-wide text-stone-400">NG</div>
-                                <div className="mt-1 text-2xl font-semibold text-red-700">{drawerRank.ng}</div>
+                            <div className="border border-wa-accent/20 bg-wa-ink px-5 py-5">
+                                <div className="text-xs font-semibold uppercase tracking-wide text-wa-muted">NG</div>
+                                <div className="wa-nums mt-2 text-2xl font-semibold text-red-400">{drawerRank.ng}</div>
                             </div>
-                            <div className="rounded-xl border border-stone-100 bg-stone-50 px-4 py-4">
-                                <div className="text-xs font-semibold uppercase tracking-wide text-stone-400">成約率</div>
-                                <div className="mt-1 text-2xl font-semibold text-teal-700">{drawerRank.rate.toFixed(1)}%</div>
+                            <div className="border border-wa-accent/20 bg-wa-ink px-5 py-5">
+                                <div className="text-xs font-semibold uppercase tracking-wide text-wa-muted">成約率</div>
+                                <div className="wa-nums mt-2 text-2xl font-semibold text-wa-accent">
+                                    {drawerRank.rate.toFixed(1)}%
+                                </div>
                             </div>
                         </div>
                         <Link
                             href={route('sales.records')}
-                            className="inline-flex rounded-xl border border-stone-200 bg-white px-4 py-2 text-xs font-semibold text-stone-700 shadow-sm transition hover:bg-stone-50"
+                            className="inline-flex rounded-sm border border-wa-accent/30 px-5 py-2.5 text-xs font-semibold text-wa-accent transition hover:border-wa-accent/45 hover:bg-wa-accent/10"
                         >
                             案件一覧で詳細を見る
                         </Link>

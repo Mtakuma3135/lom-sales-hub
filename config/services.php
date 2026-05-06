@@ -53,6 +53,8 @@ return [
         'audit_log_url' => env('GAS_AUDIT_LOG_URL', ''),
         // ID/パス一覧の取得・更新（未設定時は dummy_url で pull / push を試行）
         'credentials_url' => env('GAS_CREDENTIALS_URL', ''),
+        // 昼休憩タイムテーブル同期（RestSchedule 等）。未設定時は dummy_url
+        'lunch_schedule_url' => env('GAS_LUNCH_SCHEDULE_URL', ''),
         'signing_secret' => env('GAS_SIGNING_SECRET', ''),
     ],
 

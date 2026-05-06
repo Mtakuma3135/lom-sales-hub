@@ -61,15 +61,15 @@ export default function Upload() {
     }, [result]);
 
     return (
-        <AuthenticatedLayout header={<h2 className="text-sm font-black tracking-tight">CSV / UPLOAD</h2>}>
+        <AuthenticatedLayout header={<h2 className="text-sm font-black tracking-tight text-wa-body">CSV / UPLOAD</h2>}>
             <Head title="CSV取込（管理者）" />
-            <div className="mx-auto max-w-6xl px-6 py-6 text-stone-800">
+            <div className="mx-auto max-w-6xl px-6 py-6 text-wa-body wa-body-track">
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                     <NeonCard elevate={false}>
-                        <div className="text-xs font-bold tracking-widest text-stone-500">DROPZONE</div>
-                        <div className="mt-2 text-sm font-black tracking-tight text-stone-900">CSVをアップロード</div>
+                        <div className="text-xs font-bold tracking-widest text-wa-muted">DROPZONE</div>
+                        <div className="mt-2 text-sm font-black tracking-tight text-wa-body">CSVをアップロード</div>
 
-                        <label className="mt-4 block cursor-pointer rounded-xl border border-dashed border-emerald-200/80 bg-white/80 px-5 py-8 text-center shadow-sm transition hover:border-emerald-400/60 hover:bg-emerald-50/30">
+                        <label className="mt-4 block cursor-pointer rounded-sm border border-dashed border-wa-accent/35 bg-wa-ink px-5 py-8 text-center transition hover:border-wa-accent/55 hover:bg-wa-card">
                             <input
                                 type="file"
                                 accept=".csv"
@@ -83,9 +83,9 @@ export default function Upload() {
                                     setErrorMessage(null);
                                 }}
                             />
-                            <div className="text-sm font-black tracking-tight text-stone-900">クリックしてファイル選択</div>
-                            <div className="mt-2 text-xs text-stone-500">.csv / 最大10MB</div>
-                            <div className="mt-4 text-xs font-semibold text-emerald-700">{fileName ? fileName : '未選択'}</div>
+                            <div className="text-sm font-black tracking-tight text-wa-body">クリックしてファイル選択</div>
+                            <div className="mt-2 text-xs text-wa-muted">.csv / 最大10MB</div>
+                            <div className="mt-4 text-xs font-semibold text-wa-accent">{fileName ? fileName : '未選択'}</div>
                         </label>
 
                         <button
@@ -118,13 +118,13 @@ export default function Upload() {
                                     setIsUploading(false);
                                 }
                             }}
-                            className="mt-4 w-full rounded-xl bg-gradient-to-b from-emerald-500 to-emerald-600 px-3 py-3 text-sm font-black tracking-tight text-white shadow-sm shadow-stone-900/10 ring-1 ring-emerald-500/25 transition hover:from-emerald-500/95 hover:to-emerald-600/95 disabled:opacity-50"
+                            className="mt-4 w-full rounded-sm border border-wa-accent/45 bg-wa-accent px-3 py-3 text-sm font-black tracking-tight text-wa-ink shadow-sm ring-1 ring-wa-accent/30 transition hover:bg-wa-accent/90 disabled:opacity-50"
                         >
                             {isUploading ? '取込中…' : '取込開始'}
                         </button>
 
                         {errorMessage ? (
-                            <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-800">
+                            <div className="mt-3 rounded-sm border border-red-500/35 bg-wa-ink px-4 py-3 text-xs text-red-300">
                                 {errorMessage}
                             </div>
                         ) : null}
@@ -134,15 +134,15 @@ export default function Upload() {
                         <NeonCard elevate={false}>
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <div className="text-xs font-bold tracking-widest text-stone-500">PROGRESS</div>
-                                    <div className="mt-1 text-lg font-black tracking-tight text-stone-900">進捗</div>
+                                    <div className="text-xs font-bold tracking-widest text-wa-muted">PROGRESS</div>
+                                    <div className="mt-1 text-lg font-black tracking-tight text-wa-body">進捗</div>
                                 </div>
-                                <div className="text-xs font-semibold text-emerald-700">{progress}%</div>
+                                <div className="text-xs font-semibold text-wa-accent">{progress}%</div>
                             </div>
 
-                            <div className="mt-4 h-2.5 w-full overflow-hidden rounded-full bg-stone-200/80">
+                            <div className="mt-4 h-2.5 w-full overflow-hidden rounded-full bg-wa-subtle">
                                 <div
-                                    className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 shadow-sm transition-[width]"
+                                    className="h-full bg-gradient-to-r from-wa-accent to-teal-500 shadow-sm transition-[width]"
                                     style={{ width: `${progress}%` }}
                                 />
                             </div>
@@ -153,9 +153,9 @@ export default function Upload() {
                                     { label: '成功', value: totals.total ? totals.success.toLocaleString() : '—' },
                                     { label: '失敗', value: totals.total ? totals.failed.toLocaleString() : '—' },
                                 ].map((k) => (
-                                    <div key={k.label} className="rounded-xl border border-stone-200 bg-white/70 px-4 py-4 shadow-sm">
-                                        <div className="text-[11px] font-bold tracking-widest text-stone-500">{k.label}</div>
-                                        <div className="mt-1 text-xl font-black tracking-tighter text-stone-900">{k.value}</div>
+                                    <div key={k.label} className="rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-4">
+                                        <div className="text-[11px] font-bold tracking-widest text-wa-muted">{k.label}</div>
+                                        <div className="mt-1 text-xl font-black tracking-tighter text-wa-body">{k.value}</div>
                                     </div>
                                 ))}
                             </div>
@@ -164,15 +164,15 @@ export default function Upload() {
                         <NeonCard elevate={false}>
                             <div className="flex items-start justify-between gap-4">
                                 <div>
-                                    <div className="text-xs font-bold tracking-widest text-stone-500">UPLOAD HISTORY</div>
-                                    <div className="mt-1 text-lg font-black tracking-tight text-stone-900">取込履歴</div>
+                                    <div className="text-xs font-bold tracking-widest text-wa-muted">UPLOAD HISTORY</div>
+                                    <div className="mt-1 text-lg font-black tracking-tight text-wa-body">取込履歴</div>
                                 </div>
-                                <div className="text-xs text-stone-500">全 {history.length} 件</div>
+                                <div className="text-xs text-wa-muted">全 {history.length} 件</div>
                             </div>
 
-                            <div className="mt-4 overflow-hidden rounded-xl border border-stone-200">
+                            <div className="mt-4 overflow-hidden rounded-sm border border-wa-accent/20">
                                 <table className="w-full text-left text-sm">
-                                    <thead className="bg-stone-100/80 text-xs font-bold tracking-widest text-stone-600">
+                                    <thead className="bg-wa-card text-xs font-bold tracking-widest text-wa-muted">
                                         <tr>
                                             <th className="px-4 py-3">FILE</th>
                                             <th className="px-4 py-3">SUCCESS</th>
@@ -180,19 +180,19 @@ export default function Upload() {
                                             <th className="px-4 py-3">AT</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-stone-200 bg-white/60">
+                                    <tbody className="divide-y divide-wa-accent/15 bg-wa-ink">
                                         {history.length ? (
                                             history.map((h) => (
-                                                <tr key={h.id} className="hover:bg-emerald-50/30">
-                                                    <td className="px-4 py-3 font-mono text-xs text-stone-800">{h.filename}</td>
-                                                    <td className="px-4 py-3 text-stone-800">{h.success_count.toLocaleString()}</td>
-                                                    <td className="px-4 py-3 text-stone-800">{h.failed_count.toLocaleString()}</td>
-                                                    <td className="px-4 py-3 font-mono text-xs text-stone-600">{h.created_at}</td>
+                                                <tr key={h.id} className="transition-colors hover:bg-wa-card/80">
+                                                    <td className="px-4 py-3 font-mono text-xs text-wa-body">{h.filename}</td>
+                                                    <td className="px-4 py-3 text-wa-body">{h.success_count.toLocaleString()}</td>
+                                                    <td className="px-4 py-3 text-wa-body">{h.failed_count.toLocaleString()}</td>
+                                                    <td className="px-4 py-3 font-mono text-xs text-wa-muted">{h.created_at}</td>
                                                 </tr>
                                             ))
                                         ) : (
                                             <tr>
-                                                <td className="px-4 py-6 text-sm text-stone-500" colSpan={4}>
+                                                <td className="px-4 py-6 text-sm text-wa-muted" colSpan={4}>
                                                     履歴がありません
                                                 </td>
                                             </tr>
@@ -205,17 +205,17 @@ export default function Upload() {
                         <NeonCard elevate={false}>
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <div className="text-xs font-bold tracking-widest text-stone-500">ERROR LOG</div>
-                                    <div className="mt-1 text-lg font-black tracking-tight text-stone-900">エラー行</div>
+                                    <div className="text-xs font-bold tracking-widest text-wa-muted">ERROR LOG</div>
+                                    <div className="mt-1 text-lg font-black tracking-tight text-wa-body">エラー行</div>
                                 </div>
-                                <div className="text-xs text-stone-500">{errors.length} 件</div>
+                                <div className="text-xs text-wa-muted">{errors.length} 件</div>
                             </div>
 
                             <div className="mt-4 space-y-2">
                                 {errors.map((e) => (
-                                    <div key={e.row} className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm">
-                                        <div className="font-black tracking-tight text-rose-900">行 {e.row}</div>
-                                        <div className="mt-1 text-xs text-rose-800">{e.message}</div>
+                                    <div key={e.row} className="rounded-sm border border-red-500/35 bg-wa-ink px-4 py-3 text-sm">
+                                        <div className="font-black tracking-tight text-red-300">行 {e.row}</div>
+                                        <div className="mt-1 text-xs text-red-300/85">{e.message}</div>
                                     </div>
                                 ))}
                             </div>

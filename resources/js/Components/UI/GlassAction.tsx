@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { PropsWithChildren, useEffect } from 'react';
 
 /**
- * 詳細・確認用の半透明オーバーレイ（Nordic / light glass）
+ * 詳細・確認用オーバーレイ（和モダン・ダーク面）
  */
 export default function GlassAction({
     open,
@@ -38,7 +38,7 @@ export default function GlassAction({
                     <button
                         type="button"
                         aria-label="閉じる"
-                        className="absolute inset-0 backdrop-blur-sm bg-stone-900/15"
+                        className="absolute inset-0 bg-wa-ink/75 backdrop-blur-sm"
                         onClick={onClose}
                     />
                     <motion.div
@@ -48,14 +48,14 @@ export default function GlassAction({
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 12, scale: 0.98 }}
                         transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-                        className={`relative z-10 w-full ${widthClassName} overflow-hidden rounded-2xl border border-white/80 bg-white/75 shadow-nordic backdrop-blur-md`}
+                        className={`relative z-10 w-full ${widthClassName} overflow-hidden rounded-sm border border-wa-accent/25 bg-wa-card shadow-xl shadow-black/50`}
                     >
                         {title ? (
-                            <div className="border-b border-stone-100/80 px-5 py-4">
-                                <h2 className="text-sm font-semibold tracking-tight text-stone-800">{title}</h2>
+                            <div className="border-b border-wa-accent/20 px-5 py-4">
+                                <h2 className="text-sm font-semibold tracking-tight text-wa-body">{title}</h2>
                             </div>
                         ) : null}
-                        <div className="max-h-[min(72vh,640px)] overflow-auto p-5 text-stone-700">{children}</div>
+                        <div className="max-h-[min(72vh,640px)] overflow-auto p-5 text-wa-body">{children}</div>
                     </motion.div>
                 </motion.div>
             ) : null}

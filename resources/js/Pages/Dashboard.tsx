@@ -4,21 +4,13 @@ import { Head } from '@inertiajs/react';
 export default function Dashboard() {
     return (
         <AuthenticatedLayout
-            header={
-                <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                    ダッシュボード
-                </h2>
-            }
+            header={<h2 className="wa-body-track text-sm font-semibold text-wa-body">ダッシュボード</h2>}
         >
             <Head title="ダッシュボード" />
 
-            <div className="py-12">
-                <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
-                    <div className="overflow-hidden bg-white shadow-sm sm:rounded-lg">
-                        <div className="p-6 text-gray-900">
-                            ログインしています！
-                        </div>
-                    </div>
+            <div className="mx-auto max-w-3xl">
+                <div className="border border-wa-accent/20 bg-wa-card p-12">
+                    <p className="wa-body-track text-sm leading-relaxed text-wa-muted">ログインしています！</p>
                 </div>
             </div>
         </AuthenticatedLayout>

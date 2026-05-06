@@ -40,12 +40,12 @@ function formatLogAt(raw: string | null | undefined): string {
 
 function statusBadge(statusCode: number | null): { label: string; className: string } {
     if (statusCode && statusCode >= 200 && statusCode < 300) {
-        return { label: `OK ${statusCode}`, className: 'border-emerald-200 bg-emerald-50 text-emerald-800' };
+        return { label: `OK ${statusCode}`, className: 'border-teal-500/35 bg-wa-ink text-teal-300' };
     }
     if (statusCode === null) {
-        return { label: 'PENDING', className: 'border-stone-200 bg-stone-100 text-stone-600' };
+        return { label: 'PENDING', className: 'border-wa-accent/25 bg-wa-ink text-wa-muted' };
     }
-    return { label: `NG ${statusCode}`, className: 'border-rose-200 bg-rose-50 text-rose-800' };
+    return { label: `NG ${statusCode}`, className: 'border-red-500/35 bg-wa-ink text-red-300' };
 }
 
 const filterField = 'nordic-field py-2 text-xs font-black tracking-tight';
@@ -125,17 +125,17 @@ export default function Index() {
     }, [items]);
 
     const ghostBtn =
-        'rounded-xl border border-stone-200 bg-white/90 px-3 py-2 text-xs font-black tracking-tight text-stone-700 shadow-sm transition hover:bg-emerald-50/50 disabled:opacity-50';
+        'rounded-sm border border-wa-accent/25 bg-wa-ink px-3 py-2 text-xs font-black tracking-tight text-wa-body transition hover:border-wa-accent/40 hover:bg-wa-card disabled:opacity-50';
 
     return (
-        <AuthenticatedLayout header={<h2 className="text-sm font-black tracking-tight">DISCORD / AUDIT LOG</h2>}>
+        <AuthenticatedLayout header={<h2 className="text-sm font-black tracking-tight text-wa-body">DISCORD / AUDIT LOG</h2>}>
             <Head title="Discord通知ログ（管理者）" />
-            <div className="mx-auto max-w-6xl px-6 py-6 text-stone-800">
+            <div className="mx-auto max-w-6xl px-6 py-6 text-wa-body wa-body-track">
                 <NeonCard elevate={false}>
                     <div className="flex flex-wrap items-start justify-between gap-4">
                         <div>
-                            <div className="text-xs font-bold tracking-widest text-stone-500">LIST</div>
-                            <div className="mt-1 text-lg font-black tracking-tight text-stone-900">通知ログ</div>
+                            <div className="text-xs font-bold tracking-widest text-wa-muted">LIST</div>
+                            <div className="mt-1 text-lg font-black tracking-tight text-wa-body">通知ログ</div>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
                             <select
@@ -166,7 +166,7 @@ export default function Index() {
                             <button
                                 type="button"
                                 onClick={() => void load()}
-                                className="rounded-xl bg-gradient-to-b from-emerald-500 to-emerald-600 px-3 py-2 text-xs font-black tracking-tight text-white shadow-sm ring-1 ring-emerald-500/25 transition hover:from-emerald-500/95 hover:to-emerald-600/95"
+                                className="rounded-sm border border-wa-accent/45 bg-wa-accent px-3 py-2 text-xs font-black tracking-tight text-wa-ink shadow-sm ring-1 ring-wa-accent/30 transition hover:bg-wa-accent/90"
                             >
                                 REFRESH
                             </button>
@@ -174,19 +174,19 @@ export default function Index() {
                     </div>
 
                     {errorMessage ? (
-                        <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-800">
+                        <div className="mt-4 rounded-sm border border-red-500/35 bg-wa-ink px-4 py-3 text-xs text-red-300">
                             {errorMessage}
                         </div>
                     ) : null}
                     {successMessage ? (
-                        <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-900">
+                        <div className="mt-4 rounded-sm border border-teal-500/35 bg-wa-ink px-4 py-3 text-xs text-teal-300">
                             {successMessage}
                         </div>
                     ) : null}
 
-                    <div className="mt-4 overflow-hidden rounded-xl border border-stone-200">
+                    <div className="mt-4 overflow-hidden rounded-sm border border-wa-accent/20">
                         <table className="w-full text-left text-sm">
-                            <thead className="bg-stone-100/80 text-xs font-bold tracking-widest text-stone-600">
+                            <thead className="bg-wa-card text-xs font-bold tracking-widest text-wa-muted">
                                 <tr>
                                     <th className="px-4 py-3">ID</th>
                                     <th className="px-4 py-3">EVENT</th>
@@ -196,10 +196,10 @@ export default function Index() {
                                     <th className="px-4 py-3">ACTION</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-stone-200 bg-white/60">
+                            <tbody className="divide-y divide-wa-accent/15 bg-wa-ink">
                                 {isLoading ? (
                                     <tr>
-                                        <td className="px-4 py-6 text-sm text-stone-500" colSpan={6}>
+                                        <td className="px-4 py-6 text-sm text-wa-muted" colSpan={6}>
                                             読み込み中…
                                         </td>
                                     </tr>
@@ -208,24 +208,24 @@ export default function Index() {
                                         const badge = statusBadge(x.status_code);
                                         const canRetry = x.status_code === null || x.status_code >= 300;
                                         return (
-                                            <tr key={x.id} className="hover:bg-emerald-50/30">
-                                                <td className="px-4 py-3 font-mono text-xs text-stone-800">
+                                            <tr key={x.id} className="transition-colors hover:bg-wa-card/80">
+                                                <td className="px-4 py-3 font-mono text-xs text-wa-body">
                                                     {x.id}
                                                     {x.parent_id ? (
-                                                        <span className="ml-2 text-[10px] text-stone-400">↳ {x.parent_id}</span>
+                                                        <span className="ml-2 text-[10px] text-wa-muted">↳ {x.parent_id}</span>
                                                     ) : null}
                                                 </td>
-                                                <td className="px-4 py-3 text-stone-800">{x.event_type}</td>
+                                                <td className="px-4 py-3 text-wa-body">{x.event_type}</td>
                                                 <td className="px-4 py-3">
                                                     <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-black ${badge.className}`}>
                                                         {badge.label}
                                                     </span>
                                                     {x.error_message ? (
-                                                        <div className="mt-1 text-[11px] text-rose-700">{x.error_message}</div>
+                                                        <div className="mt-1 text-[11px] text-red-400">{x.error_message}</div>
                                                     ) : null}
                                                 </td>
-                                                <td className="px-4 py-3 font-mono text-xs text-stone-600">{x.triggered_by ?? '—'}</td>
-                                                <td className="px-4 py-3 font-mono text-xs text-stone-600">{formatLogAt(x.created_at)}</td>
+                                                <td className="px-4 py-3 font-mono text-xs text-wa-muted">{x.triggered_by ?? '—'}</td>
+                                                <td className="px-4 py-3 font-mono text-xs text-wa-muted">{formatLogAt(x.created_at)}</td>
                                                 <td className="px-4 py-3">
                                                     <button
                                                         type="button"
@@ -277,7 +277,7 @@ export default function Index() {
                                     })
                                 ) : (
                                     <tr>
-                                        <td className="px-4 py-6 text-sm text-stone-500" colSpan={6}>
+                                        <td className="px-4 py-6 text-sm text-wa-muted" colSpan={6}>
                                             ログがありません
                                         </td>
                                     </tr>
@@ -289,10 +289,10 @@ export default function Index() {
             </div>
 
             {detailId !== null ? (
-                <div className="fixed inset-0 z-50 flex items-end justify-center bg-stone-900/30 p-4 backdrop-blur-sm sm:items-center">
-                    <div className="w-full max-w-3xl overflow-hidden rounded-2xl border border-emerald-100/70 bg-emerald-50/50 shadow-nordic ring-1 ring-stone-900/5">
-                        <div className="flex items-center justify-between border-b border-stone-200 bg-white/60 px-5 py-4">
-                            <div className="text-sm font-black tracking-tight text-stone-900">DETAIL #{detailId}</div>
+                <div className="fixed inset-0 z-50 flex items-end justify-center bg-wa-ink/75 p-4 backdrop-blur-sm sm:items-center">
+                    <div className="w-full max-w-3xl overflow-hidden rounded-sm border border-wa-accent/25 bg-wa-card shadow-xl shadow-black/50 ring-1 ring-wa-accent/10">
+                        <div className="flex items-center justify-between border-b border-wa-accent/20 bg-wa-ink px-5 py-4">
+                            <div className="text-sm font-black tracking-tight text-wa-body">DETAIL #{detailId}</div>
                             <button
                                 type="button"
                                 onClick={() => {
@@ -305,28 +305,28 @@ export default function Index() {
                                 CLOSE
                             </button>
                         </div>
-                        <div className="max-h-[70vh] space-y-4 overflow-auto p-5 text-sm text-stone-800">
+                        <div className="max-h-[70vh] space-y-4 overflow-auto p-5 text-sm text-wa-body">
                             {isDetailLoading ? (
-                                <div className="rounded-xl border border-stone-200 bg-stone-50 px-4 py-6 text-sm text-stone-500">
+                                <div className="rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-6 text-sm text-wa-muted">
                                     読み込み中…
                                 </div>
                             ) : detail ? (
                                 <>
                                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                        <div className="rounded-xl border border-stone-200 bg-white/70 px-4 py-3">
-                                            <div className="text-[11px] font-bold tracking-widest text-stone-500">EVENT</div>
-                                            <div className="mt-1 text-stone-800">{detail.event_type}</div>
+                                        <div className="rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-3">
+                                            <div className="text-[11px] font-bold tracking-widest text-wa-muted">EVENT</div>
+                                            <div className="mt-1 text-wa-body">{detail.event_type}</div>
                                         </div>
-                                        <div className="rounded-xl border border-stone-200 bg-white/70 px-4 py-3">
-                                            <div className="text-[11px] font-bold tracking-widest text-stone-500">STATUS</div>
-                                            <div className="mt-1 text-stone-800">{detail.status_code ?? '—'}</div>
+                                        <div className="rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-3">
+                                            <div className="text-[11px] font-bold tracking-widest text-wa-muted">STATUS</div>
+                                            <div className="mt-1 text-wa-body">{detail.status_code ?? '—'}</div>
                                         </div>
-                                        <div className="rounded-xl border border-stone-200 bg-white/70 px-4 py-3 sm:col-span-2">
-                                            <div className="text-[11px] font-bold tracking-widest text-stone-500">AT（JST）</div>
-                                            <div className="mt-1 font-mono text-xs text-stone-800">
+                                        <div className="rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-3 sm:col-span-2">
+                                            <div className="text-[11px] font-bold tracking-widest text-wa-muted">AT（JST）</div>
+                                            <div className="mt-1 font-mono text-xs text-wa-body">
                                                 {formatLogAt(detail.created_at)}
                                                 {detail.updated_at && detail.updated_at !== detail.created_at ? (
-                                                    <span className="ml-2 text-stone-500">
+                                                    <span className="ml-2 text-wa-muted">
                                                         （更新 {formatLogAt(detail.updated_at)}）
                                                     </span>
                                                 ) : null}
@@ -334,18 +334,18 @@ export default function Index() {
                                         </div>
                                     </div>
 
-                                    <div className="rounded-xl border border-stone-200 bg-white/70 px-4 py-3">
-                                        <div className="text-[11px] font-bold tracking-widest text-stone-500">PAYLOAD</div>
+                                    <div className="rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-3">
+                                        <div className="text-[11px] font-bold tracking-widest text-wa-muted">PAYLOAD</div>
                                         <pre className="json-pre-light mt-2">{JSON.stringify(detail.payload, null, 2)}</pre>
                                     </div>
 
-                                    <div className="rounded-xl border border-stone-200 bg-white/70 px-4 py-3">
-                                        <div className="text-[11px] font-bold tracking-widest text-stone-500">RESPONSE</div>
+                                    <div className="rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-3">
+                                        <div className="text-[11px] font-bold tracking-widest text-wa-muted">RESPONSE</div>
                                         <pre className="json-pre-light mt-2">{detail.response_body ?? '—'}</pre>
                                     </div>
                                 </>
                             ) : (
-                                <div className="rounded-xl border border-stone-200 bg-stone-50 px-4 py-6 text-sm text-stone-500">
+                                <div className="rounded-sm border border-wa-accent/20 bg-wa-card px-4 py-6 text-sm text-wa-muted">
                                     データがありません
                                 </div>
                             )}

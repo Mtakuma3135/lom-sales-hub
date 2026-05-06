@@ -25,7 +25,7 @@ export default function ConfirmPassword() {
         <GuestLayout>
             <Head title="パスワード確認" />
 
-            <div className="mb-6 text-slate-700 text-center text-sm">
+            <div className="mb-6 text-center text-sm leading-relaxed text-wa-muted">
                 セキュリティ保護のため、続行する前にパスワードを入力してください。
             </div>
 

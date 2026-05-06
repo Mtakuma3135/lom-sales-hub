@@ -20,7 +20,6 @@ const navItems: {
     label: string;
     route: string;
     canKey?: keyof Can;
-    /** 同一メニュー扱いにしたい追加ルート（ワイルドカードは使わない — admin.* は誤ハイライトの原因になる） */
     alsoMatch?: string[];
 }[] = [
     { label: 'ホーム', route: 'home' },
@@ -74,34 +73,32 @@ export default function AuthenticatedLayout({
     };
 
     return (
-        <div className="min-h-screen bg-stone-50 text-stone-700">
-            <div className="flex min-h-screen gap-6 px-4 py-6 md:px-8 md:py-8">
+        <div className="min-h-screen bg-wa-ink text-wa-body wa-body-track">
+            <div className="flex min-h-screen gap-9 px-6 py-9 md:px-12 md:py-12">
                 <aside className="flex w-72 shrink-0 flex-col">
-                    <div className="flex h-full flex-col rounded-3xl border border-stone-100 bg-white p-4 shadow-nordic">
-                        <div className="rounded-2xl border border-stone-100 bg-stone-50/60 px-4 py-4">
+                    <div className="flex h-full flex-col rounded-sm border border-wa-accent/20 bg-wa-card p-5">
+                        <div className="rounded-sm border border-wa-accent/20 bg-wa-ink px-5 py-5">
                             <div className="flex items-center justify-between gap-3">
                                 <div>
-                                    <div className="text-lg font-semibold tracking-tight text-stone-800">
-                                        LOM<span className="text-emerald-600">.</span>Hub
+                                    <div className="text-lg font-semibold tracking-tight text-wa-body">
+                                        LOM<span className="text-wa-accent">.</span>Hub
                                     </div>
-                                    <div className="mt-0.5 text-xs font-medium text-stone-500">
-                                        Sales Operating System
-                                    </div>
+                                    <div className="mt-1 text-xs font-medium text-wa-muted">Sales Operating System</div>
                                 </div>
-                                <div className="h-9 w-9 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 shadow-sm shadow-stone-900/10 ring-1 ring-emerald-500/20" />
+                                <div className="h-9 w-9 rounded-sm border border-wa-accent/30 bg-wa-subtle" />
                             </div>
 
-                            <div className="mt-4 flex items-center justify-between gap-2">
+                            <div className="mt-5 flex items-center justify-between gap-2">
                                 <div className="min-w-0">
-                                    <div className="truncate text-sm font-semibold text-stone-800">{safeUser.name}</div>
-                                    <div className="truncate text-xs text-stone-500">{safeUser.email || '—'}</div>
+                                    <div className="truncate text-sm font-semibold text-wa-body">{safeUser.name}</div>
+                                    <div className="truncate text-xs text-wa-muted">{safeUser.email || '—'}</div>
                                 </div>
                                 <span
                                     className={
-                                        'shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ' +
+                                        'shrink-0 rounded-sm border px-2.5 py-1 text-[11px] font-semibold ' +
                                         (safeUser.role === 'admin'
-                                            ? 'bg-amber-50 text-amber-800 ring-amber-200/80'
-                                            : 'bg-emerald-50 text-emerald-800 ring-emerald-200/80')
+                                            ? 'border-amber-500/35 bg-wa-ink text-amber-300'
+                                            : 'border-wa-accent/30 bg-wa-ink text-wa-accent')
                                     }
                                 >
                                     {safeUser.role === 'admin' ? 'ADMIN' : 'STAFF'}
@@ -109,7 +106,7 @@ export default function AuthenticatedLayout({
                             </div>
                         </div>
 
-                        <nav className="mt-4 flex-1 space-y-1 px-0.5 py-2">
+                        <nav className="mt-5 flex-1 space-y-1 py-2">
                             {navItems
                                 .filter((item) => {
                                     if (!item.canKey) return true;
@@ -125,10 +122,10 @@ export default function AuthenticatedLayout({
                                             key={item.route}
                                             href={item.href as string}
                                             className={
-                                                'block rounded-xl px-3 py-2.5 text-sm font-medium tracking-tight transition-all duration-200 ' +
+                                                'block rounded-sm px-3 py-3 text-sm font-medium transition-colors ' +
                                                 (isNavActive(item)
-                                                    ? 'bg-emerald-50 text-emerald-900 shadow-sm shadow-stone-900/5 ring-1 ring-emerald-100'
-                                                    : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900')
+                                                    ? 'border border-wa-accent/35 bg-wa-ink text-wa-accent'
+                                                    : 'border border-transparent text-wa-muted hover:border-wa-accent/20 hover:bg-wa-ink hover:text-wa-body')
                                             }
                                         >
                                             {item.label}
@@ -136,29 +133,29 @@ export default function AuthenticatedLayout({
                                     ) : (
                                         <div
                                             key={item.route}
-                                            className="block rounded-xl px-3 py-2.5 text-sm font-medium text-stone-300"
+                                            className="block rounded-sm px-3 py-3 text-sm font-medium text-wa-muted/50"
                                             title={`Route not found: ${item.route}`}
                                         >
                                             {item.label}
                                         </div>
-                                    )
+                                    ),
                                 )}
                         </nav>
 
-                        <div className="mt-auto p-1">
+                        <div className="mt-auto pt-2">
                             {auth?.user ? (
                                 <Link
                                     href={route('logout')}
                                     method="post"
                                     as="button"
-                                    className="w-full rounded-xl border border-stone-200 bg-white px-4 py-3 text-left text-sm font-semibold text-stone-700 shadow-sm shadow-stone-900/5 transition hover:bg-stone-50"
+                                    className="w-full rounded-sm border border-wa-accent/25 bg-wa-ink px-5 py-3.5 text-left text-sm font-semibold text-wa-body transition hover:border-wa-accent/40"
                                 >
                                     ログアウト
                                 </Link>
                             ) : (
                                 <Link
                                     href={route('login')}
-                                    className="block w-full rounded-xl border border-stone-200 bg-white px-4 py-3 text-left text-sm font-semibold text-stone-700 shadow-sm transition hover:bg-stone-50"
+                                    className="block w-full rounded-sm border border-wa-accent/25 bg-wa-ink px-5 py-3.5 text-left text-sm font-semibold text-wa-body transition hover:border-wa-accent/40"
                                 >
                                     ログイン
                                 </Link>
@@ -168,22 +165,18 @@ export default function AuthenticatedLayout({
                 </aside>
 
                 <main className="min-w-0 flex-1">
-                    <div className="rounded-3xl border border-stone-100 bg-white shadow-nordic">
-                        <div className="flex items-center justify-between gap-4 border-b border-stone-100 px-8 py-6">
+                    <div className="rounded-sm border border-wa-accent/20 bg-wa-card">
+                        <div className="flex items-center justify-between gap-4 border-b border-wa-accent/20 px-8 py-7">
                             <div className="min-w-0">
-                                <div className="text-xs font-semibold uppercase tracking-widest text-stone-400">
-                                    現在の画面
-                                </div>
-                                <div className="mt-1 truncate text-base font-semibold tracking-tight text-stone-800">
-                                    {header ?? '—'}
-                                </div>
+                                <div className="text-xs font-semibold uppercase tracking-widest text-wa-muted">現在の画面</div>
+                                <div className="mt-2 truncate text-base font-semibold text-wa-body">{header ?? '—'}</div>
                             </div>
-                            <div className="hidden items-center gap-2 sm:flex">
-                                <div className="h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-emerald-100" />
-                                <div className="text-xs font-medium text-stone-500">接続中</div>
+                            <div className="hidden items-center gap-3 sm:flex">
+                                <div className="h-2 w-2 rounded-full bg-wa-accent/80" />
+                                <div className="text-xs font-medium text-wa-muted">接続中</div>
                             </div>
                         </div>
-                        <div className="bg-stone-100/40 px-4 py-8 sm:px-8 sm:py-10">{children}</div>
+                        <div className="bg-wa-ink px-6 py-10 sm:px-10 sm:py-14">{children}</div>
                     </div>
                 </main>
             </div>

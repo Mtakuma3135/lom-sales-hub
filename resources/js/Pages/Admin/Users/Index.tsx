@@ -38,12 +38,12 @@ export default function Index({ users }: { users: UsersProp }) {
 
     if (!users?.data) {
         return (
-            <AuthenticatedLayout header={<h2 className="text-sm font-black tracking-tight">ADMIN / USERS</h2>}>
+            <AuthenticatedLayout header={<h2 className="text-sm font-black tracking-tight text-wa-body">ADMIN / USERS</h2>}>
                 <Head title="ユーザー一覧（管理者用）" />
                 <div className="mx-auto max-w-6xl px-6 py-6">
-                    <div className="rounded-xl border border-rose-200 bg-rose-50 p-6 text-rose-900 shadow-sm">
+                    <div className="rounded-sm border border-red-500/35 bg-wa-ink p-6 text-red-200">
                         <div className="text-sm font-black tracking-tight">ユーザー情報の取得に失敗しました</div>
-                        <div className="mt-2 text-sm text-rose-800">もう一度読み込み直してください。</div>
+                        <div className="mt-2 text-sm text-red-300/90">もう一度読み込み直してください。</div>
                     </div>
                 </div>
             </AuthenticatedLayout>
@@ -68,23 +68,23 @@ export default function Index({ users }: { users: UsersProp }) {
     };
 
     return (
-        <AuthenticatedLayout header={<h2 className="text-sm font-black tracking-tight">ADMIN / USERS</h2>}>
+        <AuthenticatedLayout header={<h2 className="text-sm font-black tracking-tight text-wa-body">ADMIN / USERS</h2>}>
             <Head title="ユーザー一覧（管理者用）" />
 
-            <div className="mx-auto max-w-6xl px-6 py-6 text-stone-800">
+            <div className="mx-auto max-w-6xl px-6 py-6 text-wa-body wa-body-track">
                 <NeonCard className="mb-6" elevate={false}>
-                    <div className="text-xs font-bold tracking-widest text-stone-500">CONTROL</div>
-                    <div className="mt-2 text-lg font-black tracking-tight text-stone-900">ユーザー一覧（管理者用）</div>
-                    <div className="mt-1 text-sm text-stone-600">
+                    <div className="text-xs font-bold tracking-widest text-wa-muted">CONTROL</div>
+                    <div className="mt-2 text-lg font-black tracking-tight text-wa-body">ユーザー一覧（管理者用）</div>
+                    <div className="mt-1 text-sm text-wa-muted">
                         社員コードとパスワードでログインします（メール・部署は使いません）。
                     </div>
                 </NeonCard>
 
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                     <NeonCard elevate={false}>
-                        <div className="text-xs font-bold tracking-widest text-stone-500">CREATE</div>
-                        <div className="mt-2 text-sm font-black tracking-tight text-stone-900">新規ユーザー登録</div>
-                        <div className="mt-1 text-xs text-stone-600">必須項目を入力して登録してください</div>
+                        <div className="text-xs font-bold tracking-widest text-wa-muted">CREATE</div>
+                        <div className="mt-2 text-sm font-black tracking-tight text-wa-body">新規ユーザー登録</div>
+                        <div className="mt-1 text-xs text-wa-muted">必須項目を入力して登録してください</div>
 
                         <form onSubmit={submit} className="mt-5 space-y-5">
                             <div>
@@ -146,55 +146,55 @@ export default function Index({ users }: { users: UsersProp }) {
                     <NeonCard className="lg:col-span-2 overflow-x-auto" elevate={false}>
                         <div className="flex items-center justify-between">
                             <div>
-                                <div className="text-xs font-bold tracking-widest text-stone-500">LIST</div>
-                                <div className="mt-1 text-lg font-black tracking-tight text-stone-900">登録済みユーザー</div>
+                                <div className="text-xs font-bold tracking-widest text-wa-muted">LIST</div>
+                                <div className="mt-1 text-lg font-black tracking-tight text-wa-body">登録済みユーザー</div>
                             </div>
-                            <div className="text-xs font-semibold text-emerald-700">{users.data.length} 件</div>
+                            <div className="text-xs font-semibold text-wa-accent">{users.data.length} 件</div>
                         </div>
 
                         <table className="mt-4 w-full border-collapse text-left">
                             <thead>
-                                <tr className="text-xs text-stone-500">
-                                    <th className="border-b border-stone-200 p-3 font-bold tracking-widest">NAME</th>
-                                    <th className="border-b border-stone-200 p-3 font-bold tracking-widest">CODE</th>
-                                    <th className="border-b border-stone-200 p-3 font-bold tracking-widest">ROLE</th>
-                                    <th className="border-b border-stone-200 p-3 font-bold tracking-widest">ACTIONS</th>
+                                <tr className="text-xs text-wa-muted">
+                                    <th className="border-b border-wa-accent/20 p-3 font-bold tracking-widest">NAME</th>
+                                    <th className="border-b border-wa-accent/20 p-3 font-bold tracking-widest">CODE</th>
+                                    <th className="border-b border-wa-accent/20 p-3 font-bold tracking-widest">ROLE</th>
+                                    <th className="border-b border-wa-accent/20 p-3 font-bold tracking-widest">ACTIONS</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {users.data.length === 0 && (
                                     <tr>
-                                        <td colSpan={4} className="py-10 text-center text-sm text-stone-500">
+                                        <td colSpan={4} className="py-10 text-center text-sm text-wa-muted">
                                             ユーザーが登録されていません
                                         </td>
                                     </tr>
                                 )}
                                 {users.data.map((user) => (
-                                    <tr key={user.id} className="transition-colors hover:bg-white/70">
-                                        <td className="border-b border-stone-200 p-3 text-sm font-black tracking-tight text-stone-900">
+                                    <tr key={user.id} className="transition-colors hover:bg-wa-ink/80">
+                                        <td className="border-b border-wa-accent/20 p-3 text-sm font-black tracking-tight text-wa-body">
                                             {user.name}
                                         </td>
-                                        <td className="border-b border-stone-200 p-3 text-sm text-stone-600">
+                                        <td className="border-b border-wa-accent/20 p-3 text-sm text-wa-muted">
                                             {user.employee_code || '-'}
                                         </td>
-                                        <td className="border-b border-stone-200 p-3 text-sm">
+                                        <td className="border-b border-wa-accent/20 p-3 text-sm">
                                             <span
                                                 className={
                                                     'inline-flex items-center rounded-full px-2.5 py-1 text-xs font-black tracking-tight ' +
                                                     (user.role === 'admin'
-                                                        ? 'bg-violet-50 text-violet-800 ring-1 ring-inset ring-violet-200'
-                                                        : 'bg-emerald-50 text-emerald-800 ring-1 ring-inset ring-emerald-200')
+                                                        ? 'border border-violet-500/35 bg-wa-ink text-violet-300 ring-1 ring-inset ring-violet-500/25'
+                                                        : 'border border-teal-500/35 bg-wa-ink text-teal-300 ring-1 ring-inset ring-teal-500/25')
                                                 }
                                             >
                                                 {user.role === 'admin' ? '管理者' : user.role === 'general' ? '一般' : user.role}
                                             </span>
                                         </td>
-                                        <td className="border-b border-stone-200 p-3 text-sm">
+                                        <td className="border-b border-wa-accent/20 p-3 text-sm">
                                             <div className="flex items-center gap-2">
                                                 <button
                                                     type="button"
                                                     onClick={() => openEdit(user)}
-                                                    className="rounded-xl border border-stone-200 bg-white/90 px-4 py-2 text-xs font-black tracking-tight text-stone-700 shadow-sm hover:bg-emerald-50/50"
+                                                    className="rounded-sm border border-wa-accent/25 bg-wa-ink px-4 py-2 text-xs font-black tracking-tight text-wa-body transition hover:border-wa-accent/45"
                                                 >
                                                     編集
                                                 </button>
@@ -204,7 +204,7 @@ export default function Index({ users }: { users: UsersProp }) {
                                                         if (!confirm('このユーザーを無効化しますか？')) return;
                                                         router.delete(route('admin.users.destroy', { id: user.id }));
                                                     }}
-                                                    className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-xs font-black tracking-tight text-rose-800 ring-1 ring-rose-200/80 hover:bg-rose-100/80"
+                                                    className="rounded-sm border border-red-500/40 bg-wa-ink px-4 py-2 text-xs font-black tracking-tight text-red-300 ring-1 ring-red-500/25 transition hover:border-red-400/60"
                                                 >
                                                     無効化
                                                 </button>
@@ -219,20 +219,20 @@ export default function Index({ users }: { users: UsersProp }) {
             </div>
 
             {editingUser ? (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/30 p-4 backdrop-blur-sm">
-                    <div className="w-full max-w-xl rounded-2xl border border-emerald-100/70 bg-emerald-50/50 p-6 shadow-nordic ring-1 ring-stone-900/5">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-wa-ink/70 p-4 backdrop-blur-sm">
+                    <div className="w-full max-w-xl rounded-sm border border-wa-accent/25 bg-wa-card p-6 shadow-xl shadow-black/50 ring-1 ring-wa-accent/10">
                         <div className="flex items-start justify-between gap-4">
                             <div>
-                                <div className="text-xs font-bold tracking-widest text-stone-500">EDIT</div>
-                                <div className="mt-1 text-lg font-black tracking-tight text-stone-900">ユーザー編集</div>
-                                <div className="mt-1 text-xs text-stone-600">
+                                <div className="text-xs font-bold tracking-widest text-wa-muted">EDIT</div>
+                                <div className="mt-1 text-lg font-black tracking-tight text-wa-body">ユーザー編集</div>
+                                <div className="mt-1 text-xs text-wa-muted">
                                     社員コード: {editingUser.employee_code || '—'}
                                 </div>
                             </div>
                             <button
                                 type="button"
                                 onClick={() => setEditingUserId(null)}
-                                className="rounded-xl border border-stone-200 bg-white/90 px-4 py-2 text-xs font-black tracking-widest text-stone-700 shadow-sm hover:bg-stone-50"
+                                className="rounded-sm border border-wa-accent/25 bg-wa-ink px-4 py-2 text-xs font-black tracking-widest text-wa-body transition hover:border-wa-accent/40"
                             >
                                 CLOSE
                             </button>
@@ -261,12 +261,12 @@ export default function Index({ users }: { users: UsersProp }) {
                                     <option value="admin">管理者</option>
                                 </select>
                             </div>
-                            <label className="flex items-center gap-2 text-sm font-semibold text-stone-700">
+                            <label className="flex items-center gap-2 text-sm font-semibold text-wa-body">
                                 <input
                                     type="checkbox"
                                     checked={editActive}
                                     onChange={(e) => setEditActive(e.target.checked)}
-                                    className="rounded border-stone-300 text-emerald-600"
+                                    className="rounded-sm border-wa-accent/35 text-wa-accent"
                                 />
                                 有効
                             </label>
@@ -275,7 +275,7 @@ export default function Index({ users }: { users: UsersProp }) {
                                 <button
                                     type="button"
                                     onClick={() => setEditingUserId(null)}
-                                    className="rounded-xl border border-stone-200 bg-white/90 px-4 py-2.5 text-sm font-black tracking-tight text-stone-700 shadow-sm hover:bg-stone-50"
+                                    className="rounded-sm border border-wa-accent/25 bg-wa-ink px-4 py-2.5 text-sm font-black tracking-tight text-wa-body transition hover:border-wa-accent/40"
                                 >
                                     CANCEL
                                 </button>
@@ -289,7 +289,7 @@ export default function Index({ users }: { users: UsersProp }) {
                                         });
                                         setEditingUserId(null);
                                     }}
-                                    className="rounded-xl bg-gradient-to-b from-emerald-500 to-emerald-600 px-4 py-2.5 text-sm font-black tracking-tight text-white shadow-sm shadow-stone-900/10 ring-1 ring-emerald-500/25 transition hover:from-emerald-500/95 hover:to-emerald-600/95"
+                                    className="rounded-sm border border-wa-accent/45 bg-wa-accent px-4 py-2.5 text-sm font-black tracking-tight text-wa-ink shadow-sm ring-1 ring-wa-accent/30 transition hover:bg-wa-accent/90"
                                 >
                                     SAVE
                                 </button>

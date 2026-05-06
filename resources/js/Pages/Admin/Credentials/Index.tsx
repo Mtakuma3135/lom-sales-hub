@@ -93,18 +93,18 @@ export default function Index() {
     };
 
     return (
-        <AuthenticatedLayout header={<h2 className="text-sm font-black tracking-tight text-stone-900">CREDENTIALS</h2>}>
+        <AuthenticatedLayout header={<h2 className="text-sm font-black tracking-tight text-wa-body">CREDENTIALS</h2>}>
             <Head title="ID / パス" />
 
-            <div className="mx-auto max-w-3xl px-4 py-8 text-stone-900">
+            <div className="mx-auto max-w-3xl px-4 py-8 text-wa-body wa-body-track">
                 {errorMessage ? (
-                    <div className="mb-4 rounded border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900">{errorMessage}</div>
+                    <div className="mb-4 rounded-sm border border-red-500/35 bg-wa-ink px-3 py-2 text-sm text-red-300">{errorMessage}</div>
                 ) : null}
                 {toast ? (
-                    <div className="mb-4 rounded border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-800">{toast}</div>
+                    <div className="mb-4 rounded-sm border border-teal-500/35 bg-wa-ink px-3 py-2 text-sm text-teal-300">{toast}</div>
                 ) : null}
 
-                {isLoading ? <div className="py-16 text-center text-sm text-stone-500">読み込み中</div> : null}
+                {isLoading ? <div className="py-16 text-center text-sm text-wa-muted">読み込み中</div> : null}
 
                 {!isLoading && (
                     <ul className="space-y-4">
@@ -117,21 +117,21 @@ export default function Index() {
                             return (
                                 <li
                                     key={c.id}
-                                    className="rounded-lg border border-stone-200 bg-white px-4 py-4 shadow-sm"
+                                    className="rounded-sm border border-wa-accent/20 bg-wa-card px-4 py-4"
                                 >
                                     <div className="flex flex-wrap items-start justify-between gap-3">
                                         <div className="min-w-0 flex-1 space-y-3">
                                             <div>
-                                                <div className="text-[10px] font-semibold uppercase tracking-wider text-stone-400">
+                                                <div className="text-[10px] font-semibold uppercase tracking-wider text-wa-muted">
                                                     サービス名
                                                 </div>
-                                                <div className="truncate text-base font-semibold text-stone-900">{c.service_name}</div>
+                                                <div className="truncate text-base font-semibold text-wa-body">{c.service_name}</div>
                                             </div>
 
                                             {isEditing ? (
                                                 <>
                                                     <div>
-                                                        <label className="text-[10px] font-semibold uppercase tracking-wider text-stone-400">
+                                                        <label className="text-[10px] font-semibold uppercase tracking-wider text-wa-muted">
                                                             ログインID
                                                         </label>
                                                         <input
@@ -143,7 +143,7 @@ export default function Index() {
                                                         />
                                                     </div>
                                                     <div>
-                                                        <label className="text-[10px] font-semibold uppercase tracking-wider text-stone-400">
+                                                        <label className="text-[10px] font-semibold uppercase tracking-wider text-wa-muted">
                                                             パスワード
                                                         </label>
                                                         <input
@@ -158,20 +158,20 @@ export default function Index() {
                                             ) : (
                                                 <>
                                                     <div>
-                                                        <div className="text-[10px] font-semibold uppercase tracking-wider text-stone-400">
+                                                        <div className="text-[10px] font-semibold uppercase tracking-wider text-wa-muted">
                                                             ログインID
                                                         </div>
-                                                        <div className="font-mono text-sm text-stone-800">{c.login_id || '—'}</div>
+                                                        <div className="font-mono text-sm text-wa-body">{c.login_id || '—'}</div>
                                                     </div>
                                                     <div>
                                                         <div className="flex items-center gap-2">
-                                                            <span className="text-[10px] font-semibold uppercase tracking-wider text-stone-400">
+                                                            <span className="text-[10px] font-semibold uppercase tracking-wider text-wa-muted">
                                                                 パスワード
                                                             </span>
                                                             {c.is_password ? (
                                                                 <button
                                                                     type="button"
-                                                                    className="select-none rounded border border-stone-200 bg-stone-50 px-2 py-0.5 text-xs leading-none text-stone-600 hover:bg-stone-100"
+                                                                    className="select-none rounded-sm border border-wa-accent/25 bg-wa-ink px-2 py-0.5 text-xs leading-none text-wa-muted transition hover:border-wa-accent/40 hover:text-wa-body"
                                                                     aria-label="押している間だけパスワードを表示"
                                                                     onMouseDown={() =>
                                                                         setPressingReveal((m) => ({ ...m, [c.id]: true }))
@@ -190,7 +190,7 @@ export default function Index() {
                                                                 </button>
                                                             ) : null}
                                                         </div>
-                                                        <div className="mt-1 break-all font-mono text-sm text-stone-800">
+                                                        <div className="mt-1 break-all font-mono text-sm text-wa-body">
                                                             {passwordDisplay}
                                                         </div>
                                                     </div>
@@ -199,13 +199,13 @@ export default function Index() {
                                         </div>
 
                                         <div className="flex shrink-0 flex-col items-end gap-2">
-                                            <div className="text-[10px] text-stone-400">{c.updated_at}</div>
+                                            <div className="text-[10px] text-wa-muted">{c.updated_at}</div>
                                             {isEditing ? (
                                                 <>
                                                     <button
                                                         type="button"
                                                         onClick={cancelEdit}
-                                                        className="rounded border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-50"
+                                                        className="rounded-sm border border-wa-accent/25 bg-wa-ink px-3 py-1.5 text-xs font-medium text-wa-body transition hover:border-wa-accent/40"
                                                     >
                                                         閉じる
                                                     </button>
@@ -246,7 +246,7 @@ export default function Index() {
                                                                 setIsSaving(false);
                                                             }
                                                         }}
-                                                        className="rounded bg-stone-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-stone-800 disabled:opacity-50"
+                                                        className="rounded-sm border border-wa-accent/45 bg-wa-accent px-3 py-1.5 text-xs font-medium text-wa-ink transition hover:bg-wa-accent/90 disabled:opacity-50"
                                                     >
                                                         {isSaving ? '保存中…' : '保存'}
                                                     </button>
@@ -255,7 +255,7 @@ export default function Index() {
                                                 <button
                                                     type="button"
                                                     onClick={() => beginEdit(c)}
-                                                    className="rounded bg-stone-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-stone-800"
+                                                    className="rounded-sm border border-wa-accent/45 bg-wa-accent px-3 py-1.5 text-xs font-medium text-wa-ink transition hover:bg-wa-accent/90"
                                                 >
                                                     編集
                                                 </button>

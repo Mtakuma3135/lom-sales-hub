@@ -13,9 +13,9 @@ type MypagePayload = {
 };
 
 const btnPrimary =
-    'rounded-xl bg-gradient-to-b from-emerald-500 to-emerald-600 px-3 py-3 text-sm font-black tracking-tight text-white shadow-sm shadow-stone-900/10 ring-1 ring-emerald-500/25 transition hover:from-emerald-500/95 hover:to-emerald-600/95';
+    'rounded-sm border border-wa-accent/45 bg-wa-accent px-3 py-3 text-sm font-black tracking-tight text-wa-ink transition hover:bg-wa-accent/90';
 const btnGhost =
-    'rounded-xl border border-stone-200 bg-white/90 px-3 py-3 text-sm font-black tracking-tight text-stone-700 shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50/50';
+    'rounded-sm border border-wa-accent/25 bg-wa-ink px-3 py-3 text-sm font-black tracking-tight text-wa-body transition hover:border-wa-accent/40';
 
 export default function Index({ mypage }: { mypage?: MypagePayload }) {
     const profile =
@@ -55,19 +55,19 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
     const [kotPending, setKotPending] = useState<boolean>(false);
 
     return (
-        <AuthenticatedLayout header={<h2 className="text-sm font-black tracking-tight">MY / CONSOLE</h2>}>
+        <AuthenticatedLayout header={<h2 className="text-sm font-black tracking-tight text-wa-body">MY / CONSOLE</h2>}>
             <Head title="マイページ" />
-            <div className="mx-auto max-w-6xl px-6 py-6 text-stone-800">
+            <div className="mx-auto max-w-6xl px-6 py-6 text-wa-body wa-body-track">
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                     <NeonCard>
-                        <div className="text-xs font-bold tracking-widest text-stone-500">PROFILE</div>
-                        <div className="mt-2 text-sm font-black tracking-tight text-stone-900">ユーザー</div>
+                        <div className="text-xs font-bold tracking-widest text-wa-muted">PROFILE</div>
+                        <div className="mt-2 text-sm font-black tracking-tight text-wa-body">ユーザー</div>
                         <div className="mt-4 space-y-2">
-                            <div className="text-2xl font-black tracking-tighter text-stone-900">{profile.name}</div>
-                            <div className="text-sm font-semibold text-stone-600">
+                            <div className="text-2xl font-black tracking-tighter text-wa-body">{profile.name}</div>
+                            <div className="text-sm font-semibold text-wa-muted">
                                 社員コード: {profile.employee_code ?? '-'}
                             </div>
-                            <div className="text-sm font-semibold text-stone-600">権限: {profile.role}</div>
+                            <div className="text-sm font-semibold text-wa-muted">権限: {profile.role}</div>
                         </div>
 
                         <div className="mt-5 grid grid-cols-2 gap-3">
@@ -82,19 +82,19 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
 
                     <div className="space-y-6 lg:col-span-2">
                         <NeonCard elevate={false}>
-                            <div className="text-xs font-bold tracking-widest text-stone-500">ATTENDANCE</div>
-                            <div className="mt-2 text-sm font-black tracking-tight text-stone-900">勤怠エラー</div>
+                            <div className="text-xs font-bold tracking-widest text-wa-muted">ATTENDANCE</div>
+                            <div className="mt-2 text-sm font-black tracking-tight text-wa-body">勤怠エラー</div>
 
                             {attendance ? (
                                 attendance.has_error ? (
-                                    <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-4">
-                                        <div className="text-sm font-black tracking-tight text-rose-900">エラーあり</div>
-                                        <div className="mt-2 text-xs text-rose-800">cached_at: {attendance.cached_at}</div>
+                                    <div className="mt-4 rounded-sm border border-red-500/35 bg-red-950/40 p-4">
+                                        <div className="text-sm font-black tracking-tight text-red-200">エラーあり</div>
+                                        <div className="mt-2 text-xs text-red-300">cached_at: {attendance.cached_at}</div>
                                         <div className="mt-3 flex flex-wrap gap-2">
                                             {attendance.error_dates.map((d) => (
                                                 <span
                                                     key={d}
-                                                    className="inline-flex items-center rounded-full bg-rose-100 px-3 py-1 text-xs font-black tracking-tight text-rose-900 ring-1 ring-inset ring-rose-200"
+                                                    className="inline-flex items-center rounded-sm border border-red-500/35 bg-red-950/50 px-3 py-1 text-xs font-black tracking-tight text-red-200"
                                                 >
                                                     {d}
                                                 </span>
@@ -102,13 +102,13 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-                                        <div className="text-sm font-black tracking-tight text-emerald-900">エラーなし</div>
-                                        <div className="mt-2 text-xs text-emerald-800">cached_at: {attendance.cached_at}</div>
+                                    <div className="mt-4 rounded-sm border border-teal-500/35 bg-wa-ink p-4">
+                                        <div className="text-sm font-black tracking-tight text-teal-200">エラーなし</div>
+                                        <div className="mt-2 text-xs text-teal-300">cached_at: {attendance.cached_at}</div>
                                     </div>
                                 )
                             ) : (
-                                <div className="mt-4 rounded-xl border border-stone-200 bg-stone-50 px-4 py-4 text-sm text-stone-500">
+                                <div className="mt-4 rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-4 text-sm text-wa-muted">
                                     （未取得）
                                 </div>
                             )}
@@ -151,39 +151,39 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
                                     }}
                                     className={
                                         kotLoading
-                                            ? 'rounded-xl px-4 py-2 text-xs font-black tracking-widest bg-stone-100 text-stone-500 ring-1 ring-stone-200'
+                                            ? 'rounded-sm px-4 py-2 text-xs font-black tracking-widest bg-wa-ink text-wa-muted ring-1 ring-wa-accent/20'
                                             : kotPending
-                                              ? 'rounded-xl border border-stone-200 bg-white px-4 py-2 text-xs font-black tracking-widest text-stone-700 shadow-sm ring-1 ring-stone-200 transition hover:bg-stone-50'
-                                              : 'rounded-xl bg-gradient-to-b from-emerald-500 to-emerald-600 px-4 py-2 text-xs font-black tracking-widest text-white shadow-sm shadow-stone-900/10 ring-1 ring-emerald-500/25 transition hover:from-emerald-500/95 hover:to-emerald-600/95' +
+                                              ? 'rounded-sm border border-wa-accent/25 bg-wa-card px-4 py-2 text-xs font-black tracking-widest text-wa-body transition hover:border-wa-accent/40'
+                                              : 'rounded-sm border border-wa-accent/45 bg-wa-accent px-4 py-2 text-xs font-black tracking-widest text-wa-ink transition hover:bg-wa-accent/90' +
                                                 (kotPulse ? ' animate-pulse' : '')
                                     }
                                 >
                                     {kotLoading ? 'LOADING…' : kotPending ? 'KOT 再試行' : 'KOT 打刻'}
                                 </button>
-                                <div className="text-xs text-stone-500">{kotMessage ?? '—'}</div>
+                                <div className="text-xs text-wa-muted">{kotMessage ?? '—'}</div>
                             </div>
                         </NeonCard>
 
                         <NeonCard elevate={false}>
-                            <div className="text-xs font-bold tracking-widest text-stone-500">INTEGRATIONS</div>
-                            <div className="mt-2 text-sm font-black tracking-tight text-stone-900">外部連携</div>
-                            <div className="mt-3 rounded-xl border border-stone-200 bg-stone-50 px-3 py-3 text-xs text-stone-600">
+                            <div className="text-xs font-bold tracking-widest text-wa-muted">INTEGRATIONS</div>
+                            <div className="mt-2 text-sm font-black tracking-tight text-wa-body">外部連携</div>
+                            <div className="mt-3 rounded-sm border border-wa-accent/20 bg-wa-ink px-3 py-3 text-xs text-wa-muted">
                                 このセクションは閲覧のみです（編集不可）
                             </div>
                             <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                                 {integrations.map((i) => (
                                     <div
                                         key={i.key}
-                                        className="rounded-xl border border-stone-200 bg-white/70 p-4 opacity-90 shadow-sm"
+                                        className="rounded-sm border border-wa-accent/20 bg-wa-card p-4 opacity-90"
                                     >
                                         <div className="flex items-center justify-between">
-                                            <div className="text-sm font-black tracking-tight text-stone-900">{i.label}</div>
+                                            <div className="text-sm font-black tracking-tight text-wa-body">{i.label}</div>
                                             <span
                                                 className={
                                                     'inline-flex items-center rounded-full px-2.5 py-1 text-xs font-black tracking-tight ' +
                                                     (i.status === 'connected'
-                                                        ? 'bg-emerald-50 text-emerald-800 ring-1 ring-inset ring-emerald-200'
-                                                        : 'bg-stone-100 text-stone-600 ring-1 ring-inset ring-stone-200')
+                                                        ? 'border border-teal-500/35 bg-wa-ink text-teal-300'
+                                                        : 'border border-wa-accent/20 bg-wa-ink text-wa-muted')
                                                 }
                                             >
                                                 {i.status === 'connected' ? '接続中' : '未接続'}
@@ -193,14 +193,14 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
                                             <button
                                                 type="button"
                                                 disabled
-                                                className="cursor-not-allowed rounded-xl border border-stone-200 bg-stone-50 px-4 py-2 text-xs font-black tracking-tight text-stone-400"
+                                                className="cursor-not-allowed rounded-sm border border-wa-accent/15 bg-wa-ink px-4 py-2 text-xs font-black tracking-tight text-wa-muted"
                                             >
                                                 詳細
                                             </button>
                                             <button
                                                 type="button"
                                                 disabled
-                                                className="cursor-not-allowed rounded-xl border border-stone-200 bg-stone-50 px-4 py-2 text-xs font-black tracking-tight text-stone-400"
+                                                className="cursor-not-allowed rounded-sm border border-wa-accent/15 bg-wa-ink px-4 py-2 text-xs font-black tracking-tight text-wa-muted"
                                             >
                                                 接続
                                             </button>
@@ -211,18 +211,17 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
                         </NeonCard>
 
                         <NeonCard elevate={false}>
-                            <div className="text-xs font-bold tracking-widest text-stone-500">QUICK</div>
-                            <div className="mt-2 text-sm font-black tracking-tight text-stone-900">よく使うリンク</div>
+                            <div className="text-xs font-bold tracking-widest text-wa-muted">QUICK</div>
+                            <div className="mt-2 text-sm font-black tracking-tight text-wa-body">よく使うリンク</div>
                             <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
                                 {links.map((l) => (
                                     <button
                                         key={l.label}
                                         type="button"
-                                        className="group relative overflow-hidden rounded-xl border border-stone-200 bg-white/80 px-4 py-4 text-left shadow-sm transition hover:border-emerald-200/80 hover:shadow-nordic"
+                                        className="group relative overflow-hidden rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-4 text-left transition hover:border-wa-accent/35"
                                     >
-                                        <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-200 group-hover:opacity-100 bg-gradient-to-r from-emerald-400/5 via-transparent to-teal-400/5" />
-                                        <div className="relative text-sm font-black tracking-tight text-stone-900">{l.label}</div>
-                                        <div className="relative mt-1 text-xs text-stone-500">
+                                        <div className="relative text-sm font-black tracking-tight text-wa-body">{l.label}</div>
+                                        <div className="relative mt-1 text-xs text-wa-muted">
                                             {l.href === '#' ? 'Mock' : l.href}
                                         </div>
                                     </button>
@@ -233,20 +232,20 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
                 </div>
             </div>
             {pwOpen ? (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/30 p-4 backdrop-blur-sm">
-                    <div className="w-full max-w-xl rounded-2xl border border-emerald-100/70 bg-emerald-50/50 p-6 shadow-nordic ring-1 ring-stone-900/5">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-wa-ink/75 p-4 backdrop-blur-[2px]">
+                    <div className="w-full max-w-xl rounded-sm border border-wa-accent/20 bg-wa-card p-6">
                         <div className="flex items-start justify-between gap-4">
                             <div>
-                                <div className="text-xs font-bold tracking-widest text-stone-500">PASSWORD</div>
-                                <div className="mt-1 text-lg font-black tracking-tight text-stone-900">パスワード変更</div>
-                                <div className="mt-1 text-xs text-stone-600">
+                                <div className="text-xs font-bold tracking-widest text-wa-muted">PASSWORD</div>
+                                <div className="mt-1 text-lg font-black tracking-tight text-wa-body">パスワード変更</div>
+                                <div className="mt-1 text-xs text-wa-muted">
                                     8文字以上・英大/小/数字を含めてください
                                 </div>
                             </div>
                             <button
                                 type="button"
                                 onClick={() => setPwOpen(false)}
-                                className="rounded-xl border border-stone-200 bg-white/90 px-4 py-2 text-xs font-black tracking-widest text-stone-700 shadow-sm hover:bg-stone-50"
+                                className="rounded-sm border border-wa-accent/25 bg-wa-ink px-4 py-2 text-xs font-black tracking-widest text-wa-body transition hover:border-wa-accent/40"
                             >
                                 CLOSE
                             </button>
@@ -279,7 +278,7 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
                                 <button
                                     type="button"
                                     onClick={() => setPwOpen(false)}
-                                    className="rounded-xl border border-stone-200 bg-white/90 px-4 py-2.5 text-sm font-black tracking-tight text-stone-700 shadow-sm hover:bg-stone-50"
+                                    className="rounded-sm border border-wa-accent/25 bg-wa-ink px-4 py-2.5 text-sm font-black tracking-tight text-wa-body transition hover:border-wa-accent/40"
                                 >
                                     CANCEL
                                 </button>

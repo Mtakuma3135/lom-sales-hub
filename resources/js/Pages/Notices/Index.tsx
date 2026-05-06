@@ -21,7 +21,7 @@ type NoticesProp = {
 };
 
 const btnGhost =
-    'w-full rounded-xl border border-stone-200 bg-white/90 px-3 py-3 text-sm font-black tracking-tight text-stone-700 shadow-sm transition-all duration-200 hover:border-emerald-200 hover:bg-emerald-50/40';
+    'w-full rounded-sm border border-wa-accent/25 bg-wa-ink px-3 py-3 text-sm font-black tracking-tight text-wa-body transition hover:border-wa-accent/40';
 
 export default function Index({ notices }: { notices?: NoticesProp }) {
     const { props } = usePage<PageProps>();
@@ -180,13 +180,13 @@ export default function Index({ notices }: { notices?: NoticesProp }) {
     };
 
     return (
-        <AuthenticatedLayout header={<h2 className="text-sm font-black tracking-tight">NOTICE / FEED</h2>}>
+        <AuthenticatedLayout header={<h2 className="text-sm font-black tracking-tight text-wa-body">NOTICE / FEED</h2>}>
             <Head title="周知事項" />
-            <div className="mx-auto max-w-6xl px-6 py-6 text-stone-800">
+            <div className="mx-auto max-w-6xl px-6 py-6 text-wa-body wa-body-track">
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                     <NeonCard>
-                        <div className="text-xs font-bold tracking-widest text-stone-500">FILTER</div>
-                        <div className="mt-2 text-sm font-black tracking-tight text-stone-900">絞り込み</div>
+                        <div className="text-xs font-bold tracking-widest text-wa-muted">FILTER</div>
+                        <div className="mt-2 text-sm font-black tracking-tight text-wa-body">絞り込み</div>
                         <div className="mt-4 space-y-3">
                             <input
                                 value={q}
@@ -211,7 +211,7 @@ export default function Index({ notices }: { notices?: NoticesProp }) {
                             >
                                 検索
                             </button>
-                            <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 px-3 py-3 text-xs text-emerald-900">
+                            <div className="rounded-sm border border-teal-500/25 bg-wa-ink px-3 py-3 text-xs text-teal-300/90">
                                 PIN は常に最上部に表示されます
                             </div>
                             <ActionButton className="w-full" disabled={!isAdmin} onClick={openCreate}>
@@ -222,19 +222,19 @@ export default function Index({ notices }: { notices?: NoticesProp }) {
                             </button>
 
                             {errorMessage ? (
-                                <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-800">
+                                <div className="rounded-sm border border-red-500/35 bg-wa-ink px-4 py-3 text-xs text-red-300">
                                     {errorMessage}
                                 </div>
                             ) : null}
                             {successMessage ? (
-                                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-900">
+                                <div className="rounded-sm border border-teal-500/35 bg-wa-ink px-4 py-3 text-xs text-teal-300">
                                     {successMessage}
                                 </div>
                             ) : null}
 
                             {(isCreating || selectedId !== null) && isAdmin ? (
-                                <div className="rounded-xl border border-stone-200 bg-white/70 p-4">
-                                    <div className="text-xs font-bold tracking-widest text-stone-500">
+                                <div className="rounded-sm border border-wa-accent/20 bg-wa-ink p-4">
+                                    <div className="text-xs font-bold tracking-widest text-wa-muted">
                                         {isCreating ? 'CREATE' : 'EDIT'}
                                     </div>
                                     <div className="mt-3 space-y-3">
@@ -252,12 +252,12 @@ export default function Index({ notices }: { notices?: NoticesProp }) {
                                             className="nordic-field min-h-[120px]"
                                         />
                                         <div className="flex flex-wrap items-center justify-between gap-2">
-                                            <label className="flex items-center gap-2 text-xs font-semibold text-stone-700">
+                                            <label className="flex items-center gap-2 text-xs font-semibold text-wa-body">
                                                 <input
                                                     type="checkbox"
                                                     checked={draftPinned}
                                                     onChange={(e) => setDraftPinned(e.target.checked)}
-                                                    className="rounded border-stone-300 text-emerald-600"
+                                                    className="rounded-sm border-wa-accent/35 text-wa-accent"
                                                 />
                                                 PIN
                                             </label>
@@ -282,7 +282,7 @@ export default function Index({ notices }: { notices?: NoticesProp }) {
                                                     setErrorMessage(null);
                                                     setSuccessMessage(null);
                                                 }}
-                                                className="rounded-xl border border-stone-200 bg-white/90 px-4 py-2 text-xs font-black tracking-widest text-stone-700 shadow-sm transition hover:bg-stone-50"
+                                                className="rounded-sm border border-wa-accent/25 bg-wa-card px-4 py-2 text-xs font-black tracking-widest text-wa-body transition hover:border-wa-accent/40"
                                             >
                                                 CLOSE
                                             </button>
@@ -337,10 +337,10 @@ export default function Index({ notices }: { notices?: NoticesProp }) {
                     <NeonCard className="lg:col-span-2" elevate={false}>
                         <div className="flex items-center justify-between">
                             <div>
-                                <div className="text-xs font-bold tracking-widest text-stone-500">FEED</div>
-                                <div className="mt-1 text-lg font-black tracking-tight text-stone-900">お知らせ</div>
+                                <div className="text-xs font-bold tracking-widest text-wa-muted">FEED</div>
+                                <div className="mt-1 text-lg font-black tracking-tight text-wa-body">お知らせ</div>
                             </div>
-                            <div className="text-xs font-semibold text-emerald-700">{list.length} 件</div>
+                            <div className="text-xs font-semibold text-wa-accent">{list.length} 件</div>
                         </div>
 
                         <div className="mt-4 space-y-3">
@@ -362,14 +362,14 @@ export default function Index({ notices }: { notices?: NoticesProp }) {
                                                 if (isAdmin) openEdit(n.id);
                                                 else openDetail(n.id);
                                             }}
-                                            className="rounded-xl border border-stone-200 bg-white/90 px-4 py-2 text-xs font-black tracking-tight text-stone-700 shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50/50"
+                                            className="rounded-sm border border-wa-accent/25 bg-wa-ink px-4 py-2 text-xs font-black tracking-tight text-wa-body transition hover:border-wa-accent/40 hover:bg-wa-card"
                                         >
                                             {isAdmin ? '編集' : '詳細'}
                                         </button>
                                         <button
                                             type="button"
                                             onClick={(e) => e.stopPropagation()}
-                                            className="rounded-xl border border-stone-200 bg-white/90 px-4 py-2 text-xs font-black tracking-tight text-stone-600 shadow-sm transition hover:bg-stone-50"
+                                            className="rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-2 text-xs font-black tracking-tight text-wa-muted transition hover:border-wa-accent/35 hover:text-wa-body"
                                         >
                                             既読
                                         </button>
@@ -391,7 +391,7 @@ export default function Index({ notices }: { notices?: NoticesProp }) {
                 }}
             >
                 {isDetailLoading ? (
-                    <div className="rounded-xl border border-stone-200 bg-stone-50 px-4 py-6 text-sm text-stone-500">
+                    <div className="rounded-sm border border-wa-accent/20 bg-wa-card px-4 py-6 text-sm text-wa-muted">
                         読み込み中…
                     </div>
                 ) : selectedNotice ? (
@@ -400,11 +400,11 @@ export default function Index({ notices }: { notices?: NoticesProp }) {
                             <div className="min-w-0">
                                 <div className="flex items-center gap-2">
                                     {selectedNotice.is_pinned ? <StatusBadge variant="primary" pulse>PIN</StatusBadge> : null}
-                                    <div className="truncate text-base font-black tracking-tight text-stone-900">
+                                    <div className="truncate text-base font-black tracking-tight text-wa-body">
                                         {selectedNotice.title}
                                     </div>
                                 </div>
-                                <div className="mt-2 text-xs text-stone-500">公開: {selectedNotice.published_at}</div>
+                                <div className="mt-2 text-xs text-wa-muted">公開: {selectedNotice.published_at}</div>
                             </div>
                             {isAdmin ? (
                                 <ActionButton
@@ -420,13 +420,13 @@ export default function Index({ notices }: { notices?: NoticesProp }) {
                             ) : null}
                         </div>
 
-                        <div className="rounded-xl border border-stone-200 bg-white/70 px-4 py-3">
-                            <div className="text-[11px] font-bold tracking-widest text-stone-500">BODY</div>
-                            <div className="mt-2 whitespace-pre-wrap text-sm text-stone-700">{selectedNotice.body}</div>
+                        <div className="rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-3">
+                            <div className="text-[11px] font-bold tracking-widest text-wa-muted">BODY</div>
+                            <div className="mt-2 whitespace-pre-wrap text-sm text-wa-body">{selectedNotice.body}</div>
                         </div>
                     </div>
                 ) : (
-                    <div className="rounded-xl border border-stone-200 bg-stone-50 px-4 py-6 text-sm text-stone-500">
+                    <div className="rounded-sm border border-wa-accent/20 bg-wa-card px-4 py-6 text-sm text-wa-muted">
                         データがありません
                     </div>
                 )}

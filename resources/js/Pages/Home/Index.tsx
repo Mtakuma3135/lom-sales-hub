@@ -4,8 +4,9 @@ import DashboardTileLink from '@/Components/DashboardTileLink';
 import NeonCard from '@/Components/NeonCard';
 import SlotNumber from '@/Components/UI/SlotNumber';
 import NoticeFeedItem from '@/Components/NoticeFeedItem';
+import BreakRunner from '@/Components/BreakRunner';
 import { PageProps } from '@/types';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 type NoticeRow = {
     id: number;
@@ -25,6 +26,24 @@ type LunchSlot = {
     capacity: number;
     reservations: LunchReservation[];
 };
+
+type LunchLaneStatus = {
+    lane: number;
+    current: {
+        user: { id: number; name: string } | null;
+        started_at?: string | null;
+        duration_minutes?: number;
+    };
+    next?: { user: { id: number; name: string } | null };
+};
+
+function laneRemainingMs(row: LunchLaneStatus, nowMs: number, totalMs: number): number | null {
+    const started = row.current?.started_at;
+    if (!started) return null;
+    const t0 = new Date(started).getTime();
+    if (!Number.isFinite(t0)) return null;
+    return Math.max(0, totalMs - (nowMs - t0));
+}
 
 type KpiPayload = {
     summary: { ok: number; ng: number; contract_rate: number };
@@ -80,6 +99,29 @@ export default function Index({
     const totalMs = 60 * 60 * 1000;
     const [timerState, setTimerState] = useState<{ startedAt: number; startTime: string } | null>(null);
     const [nowMs, setNowMs] = useState<number>(() => Date.now());
+    const [lanesFromApi, setLanesFromApi] = useState<LunchLaneStatus[]>([]);
+
+    const fetchLunchStatus = useCallback(async () => {
+        try {
+            const url = `${route('portal.api.lunch-breaks.status')}?date=${encodeURIComponent(today)}`;
+            const res = await fetch(url, {
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin',
+            });
+            if (!res.ok) return;
+            const json = (await res.json()) as { data?: { active?: LunchLaneStatus[] } };
+            const rows = (json as any)?.data?.active;
+            setLanesFromApi(Array.isArray(rows) ? (rows as LunchLaneStatus[]) : []);
+        } catch {
+            /* ignore */
+        }
+    }, [today]);
+
+    useEffect(() => {
+        void fetchLunchStatus();
+        const id = window.setInterval(() => void fetchLunchStatus(), 15000);
+        return () => window.clearInterval(id);
+    }, [fetchLunchStatus]);
 
     useEffect(() => {
         if (!userId) return;
@@ -120,9 +162,30 @@ export default function Index({
     }, [today, userId]);
 
     const elapsedMs = timerState ? Math.max(0, nowMs - timerState.startedAt) : 0;
-    const remainingMs = timerState ? Math.max(0, totalMs - elapsedMs) : totalMs;
-    const pct = timerState ? Math.min(100, Math.max(0, (elapsedMs / totalMs) * 100)) : 0;
-    const isWarning = timerState ? remainingMs <= 5 * 60 * 1000 && remainingMs > 0 : false;
+    const remainingLocal = timerState ? Math.max(0, totalMs - elapsedMs) : totalMs;
+
+    const minApiRemaining = useMemo(() => {
+        const vals = lanesFromApi
+            .map((r) => laneRemainingMs(r, nowMs, totalMs))
+            .filter((n): n is number => n !== null && n > 0 && n < totalMs);
+        return vals.length ? Math.min(...vals) : null;
+    }, [lanesFromApi, nowMs, totalMs]);
+
+    const remainingMs = minApiRemaining !== null ? minApiRemaining : remainingLocal;
+
+    const hasApiActive = minApiRemaining !== null;
+    const hasLocalActive = timerState !== null && remainingLocal > 0 && remainingLocal < totalMs;
+    const runnerActive = hasApiActive || hasLocalActive;
+
+    const isWarning = runnerActive ? remainingMs <= 5 * 60 * 1000 && remainingMs > 0 : false;
+
+    const activeNamesLabel = useMemo(() => {
+        const names = lanesFromApi
+            .map((r) => r.current?.user?.name)
+            .filter((n): n is string => !!n && n.length > 0);
+        if (names.length === 0) return null;
+        return `休憩中: ${names.join('、')}`;
+    }, [lanesFromApi]);
 
     const fmt = (ms: number) => {
         const s = Math.floor(ms / 1000);
@@ -142,48 +205,50 @@ export default function Index({
         <AuthenticatedLayout
             header={
                 <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold tracking-tight text-stone-800">ホーム</span>
+                    <span className="wa-body-track text-sm font-semibold text-wa-body">ホーム</span>
                 </div>
             }
         >
             <Head title={pageTitle} />
 
-            <div className="mx-auto max-w-6xl space-y-10 text-stone-700">
+            <div className="mx-auto max-w-6xl space-y-14 text-wa-body sm:space-y-16">
                 <NeonCard
                     elevate
                     role="button"
                     tabIndex={0}
                     onClick={() => go(route('mypage.index'))}
                     onKeyDown={onCardKeyDown(route('mypage.index'))}
-                    className="p-8 cursor-pointer"
+                    className="cursor-pointer p-10 sm:p-12"
                 >
-                    <div className="text-xs font-semibold uppercase tracking-widest text-stone-400">ようこそ</div>
-                    <div className="mt-3 text-2xl font-semibold tracking-tight text-stone-800">{userName}さん</div>
-                    <p className="mt-2 text-sm leading-relaxed text-stone-500">本日も無理のないペースで進めましょう。</p>
+                    <div className="text-xs font-semibold uppercase tracking-widest text-wa-muted">ようこそ</div>
+                    <div className="mt-4 text-2xl font-semibold tracking-tight text-wa-body">{userName}さん</div>
+                    <p className="mt-3 text-sm leading-relaxed text-wa-muted">本日も無理のないペースで進めましょう。</p>
                 </NeonCard>
 
-                <div className="grid grid-cols-1 gap-8 lg:grid-cols-3 lg:gap-10">
+                <div className="grid grid-cols-1 gap-12 lg:grid-cols-3 lg:gap-14">
                     <NeonCard
                         elevate
                         role="button"
                         tabIndex={0}
                         onClick={() => go(route('notices.index'))}
                         onKeyDown={onCardKeyDown(route('notices.index'))}
-                        className="p-8 lg:col-span-2 cursor-pointer"
+                        className="cursor-pointer p-10 sm:p-12 lg:col-span-2"
                     >
                         <div className="flex items-center justify-between gap-4">
                             <div>
-                                <div className="text-xs font-semibold uppercase tracking-widest text-stone-400">周知</div>
-                                <div className="mt-2 text-lg font-semibold tracking-tight text-stone-800">新着のお知らせ</div>
+                                <div className="text-xs font-semibold uppercase tracking-widest text-wa-muted">周知</div>
+                                <div className="mt-3 text-lg font-semibold tracking-tight text-wa-body">
+                                    新着のお知らせ
+                                </div>
                             </div>
-                            <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-800 ring-1 ring-emerald-100">
+                            <span className="rounded-sm border border-wa-accent/35 bg-wa-ink px-3 py-1 text-xs font-medium text-wa-accent">
                                 最新 {noticeRows.length} 件
                             </span>
                         </div>
 
-                        <div className="mt-8 space-y-4">
+                        <div className="mt-10 space-y-5">
                             {noticeRows.length === 0 ? (
-                                <div className="text-sm text-stone-500">表示できるお知らせはありません。</div>
+                                <div className="text-sm text-wa-muted">表示できるお知らせはありません。</div>
                             ) : (
                                 noticeRows.map((n) => (
                                     <div key={n.id} onClick={(e) => e.stopPropagation()}>
@@ -206,23 +271,23 @@ export default function Index({
                         tabIndex={0}
                         onClick={() => go(route('sales.summary'))}
                         onKeyDown={onCardKeyDown(route('sales.summary'))}
-                        className="p-8 cursor-pointer"
+                        className="cursor-pointer p-10 sm:p-12"
                     >
                         <div className="flex items-center justify-between gap-2">
                             <div>
-                                <div className="text-xs font-semibold uppercase tracking-widest text-stone-400">KPI</div>
-                                <div className="mt-2 text-lg font-semibold tracking-tight text-stone-800">今月</div>
+                                <div className="text-xs font-semibold uppercase tracking-widest text-wa-muted">KPI</div>
+                                <div className="mt-3 text-lg font-semibold tracking-tight text-wa-body">今月</div>
                             </div>
                         </div>
 
-                        <div className="mt-8 grid grid-cols-1 gap-4">
+                        <div className="mt-10 grid grid-cols-1 gap-6">
                             {[
                                 {
                                     label: '契約率',
                                     value: String(summary.contract_rate),
                                     suffix: '%',
                                     sub: 'OK / (OK + NG)',
-                                    valClass: 'text-stone-800',
+                                    valClass: 'text-wa-body',
                                     href: `${route('sales.summary')}?tab=summary`,
                                 },
                                 {
@@ -230,7 +295,7 @@ export default function Index({
                                     value: String(summary.ok),
                                     suffix: '',
                                     sub: '今月合計',
-                                    valClass: 'text-emerald-700',
+                                    valClass: 'text-teal-300',
                                     href: `${route('sales.records')}?status=ok`,
                                 },
                                 {
@@ -238,7 +303,7 @@ export default function Index({
                                     value: String(summary.ng),
                                     suffix: '',
                                     sub: '今月合計',
-                                    valClass: 'text-red-700',
+                                    valClass: 'text-red-400',
                                     href: `${route('sales.records')}?status=ng`,
                                 },
                             ].map((k) => (
@@ -256,16 +321,16 @@ export default function Index({
                                         e.stopPropagation();
                                         go(k.href);
                                     }}
-                                    className="rounded-xl border border-stone-100 bg-stone-50/80 px-4 py-4 transition hover:border-emerald-200 hover:bg-white"
+                                    className="border border-wa-accent/20 bg-wa-ink px-5 py-5 transition hover:border-wa-accent/35"
                                 >
-                                    <div className="text-xs font-semibold uppercase tracking-wide text-stone-400">
+                                    <div className="text-xs font-semibold uppercase tracking-wide text-wa-muted">
                                         {k.label}
                                     </div>
-                                    <div className={`mt-1 text-2xl font-semibold tabular-nums ${k.valClass}`}>
+                                    <div className={`wa-nums mt-2 text-2xl font-semibold tabular-nums ${k.valClass}`}>
                                         <SlotNumber value={k.value} />
                                         {k.suffix}
                                     </div>
-                                    <div className="mt-1 text-xs text-stone-500">{k.sub}</div>
+                                    <div className="mt-2 text-xs text-wa-muted">{k.sub}</div>
                                 </div>
                             ))}
                         </div>
@@ -278,82 +343,85 @@ export default function Index({
                     tabIndex={0}
                     onClick={() => go(route('lunch-breaks.index'))}
                     onKeyDown={onCardKeyDown(route('lunch-breaks.index'))}
-                    className="p-8 cursor-pointer"
+                    className="cursor-pointer p-10 sm:p-12"
                 >
                     <div className="flex flex-wrap items-center justify-between gap-4">
                         <div>
-                            <div className="text-xs font-semibold uppercase tracking-widest text-stone-400">昼休憩</div>
-                            <div className="mt-2 text-lg font-semibold tracking-tight text-stone-800">本日の予定</div>
+                            <div className="text-xs font-semibold uppercase tracking-widest text-wa-muted">昼休憩</div>
+                            <div className="mt-3 text-lg font-semibold tracking-tight text-wa-body">本日の予定</div>
                         </div>
                         {lunchBreaks?.meta?.date ? (
-                            <span className="text-xs font-medium text-stone-500">{lunchBreaks.meta.date}</span>
+                            <span className="text-xs font-medium text-wa-muted">{lunchBreaks.meta.date}</span>
                         ) : null}
                     </div>
 
-                    <div className="mt-6 rounded-xl border border-stone-100 bg-stone-50/80 p-4">
-                        <div className="flex items-center justify-between gap-3">
-                            <div className="text-xs font-semibold uppercase tracking-widest text-stone-400">
-                                60分タイマー（人が走る）
+                    <div className="mt-8 space-y-5">
+                        <BreakRunner
+                            active={runnerActive}
+                            remainingMs={remainingMs}
+                            totalMs={totalMs}
+                            label={
+                                activeNamesLabel ??
+                                (timerState
+                                    ? `ローカルタイマー（開始 ${timerState.startTime}）`
+                                    : '休憩が始まるとランナーが走ります')
+                            }
+                        />
+                        <div className="border border-wa-accent/20 bg-wa-ink p-5">
+                            <div className="flex items-center justify-between gap-3">
+                                <div className="text-xs font-semibold uppercase tracking-widest text-wa-muted">
+                                    60分プログレス
+                                </div>
+                                <div
+                                    className={
+                                        'text-xs font-semibold ' +
+                                        (isWarning ? 'timer-breath text-red-400' : 'text-wa-muted')
+                                    }
+                                >
+                                    {runnerActive ? `残り ${fmt(remainingMs)}` : '未開始'}
+                                </div>
                             </div>
-                            <div
-                                className={
-                                    'text-xs font-semibold ' + (isWarning ? 'timer-breath text-red-600' : 'text-stone-600')
-                                }
-                            >
-                                {timerState ? `残り ${fmt(remainingMs)}` : '未開始'}
-                            </div>
-                        </div>
-                        <div className="mt-3 h-3 w-full overflow-hidden rounded-full bg-stone-200">
-                            <div
-                                className={
-                                    'h-full transition-[width] duration-500 ease-out ' +
-                                    (isWarning ? 'bg-red-500' : 'bg-emerald-500')
-                                }
-                                style={{ width: `${timerState ? pct : 0}%` }}
-                            />
-                        </div>
-                        <div className="relative mt-3 h-6">
-                            <div
-                                className={
-                                    'absolute top-0 -translate-x-1/2 transition-[left] duration-500 ease-out ' +
-                                    (isWarning
-                                        ? 'text-red-600 drop-shadow-[0_0_10px_rgba(239,68,68,0.45)] timer-breath'
-                                        : 'text-emerald-700 drop-shadow-[0_0_10px_rgba(16,185,129,0.35)]')
-                                }
-                                style={{ left: `${timerState ? pct : 0}%` }}
-                                aria-hidden
-                            >
-                                🏃
-                            </div>
-                            <div className="text-[11px] text-stone-500">
-                                {timerState ? `開始: ${timerState.startTime}` : '昼休憩ページで開始するとここでも表示されます'}
+                            <div className="mt-4 h-2 w-full bg-wa-subtle">
+                                <div
+                                    className={
+                                        'h-full transition-[width] duration-500 ease-out ' +
+                                        (isWarning ? 'bg-red-500' : 'bg-wa-accent')
+                                    }
+                                    style={{
+                                        width: `${
+                                            runnerActive
+                                                ? Math.min(100, Math.max(0, ((totalMs - remainingMs) / totalMs) * 100))
+                                                : 0
+                                        }%`,
+                                    }}
+                                />
                             </div>
                         </div>
                     </div>
 
-                    <div className="mt-8 overflow-x-auto">
+                    <div className="mt-10 overflow-x-auto">
                         <table className="min-w-full border-separate border-spacing-0 text-sm">
                             <thead>
-                                <tr className="text-left text-xs font-semibold uppercase tracking-wider text-stone-500">
-                                    <th className="border-b border-stone-200 px-4 py-3">時間</th>
-                                    <th className="border-b border-stone-200 px-4 py-3">休憩者</th>
+                                <tr className="text-left text-xs font-semibold uppercase tracking-wider text-wa-muted">
+                                    <th className="border-b border-wa-accent/20 px-4 py-3">時間</th>
+                                    <th className="border-b border-wa-accent/20 px-4 py-3">休憩者</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {lunchTableRows.length === 0 ? (
                                     <tr>
-                                        <td colSpan={2} className="border-b border-stone-100 px-4 py-4 text-stone-500">
+                                        <td colSpan={2} className="border-b border-wa-accent/15 px-4 py-4 text-wa-muted">
                                             本日の枠はありません。
                                         </td>
                                     </tr>
                                 ) : (
                                     lunchTableRows.map((r) => (
-                                        <tr key={r.time} className="transition-colors hover:bg-stone-50">
-                                            <td className="border-b border-stone-100 px-4 py-4 font-medium text-stone-800">
+                                        <tr key={r.time} className="transition-colors hover:bg-wa-ink/80">
+                                            <td className="border-b border-wa-accent/15 px-4 py-4 font-medium text-wa-body">
                                                 {r.time}
                                             </td>
-                                            <td className="border-b border-stone-100 px-4 py-4">
-                                                <span className="inline-flex rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-stone-700 ring-1 ring-stone-200/80">
+                                            <td className="border-b border-wa-accent/15 px-4 py-4">
+                                                <span className="inline-flex rounded-sm border border-wa-accent/25 bg-wa-card px-3 py-1 text-xs font-semibold text-wa-muted">
                                                     {r.name}
                                                 </span>
                                             </td>
@@ -365,10 +433,10 @@ export default function Index({
                     </div>
                 </NeonCard>
 
-                <NeonCard elevate={false} className="p-8">
-                    <div className="text-xs font-semibold uppercase tracking-widest text-stone-400">ショートカット</div>
-                    <div className="mt-2 text-sm font-semibold text-stone-800">よく使う画面</div>
-                    <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                <NeonCard elevate={false} className="p-10 sm:p-12">
+                    <div className="text-xs font-semibold uppercase tracking-widest text-wa-muted">ショートカット</div>
+                    <div className="mt-3 text-sm font-semibold text-wa-body">よく使う画面</div>
+                    <div className="mt-10 grid grid-cols-1 gap-9 sm:grid-cols-2 lg:grid-cols-4">
                         <DashboardTileLink
                             title="社内情報"
                             description="周知事項・お知らせ"

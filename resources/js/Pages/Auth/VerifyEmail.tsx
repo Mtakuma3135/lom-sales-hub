@@ -18,7 +18,7 @@ export default function VerifyEmail({ status }: { status?: string }) {
         <GuestLayout>
             <Head title="メール認証" />
 
-            <div className="mb-6 text-slate-700 text-center text-sm">
+            <div className="mb-6 text-center text-sm leading-relaxed text-wa-muted">
                 ご登録ありがとうございます。ご利用を開始する前に、ご登録のメールアドレス宛にお送りした認証メール内のリンクをクリックして、メール認証を完了してください。<br />
                 <span className="inline-block mt-2">
                     メールが届かない場合は、下記ボタンより再送できます。
@@ -26,7 +26,7 @@ export default function VerifyEmail({ status }: { status?: string }) {
             </div>
 
             {status === 'verification-link-sent' && (
-                <div className="mb-4 text-sm font-medium text-green-600 text-center">
+                <div className="mb-4 border border-teal-500/35 bg-wa-ink px-4 py-3 text-center text-sm font-medium text-teal-300">
                     新しい認証用リンクを、ご登録のメールアドレスへ再送しました。
                 </div>
             )}
@@ -43,7 +43,7 @@ export default function VerifyEmail({ status }: { status?: string }) {
                 <form method="post" action={route('logout')}>
                     <PrimaryButton
                         type="submit"
-                        className="bg-gray-200 text-gray-700 hover:bg-gray-300"
+                        className="border border-wa-accent/25 bg-wa-ink text-wa-body hover:border-wa-accent/45 hover:bg-wa-card"
                     >
                         ログアウト
                     </PrimaryButton>
