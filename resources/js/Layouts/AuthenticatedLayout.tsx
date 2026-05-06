@@ -74,18 +74,18 @@ export default function AuthenticatedLayout({
 
     return (
         <div className="min-h-screen bg-wa-ink text-wa-body wa-body-track">
-            <div className="flex min-h-screen gap-9 px-6 py-9 md:px-12 md:py-12">
+            <div className="flex min-h-screen gap-8 px-6 py-8 md:px-10 md:py-10">
                 <aside className="flex w-72 shrink-0 flex-col">
-                    <div className="flex h-full flex-col rounded-sm border border-wa-accent/20 bg-wa-card p-5">
-                        <div className="rounded-sm border border-wa-accent/20 bg-wa-ink px-5 py-5">
+                    <div className="flex h-full flex-col rounded-2xl border border-wa-accent/15 bg-wa-card p-5 shadow-nordic">
+                        <div className="rounded-2xl border border-wa-accent/15 bg-wa-ink px-5 py-5">
                             <div className="flex items-center justify-between gap-3">
                                 <div>
-                                    <div className="text-lg font-semibold tracking-tight text-wa-body">
+                                    <div className="text-xl font-semibold tracking-tight text-wa-body">
                                         LOM<span className="text-wa-accent">.</span>Hub
                                     </div>
                                     <div className="mt-1 text-xs font-medium text-wa-muted">Sales Operating System</div>
                                 </div>
-                                <div className="h-9 w-9 rounded-sm border border-wa-accent/30 bg-wa-subtle" />
+                                <div className="h-9 w-9 rounded-xl border border-wa-accent/25 bg-wa-subtle" />
                             </div>
 
                             <div className="mt-5 flex items-center justify-between gap-2">
@@ -95,7 +95,7 @@ export default function AuthenticatedLayout({
                                 </div>
                                 <span
                                     className={
-                                        'shrink-0 rounded-sm border px-2.5 py-1 text-[11px] font-semibold ' +
+                                        'shrink-0 rounded-xl border px-2.5 py-1 text-[11px] font-semibold ' +
                                         (safeUser.role === 'admin'
                                             ? 'border-amber-500/35 bg-wa-ink text-amber-300'
                                             : 'border-wa-accent/30 bg-wa-ink text-wa-accent')
@@ -122,18 +122,23 @@ export default function AuthenticatedLayout({
                                             key={item.route}
                                             href={item.href as string}
                                             className={
-                                                'block rounded-sm px-3 py-3 text-sm font-medium transition-colors ' +
+                                                'group relative block rounded-xl px-4 py-3 text-sm font-medium transition-colors ' +
                                                 (isNavActive(item)
-                                                    ? 'border border-wa-accent/35 bg-wa-ink text-wa-accent'
-                                                    : 'border border-transparent text-wa-muted hover:border-wa-accent/20 hover:bg-wa-ink hover:text-wa-body')
+                                                    ? 'border border-wa-accent/30 bg-wa-ink text-wa-body shadow-[inset_0_0_0_1px_rgba(192,132,87,0.12)]'
+                                                    : 'border border-transparent text-wa-muted hover:border-wa-accent/15 hover:bg-wa-ink hover:text-wa-body')
                                             }
                                         >
+                                            {isNavActive(item) ? (
+                                                <span className="absolute left-2 top-1/2 h-6 w-1 -translate-y-1/2 rounded-full bg-wa-accent" />
+                                            ) : (
+                                                <span className="absolute left-2 top-1/2 h-6 w-1 -translate-y-1/2 rounded-full bg-wa-accent/0 transition-colors group-hover:bg-wa-accent/35" />
+                                            )}
                                             {item.label}
                                         </Link>
                                     ) : (
                                         <div
                                             key={item.route}
-                                            className="block rounded-sm px-3 py-3 text-sm font-medium text-wa-muted/50"
+                                            className="block rounded-xl px-4 py-3 text-sm font-medium text-wa-muted/50"
                                             title={`Route not found: ${item.route}`}
                                         >
                                             {item.label}
@@ -148,14 +153,14 @@ export default function AuthenticatedLayout({
                                     href={route('logout')}
                                     method="post"
                                     as="button"
-                                    className="w-full rounded-sm border border-wa-accent/25 bg-wa-ink px-5 py-3.5 text-left text-sm font-semibold text-wa-body transition hover:border-wa-accent/40"
+                                    className="w-full rounded-xl border border-wa-accent/20 bg-wa-ink px-5 py-3.5 text-left text-sm font-semibold text-wa-body transition hover:border-wa-accent/35"
                                 >
                                     ログアウト
                                 </Link>
                             ) : (
                                 <Link
                                     href={route('login')}
-                                    className="block w-full rounded-sm border border-wa-accent/25 bg-wa-ink px-5 py-3.5 text-left text-sm font-semibold text-wa-body transition hover:border-wa-accent/40"
+                                    className="block w-full rounded-xl border border-wa-accent/20 bg-wa-ink px-5 py-3.5 text-left text-sm font-semibold text-wa-body transition hover:border-wa-accent/35"
                                 >
                                     ログイン
                                 </Link>
@@ -165,11 +170,11 @@ export default function AuthenticatedLayout({
                 </aside>
 
                 <main className="min-w-0 flex-1">
-                    <div className="rounded-sm border border-wa-accent/20 bg-wa-card">
-                        <div className="flex items-center justify-between gap-4 border-b border-wa-accent/20 px-8 py-7">
+                    <div className="rounded-2xl border border-wa-accent/15 bg-wa-card shadow-nordic">
+                        <div className="flex items-center justify-between gap-4 border-b border-wa-accent/15 px-8 py-7">
                             <div className="min-w-0">
                                 <div className="text-xs font-semibold uppercase tracking-widest text-wa-muted">現在の画面</div>
-                                <div className="mt-2 truncate text-base font-semibold text-wa-body">{header ?? '—'}</div>
+                                <div className="mt-2 truncate text-lg font-semibold tracking-tight text-wa-body">{header ?? '—'}</div>
                             </div>
                             <div className="hidden items-center gap-3 sm:flex">
                                 <div className="h-2 w-2 rounded-full bg-wa-accent/80" />

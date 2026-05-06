@@ -2,6 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router } from '@inertiajs/react';
 import { useState } from 'react';
 import NeonCard from '@/Components/NeonCard';
+import SectionHeader from '@/Components/UI/SectionHeader';
 
 type CredentialRow = {
     id: number;
@@ -35,9 +36,9 @@ function maskSecret(value: string): string {
 }
 
 const btnPrimary =
-    'rounded-sm border border-wa-accent/45 bg-wa-accent px-3 py-3 text-sm font-black tracking-tight text-wa-ink transition hover:bg-wa-accent/90';
+    'rounded-xl border border-wa-accent/40 bg-wa-accent px-3 py-3 text-sm font-black tracking-tight text-wa-ink transition hover:bg-wa-accent/90';
 const btnGhost =
-    'rounded-sm border border-wa-accent/25 bg-wa-ink px-3 py-3 text-sm font-black tracking-tight text-wa-body transition hover:border-wa-accent/40';
+    'rounded-xl border border-wa-accent/20 bg-wa-ink px-3 py-3 text-sm font-black tracking-tight text-wa-body transition hover:border-wa-accent/35';
 
 export default function Index({ mypage }: { mypage?: MypagePayload }) {
     const profile =
@@ -78,12 +79,11 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
             header={<h2 className="text-sm font-black tracking-tight text-wa-body">MY / CONSOLE</h2>}
         >
             <Head title="マイページ" />
-            <div className="mx-auto max-w-6xl px-6 py-6 text-wa-body wa-body-track">
+            <div className="mx-auto max-w-6xl text-wa-body wa-body-track">
                 {/* ── Top: Profile + Attendance ── */}
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                     <NeonCard>
-                        <div className="text-xs font-bold tracking-widest text-wa-muted">PROFILE</div>
-                        <div className="mt-2 text-sm font-black tracking-tight text-wa-body">ユーザー</div>
+                        <SectionHeader eyebrow="PROFILE" title="ユーザー" />
                         <div className="mt-4 space-y-2">
                             <div className="text-2xl font-black tracking-tighter text-wa-body">
                                 {profile.name}
@@ -132,14 +132,11 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
 
                     <div className="lg:col-span-2">
                         <NeonCard elevate={false}>
-                            <div className="text-xs font-bold tracking-widest text-wa-muted">ATTENDANCE</div>
-                            <div className="mt-2 text-sm font-black tracking-tight text-wa-body">
-                                勤怠エラー
-                            </div>
+                            <SectionHeader eyebrow="ATTENDANCE" title="勤怠エラー" />
 
                             {attendance ? (
                                 attendance.has_error ? (
-                                    <div className="mt-4 rounded-sm border border-red-500/35 bg-red-950/40 p-4">
+                                    <div className="mt-4 rounded-xl border border-red-500/30 bg-red-950/35 p-4">
                                         <div className="text-sm font-black tracking-tight text-red-200">
                                             エラーあり
                                         </div>
@@ -150,7 +147,7 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
                                             {attendance.error_dates.map((d) => (
                                                 <span
                                                     key={d}
-                                                    className="inline-flex items-center rounded-sm border border-red-500/35 bg-red-950/50 px-3 py-1 text-xs font-black tracking-tight text-red-200"
+                                                    className="inline-flex items-center rounded-full border border-red-500/30 bg-red-950/45 px-3 py-1 text-xs font-black tracking-tight text-red-200"
                                                 >
                                                     {d}
                                                 </span>
@@ -158,7 +155,7 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="mt-4 rounded-sm border border-teal-500/35 bg-wa-ink p-4">
+                                    <div className="mt-4 rounded-xl border border-teal-500/30 bg-wa-ink p-4">
                                         <div className="text-sm font-black tracking-tight text-teal-200">
                                             エラーなし
                                         </div>
@@ -168,7 +165,7 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
                                     </div>
                                 )
                             ) : (
-                                <div className="mt-4 rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-4 text-sm text-wa-muted">
+                                <div className="mt-4 rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-4 text-sm text-wa-muted">
                                     （未取得）
                                 </div>
                             )}
@@ -215,10 +212,10 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
                                     }}
                                     className={
                                         kotLoading
-                                            ? 'rounded-sm px-4 py-2 text-xs font-black tracking-widest bg-wa-ink text-wa-muted ring-1 ring-wa-accent/20'
+                                            ? 'rounded-xl px-4 py-2 text-xs font-black tracking-widest bg-wa-ink text-wa-muted ring-1 ring-wa-accent/15'
                                             : kotPending
-                                              ? 'rounded-sm border border-wa-accent/25 bg-wa-card px-4 py-2 text-xs font-black tracking-widest text-wa-body transition hover:border-wa-accent/40'
-                                              : 'rounded-sm border border-wa-accent/45 bg-wa-accent px-4 py-2 text-xs font-black tracking-widest text-wa-ink transition hover:bg-wa-accent/90' +
+                                              ? 'rounded-xl border border-wa-accent/20 bg-wa-card px-4 py-2 text-xs font-black tracking-widest text-wa-body transition hover:border-wa-accent/35'
+                                              : 'rounded-xl border border-wa-accent/40 bg-wa-accent px-4 py-2 text-xs font-black tracking-widest text-wa-ink transition hover:bg-wa-accent/90' +
                                                 (kotPulse ? ' animate-pulse' : '')
                                     }
                                 >
@@ -237,24 +234,14 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
                 {/* ── Credentials Section ── */}
                 <div className="mt-6">
                     <NeonCard elevate={false}>
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <div className="text-xs font-bold tracking-widest text-wa-muted">
-                                    CREDENTIALS
-                                </div>
-                                <div className="mt-1 text-sm font-black tracking-tight text-wa-body">
-                                    ID / パス管理
-                                </div>
-                            </div>
-                            <div className="text-[10px] text-wa-muted">
-                                {credentials.length > 0
-                                    ? `${credentials.length} 件`
-                                    : ''}
-                            </div>
-                        </div>
+                        <SectionHeader
+                            eyebrow="CREDENTIALS"
+                            title="ID / パス管理"
+                            meta={credentials.length > 0 ? `${credentials.length} 件` : ''}
+                        />
 
                         {credentials.length === 0 ? (
-                            <div className="mt-4 rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-8 text-center text-sm text-wa-muted">
+                            <div className="mt-4 rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-8 text-center text-sm text-wa-muted">
                                 登録されている情報はありません
                             </div>
                         ) : (
@@ -271,7 +258,7 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
                                     return (
                                         <div
                                             key={c.id}
-                                            className="rounded-sm border border-wa-accent/20 bg-wa-card p-4"
+                                            className="rounded-xl border border-wa-accent/15 bg-wa-card p-4 shadow-nordic"
                                         >
                                             <div className="text-xs font-black tracking-tight text-wa-body">
                                                 {c.service_name}
@@ -295,7 +282,7 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
                                                                         `login-${c.id}`,
                                                                     )
                                                                 }
-                                                                className="shrink-0 rounded-sm border border-wa-accent/20 px-1.5 py-0.5 text-[10px] text-wa-muted transition hover:border-wa-accent/40 hover:text-wa-body"
+                                                                className="shrink-0 rounded-lg border border-wa-accent/15 px-2 py-1 text-[10px] text-wa-muted transition hover:border-wa-accent/30 hover:text-wa-body"
                                                             >
                                                                 {copiedId === `login-${c.id}`
                                                                     ? 'OK'
@@ -313,7 +300,7 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
                                                         {c.is_password && (
                                                             <button
                                                                 type="button"
-                                                                className="select-none rounded-sm border border-wa-accent/20 px-1.5 py-0.5 text-[10px] text-wa-muted transition hover:border-wa-accent/40 hover:text-wa-body"
+                                                                className="select-none rounded-lg border border-wa-accent/15 px-2 py-1 text-[10px] text-wa-muted transition hover:border-wa-accent/30 hover:text-wa-body"
                                                                 onMouseDown={() =>
                                                                     setPressingReveal((m) => ({
                                                                         ...m,
@@ -356,7 +343,7 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
                                                                         `pw-${c.id}`,
                                                                     )
                                                                 }
-                                                                className="shrink-0 rounded-sm border border-wa-accent/20 px-1.5 py-0.5 text-[10px] text-wa-muted transition hover:border-wa-accent/40 hover:text-wa-body"
+                                                                className="shrink-0 rounded-lg border border-wa-accent/15 px-2 py-1 text-[10px] text-wa-muted transition hover:border-wa-accent/30 hover:text-wa-body"
                                                             >
                                                                 {copiedId === `pw-${c.id}`
                                                                     ? 'OK'
@@ -382,7 +369,7 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
             {/* Password change modal */}
             {pwOpen ? (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-wa-ink/75 p-4 backdrop-blur-[2px]">
-                    <div className="w-full max-w-xl rounded-sm border border-wa-accent/20 bg-wa-card p-6">
+                    <div className="w-full max-w-xl rounded-2xl border border-wa-accent/15 bg-wa-card p-6 shadow-nordic">
                         <div className="flex items-start justify-between gap-4">
                             <div>
                                 <div className="text-xs font-bold tracking-widest text-wa-muted">
@@ -398,7 +385,7 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
                             <button
                                 type="button"
                                 onClick={() => setPwOpen(false)}
-                                className="rounded-sm border border-wa-accent/25 bg-wa-ink px-4 py-2 text-xs font-black tracking-widest text-wa-body transition hover:border-wa-accent/40"
+                                className="rounded-xl border border-wa-accent/20 bg-wa-ink px-4 py-2 text-xs font-black tracking-widest text-wa-body transition hover:border-wa-accent/35"
                             >
                                 CLOSE
                             </button>
@@ -431,7 +418,7 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
                                 <button
                                     type="button"
                                     onClick={() => setPwOpen(false)}
-                                    className="rounded-sm border border-wa-accent/25 bg-wa-ink px-4 py-2.5 text-sm font-black tracking-tight text-wa-body transition hover:border-wa-accent/40"
+                                    className="rounded-xl border border-wa-accent/20 bg-wa-ink px-4 py-2.5 text-sm font-black tracking-tight text-wa-body transition hover:border-wa-accent/35"
                                 >
                                     CANCEL
                                 </button>

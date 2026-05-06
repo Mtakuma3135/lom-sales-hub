@@ -67,13 +67,13 @@ const statusLabel = (s: string): string => {
 };
 
 const sectionTab = (active: boolean) =>
-    'rounded-sm px-5 py-2.5 text-xs font-black tracking-widest transition-all ' +
+    'rounded-xl px-5 py-2.5 text-xs font-black tracking-widest transition-all ' +
     (active
         ? 'border border-wa-accent/45 bg-wa-accent text-wa-ink'
         : 'border border-wa-accent/20 bg-wa-ink text-wa-muted hover:border-wa-accent/35 hover:text-wa-body');
 
 const subTab = (active: boolean) =>
-    'rounded-sm px-4 py-2 text-xs font-black tracking-widest transition-all ' +
+    'rounded-xl px-4 py-2 text-xs font-black tracking-widest transition-all ' +
     (active
         ? 'border border-wa-accent/35 bg-wa-subtle text-wa-body'
         : 'border border-wa-accent/15 bg-wa-ink text-wa-muted hover:border-wa-accent/25 hover:text-wa-body');
@@ -166,7 +166,7 @@ export default function Index({
     return (
         <AuthenticatedLayout header={<h2 className="text-sm font-black tracking-tight text-wa-body">TASK / MANAGEMENT</h2>}>
             <Head title="タスク管理" />
-            <div className="mx-auto max-w-6xl px-6 py-6 text-wa-body wa-body-track space-y-6">
+            <div className="mx-auto max-w-6xl text-wa-body wa-body-track space-y-6">
                 {/* Section Tabs */}
                 <div className="flex items-center gap-3">
                     <button type="button" onClick={() => setSection('requests')} className={sectionTab(section === 'requests')}>
@@ -228,7 +228,7 @@ export default function Index({
 
                             <div className="mt-5 space-y-3">
                                 {(reqTab === 'done' ? doneItems : activeItems).length === 0 ? (
-                                    <div className="rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-6 text-center text-sm text-wa-muted">
+                                    <div className="rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-6 text-center text-sm text-wa-muted">
                                         {reqTab === 'done' ? '完了した依頼はありません' : '未対応の依頼はありません'}
                                     </div>
                                 ) : (
@@ -236,7 +236,7 @@ export default function Index({
                                         <div
                                             key={t.id}
                                             onClick={() => setSelectedTaskId(t.id)}
-                                            className="cursor-pointer rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-4 transition hover:border-wa-accent/35"
+                                            className="cursor-pointer rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-4 transition hover:border-wa-accent/30"
                                         >
                                             <div className="flex items-start justify-between gap-3">
                                                 <div className="min-w-0 flex-1">
@@ -286,9 +286,9 @@ export default function Index({
                                     </span>
                                 </div>
                             </div>
-                            <div className="mt-4 h-2 w-full rounded-sm bg-wa-ink">
+                            <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-wa-ink">
                                 <div
-                                    className={`h-full rounded-sm transition-[width] duration-500 ease-out ${dailyProgress === 100 ? 'bg-teal-500' : 'bg-wa-accent'}`}
+                                    className={`h-full rounded-full transition-[width] duration-500 ease-out ${dailyProgress === 100 ? 'bg-teal-500' : 'bg-wa-accent'}`}
                                     style={{ width: `${dailyProgress}%` }}
                                 />
                             </div>
@@ -305,7 +305,7 @@ export default function Index({
                                     <button
                                         type="button"
                                         onClick={() => setEditMode(!editMode)}
-                                        className={`rounded-sm border px-3 py-1.5 text-xs font-black tracking-tight transition ${
+                                        className={`rounded-xl border px-3 py-1.5 text-xs font-black tracking-tight transition ${
                                             editMode
                                                 ? 'border-wa-accent/45 bg-wa-accent text-wa-ink'
                                                 : 'border-wa-accent/25 bg-wa-subtle text-wa-body hover:border-wa-accent/40'
@@ -317,14 +317,14 @@ export default function Index({
 
                                 <div className="mt-5 space-y-2">
                                     {dailyItems.length === 0 ? (
-                                        <div className="rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-6 text-center text-sm text-wa-muted">
+                                        <div className="rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-6 text-center text-sm text-wa-muted">
                                             タスクが登録されていません。「編集」から追加してください。
                                         </div>
                                     ) : (
                                         dailyItems.map((d) => (
                                             <div
                                                 key={d.id}
-                                                className={`group flex items-center gap-3 rounded-sm border px-4 py-3 transition ${
+                                                className={`group flex items-center gap-3 rounded-xl border px-4 py-3 transition ${
                                                     d.status === 'completed'
                                                         ? 'border-teal-500/20 bg-wa-ink'
                                                         : d.status === 'in_progress'
@@ -338,7 +338,7 @@ export default function Index({
                                                         const next = d.status === 'completed' ? 'pending' : 'completed';
                                                         onDailyStatusChange(d.id, next);
                                                     }}
-                                                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-sm border transition ${
+                                                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-lg border transition ${
                                                         d.status === 'completed'
                                                             ? 'border-teal-500/50 bg-teal-500/20 text-teal-300'
                                                             : 'border-wa-accent/30 bg-wa-ink text-transparent hover:border-wa-accent/50'
@@ -367,7 +367,7 @@ export default function Index({
                                                     <button
                                                         type="button"
                                                         onClick={() => onRemoveTemplate(d.id)}
-                                                        className="rounded-sm border border-red-500/25 bg-wa-ink px-2 py-1 text-[11px] font-bold text-red-400 transition hover:border-red-500/40"
+                                                        className="rounded-lg border border-red-500/25 bg-wa-ink px-2 py-1 text-[11px] font-bold text-red-400 transition hover:border-red-500/40"
                                                     >
                                                         削除
                                                     </button>
@@ -399,7 +399,7 @@ export default function Index({
                                             type="button"
                                             onClick={onAddTemplate}
                                             disabled={!newTaskTitle.trim()}
-                                            className="shrink-0 rounded-sm border border-wa-accent/45 bg-wa-accent px-4 py-3 text-xs font-black text-wa-ink transition hover:bg-wa-accent/90 disabled:opacity-40"
+                                            className="shrink-0 rounded-xl border border-wa-accent/40 bg-wa-accent px-4 py-3 text-xs font-black text-wa-ink transition hover:bg-wa-accent/90 disabled:opacity-40"
                                         >
                                             追加
                                         </button>
@@ -410,7 +410,7 @@ export default function Index({
                                     <div className="text-[10px] font-bold uppercase tracking-widest text-wa-muted">登録済み ({templates.length})</div>
                                     <div className="mt-3 space-y-2">
                                         {templates.map((t) => (
-                                            <div key={t.id} className="flex items-center justify-between gap-2 rounded-sm border border-wa-accent/15 bg-wa-ink px-3 py-2">
+                                            <div key={t.id} className="flex items-center justify-between gap-2 rounded-xl border border-wa-accent/15 bg-wa-ink px-3 py-2">
                                                 <span className="text-sm text-wa-body">{t.title}</span>
                                                 <button
                                                     type="button"
@@ -441,16 +441,16 @@ export default function Index({
                             </div>
                         </div>
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                            <div className="rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-3">
+                            <div className="rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-3">
                                 <div className="text-[11px] font-bold tracking-widest text-wa-muted">STATUS</div>
                                 <div className="mt-2"><StatusBadge variant={statusVariant(selectedTask.status)}>{statusLabel(selectedTask.status)}</StatusBadge></div>
                             </div>
-                            <div className="rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-3">
+                            <div className="rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-3">
                                 <div className="text-[11px] font-bold tracking-widest text-wa-muted">PRIORITY</div>
                                 <div className="mt-2"><StatusBadge variant={priorityVariant(selectedTask.priority)}>{priorityLabel(selectedTask.priority)}</StatusBadge></div>
                             </div>
                         </div>
-                        <div className="rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-3">
+                        <div className="rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-3">
                             <div className="text-[11px] font-bold tracking-widest text-wa-muted">UPDATE STATUS</div>
                             <div className="mt-3 flex flex-wrap items-center gap-3">
                                 <select
@@ -467,7 +467,7 @@ export default function Index({
                         </div>
                     </div>
                 ) : (
-                    <div className="rounded-sm border border-wa-accent/20 bg-wa-card px-4 py-6 text-sm text-wa-muted">データがありません</div>
+                    <div className="rounded-xl border border-wa-accent/15 bg-wa-card px-4 py-6 text-sm text-wa-muted">データがありません</div>
                 )}
             </DetailDrawer>
         </AuthenticatedLayout>
