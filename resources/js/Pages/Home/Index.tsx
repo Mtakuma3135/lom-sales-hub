@@ -340,59 +340,64 @@ export default function Index({
                         </div>
                     </div>
 
-                    <div className="mt-5 space-y-4">
-                        <BreakRunner
-                            active={runnerActive}
-                            remainingMs={remainingMs}
-                            totalMs={totalMs}
-                            label={
-                                activeNamesLabel ??
-                                (timerState
-                                    ? `ローカルタイマー（開始 ${timerState.startTime}）`
-                                    : '休憩が始まるとランナーが走ります')
-                            }
-                        />
+                    <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
+                        <div className="space-y-4">
+                            <BreakRunner
+                                active={runnerActive}
+                                remainingMs={remainingMs}
+                                totalMs={totalMs}
+                                label={
+                                    activeNamesLabel ??
+                                    (timerState
+                                        ? `ローカルタイマー（開始 ${timerState.startTime}）`
+                                        : '休憩が始まるとランナーが走ります')
+                                }
+                            />
 
-                        <div className="rounded-sm border border-wa-accent/20 bg-wa-ink p-4">
-                            <div className="flex items-center justify-between gap-3">
-                                <div className="text-xs font-semibold uppercase tracking-widest text-wa-muted">
-                                    60分プログレス
+                            <div className="rounded-sm border border-wa-accent/20 bg-wa-ink p-4">
+                                <div className="flex items-center justify-between gap-3">
+                                    <div className="text-xs font-semibold uppercase tracking-widest text-wa-muted">
+                                        60分プログレス
+                                    </div>
+                                    <div
+                                        className={
+                                            'text-xs font-semibold ' +
+                                            (isWarning ? 'timer-breath text-red-400' : 'text-wa-muted')
+                                        }
+                                    >
+                                        {runnerActive ? `残り ${fmt(remainingMs)}` : '未開始'}
+                                    </div>
                                 </div>
-                                <div
-                                    className={
-                                        'text-xs font-semibold ' +
-                                        (isWarning ? 'timer-breath text-red-400' : 'text-wa-muted')
-                                    }
-                                >
-                                    {runnerActive ? `残り ${fmt(remainingMs)}` : '未開始'}
+                                <div className="mt-3 h-2 w-full bg-wa-subtle">
+                                    <div
+                                        className={
+                                            'h-full transition-[width] duration-500 ease-out ' +
+                                            (isWarning ? 'bg-red-500' : 'bg-wa-accent')
+                                        }
+                                        style={{
+                                            width: `${
+                                                runnerActive
+                                                    ? Math.min(100, Math.max(0, ((totalMs - remainingMs) / totalMs) * 100))
+                                                    : 0
+                                            }%`,
+                                        }}
+                                    />
                                 </div>
-                            </div>
-                            <div className="mt-3 h-2 w-full bg-wa-subtle">
-                                <div
-                                    className={
-                                        'h-full transition-[width] duration-500 ease-out ' +
-                                        (isWarning ? 'bg-red-500' : 'bg-wa-accent')
-                                    }
-                                    style={{
-                                        width: `${
-                                            runnerActive
-                                                ? Math.min(100, Math.max(0, ((totalMs - remainingMs) / totalMs) * 100))
-                                                : 0
-                                        }%`,
-                                    }}
-                                />
                             </div>
                         </div>
 
-                        <div className="overflow-x-auto">
+                        <div className="overflow-x-auto rounded-sm border border-wa-accent/20 bg-wa-ink">
                             <table className="min-w-full border-separate border-spacing-0 text-sm">
                                 <thead>
                                     <tr className="text-left text-xs font-semibold uppercase tracking-wider text-wa-muted">
-                                        <th className="border-b border-wa-accent/20 px-4 py-2">
-                                            時間
+                                        <th className="border-b border-wa-accent/15 px-4 py-2.5">
+                                            時間帯
                                         </th>
-                                        <th className="border-b border-wa-accent/20 px-4 py-2">
-                                            休憩者
+                                        <th className="border-b border-wa-accent/15 px-4 py-2.5">
+                                            担当者
+                                        </th>
+                                        <th className="border-b border-wa-accent/15 px-4 py-2.5">
+                                            ステータス
                                         </th>
                                     </tr>
                                 </thead>
@@ -400,8 +405,8 @@ export default function Index({
                                     {lunchTableRows.length === 0 ? (
                                         <tr>
                                             <td
-                                                colSpan={2}
-                                                className="border-b border-wa-accent/15 px-4 py-4 text-wa-muted"
+                                                colSpan={3}
+                                                className="border-b border-wa-accent/10 px-4 py-4 text-wa-muted"
                                             >
                                                 本日の枠はありません
                                             </td>
@@ -410,14 +415,17 @@ export default function Index({
                                         lunchTableRows.map((r) => (
                                             <tr
                                                 key={r.time}
-                                                className="transition-colors hover:bg-wa-ink/80"
+                                                className="transition-colors hover:bg-wa-subtle/30"
                                             >
-                                                <td className="border-b border-wa-accent/15 px-4 py-3 font-medium text-wa-body">
+                                                <td className="border-b border-wa-accent/10 px-4 py-3 font-medium text-wa-body">
                                                     {r.time}
                                                 </td>
-                                                <td className="border-b border-wa-accent/15 px-4 py-3">
-                                                    <span className="inline-flex rounded-sm border border-wa-accent/25 bg-wa-card px-3 py-1 text-xs font-semibold text-wa-muted">
-                                                        {r.name}
+                                                <td className="border-b border-wa-accent/10 px-4 py-3 text-wa-body">
+                                                    {r.name}
+                                                </td>
+                                                <td className="border-b border-wa-accent/10 px-4 py-3">
+                                                    <span className="text-xs font-semibold text-wa-muted">
+                                                        未開始
                                                     </span>
                                                 </td>
                                             </tr>
@@ -428,6 +436,7 @@ export default function Index({
                         </div>
                     </div>
                 </NeonCard>
+
 
                 {/* ── 3. KPI ── */}
                 <NeonCard elevate={false} className="p-8">
@@ -491,7 +500,7 @@ export default function Index({
                         </div>
 
                         {/* Personal KPI */}
-                        <div>
+                        <div className="rounded-sm border border-teal-500/30 p-3">
                             <div className="mb-2 text-[10px] font-bold uppercase tracking-widest text-wa-muted">
                                 個人成績
                             </div>
@@ -518,7 +527,7 @@ export default function Index({
                                 ].map((k) => (
                                     <div
                                         key={`personal-${k.label}`}
-                                        className="rounded-sm border border-teal-500/20 bg-wa-ink px-4 py-5"
+                                        className="rounded-sm border border-teal-500/25 bg-wa-ink px-4 py-5"
                                     >
                                         <div className="text-[10px] font-semibold uppercase tracking-wide text-wa-muted">
                                             {k.label}
@@ -597,8 +606,11 @@ export default function Index({
                                                 依頼元: {t.requester} / 期限: {t.due_date}
                                             </div>
                                         </div>
-                                        <div className="shrink-0 text-[10px] text-wa-muted">
-                                            #{t.id}
+                                        <div className="flex shrink-0 flex-col items-end gap-1">
+                                            <span className="text-[10px] text-wa-muted">#{t.id}</span>
+                                            <span className="text-[10px] text-wa-muted">
+                                                {t.due_date} まで
+                                            </span>
                                         </div>
                                     </div>
                                 </div>

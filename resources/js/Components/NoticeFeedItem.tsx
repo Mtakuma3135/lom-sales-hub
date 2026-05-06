@@ -23,7 +23,7 @@ export default function NoticeFeedItem({
                 e.preventDefault();
                 onOpen();
             }}
-            className="group border border-wa-accent/20 bg-wa-ink px-4 py-4 transition-colors hover:border-wa-accent/35"
+            className="group rounded-sm border border-wa-accent/15 bg-wa-ink px-4 py-3.5 transition-colors hover:border-wa-accent/30"
         >
             <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
