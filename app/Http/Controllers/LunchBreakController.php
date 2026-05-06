@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\LunchBreakAssignRequest;
+use App\Http\Requests\LunchBreakGridSyncRequest;
 use App\Http\Requests\LunchBreakCompleteRequest;
 use App\Http\Requests\LunchBreakStartRequest;
+use App\Http\Requests\LunchBreakLaneTimerRequest;
 use App\Http\Requests\LunchBreakStoreRequest;
 use App\Http\Resources\LunchBreakSlotResource;
 use App\Services\LunchBreakService;
@@ -63,13 +65,18 @@ class LunchBreakController extends Controller
             }
         }
 
+        $timetable = $lunchBreakService->timetableGrid($date);
+
         return Inertia::render('LunchBreaks/Index', [
+            'date' => $date,
             'slots' => $slotsResource,
+            'timetable' => $timetable,
             'users' => [
                 'data' => $users,
                 'meta' => [],
             ],
             'myAssignment' => $myAssignment,
+            'serverNow' => now()->toISOString(),
         ]);
     }
 
@@ -115,6 +122,20 @@ class LunchBreakController extends Controller
             startTime: $request->lunchStartTime(),
             userIds: $request->userIds(),
         );
+
+        return Redirect::route('lunch-breaks.index', ['date' => $request->lunchDate()]);
+    }
+
+    public function gridSync(LunchBreakGridSyncRequest $request, LunchBreakService $lunchBreakService): RedirectResponse
+    {
+        $this->authorize('assign', LunchBreak::class);
+
+        $actor = $request->user();
+        if ($actor === null) {
+            return Redirect::route('login');
+        }
+
+        $lunchBreakService->syncTimetable($actor, $request->lunchDate(), $request->cells());
 
         return Redirect::route('lunch-breaks.index', ['date' => $request->lunchDate()]);
     }
@@ -166,22 +187,7 @@ class LunchBreakController extends Controller
             return response()->json(['data' => ['success' => false], 'meta' => []], 401);
         }
 
-        $targetUserId = $request->targetUserId() ?? (int) $actor->id;
-        // 管理者だけ user_id を指定可能
-        if ($targetUserId !== (int) $actor->id && (($actor->role ?? 'general') !== 'admin')) {
-            return response()->json(['data' => ['success' => false], 'meta' => ['message' => 'Forbidden']], 403);
-        }
-
-        $target = \App\Models\User::query()->findOrFail($targetUserId);
-
-        $row = $lunchBreakService->startBreak(
-            actor: $actor,
-            target: $target,
-            date: $request->lunchDate(),
-            plannedStartTime: $request->plannedStartTime(),
-            reason: $request->reason(),
-            note: $request->note(),
-        );
+        $row = $lunchBreakService->startLaneTimer($actor, $request->lunchDate(), $request->lane());
 
         return response()->json([
             'data' => [
@@ -192,6 +198,34 @@ class LunchBreakController extends Controller
                 'date' => $request->lunchDate(),
             ],
         ]);
+    }
+
+    public function stop(LunchBreakLaneTimerRequest $request, LunchBreakService $lunchBreakService)
+    {
+        $this->authorize('viewAny', LunchBreak::class);
+
+        $actor = $request->user();
+        if ($actor === null) {
+            return response()->json(['data' => ['success' => false], 'meta' => []], 401);
+        }
+
+        $success = $lunchBreakService->stopLaneTimer($actor, $request->lunchDate(), $request->lane());
+
+        return response()->json(['data' => ['success' => $success], 'meta' => ['date' => $request->lunchDate()]], $success ? 200 : 500);
+    }
+
+    public function reset(LunchBreakLaneTimerRequest $request, LunchBreakService $lunchBreakService)
+    {
+        $this->authorize('viewAny', LunchBreak::class);
+
+        $actor = $request->user();
+        if ($actor === null) {
+            return response()->json(['data' => ['success' => false], 'meta' => []], 401);
+        }
+
+        $success = $lunchBreakService->resetLaneTimer($actor, $request->lunchDate(), $request->lane());
+
+        return response()->json(['data' => ['success' => $success], 'meta' => ['date' => $request->lunchDate()]], $success ? 200 : 500);
     }
 }
 

@@ -4,7 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class LunchBreakStartRequest extends FormRequest
+class LunchBreakStopRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -18,7 +18,7 @@ class LunchBreakStartRequest extends FormRequest
     {
         return [
             'date' => ['required', 'date_format:Y-m-d'],
-            'lane' => ['required', 'integer', 'between:1,3'],
+            'user_id' => ['nullable', 'integer', 'min:1', 'exists:users,id'],
         ];
     }
 
@@ -27,9 +27,9 @@ class LunchBreakStartRequest extends FormRequest
         return (string) $this->input('date');
     }
 
-    public function lane(): int
+    public function targetUserId(): ?int
     {
-        return (int) $this->input('lane');
+        $v = $this->input('user_id');
+        return $v === null || $v === '' ? null : (int) $v;
     }
 }
-

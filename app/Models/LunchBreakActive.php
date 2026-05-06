@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class LunchBreak extends Model
+class LunchBreakActive extends Model
 {
     use HasFactory;
 
@@ -14,11 +14,14 @@ class LunchBreak extends Model
      * @var array<int, string>
      */
     protected $fillable = [
-        'user_id',
         'date',
-        'start_time',
-        'end_time',
+        'user_id',
         'lane',
+        'planned_start_time',
+        'started_at',
+        'finished_at',
+        'duration_minutes',
+        'updated_by',
     ];
 
     /**
@@ -27,6 +30,10 @@ class LunchBreak extends Model
     protected $casts = [
         'date' => 'date',
         'lane' => 'integer',
+        'started_at' => 'datetime',
+        'finished_at' => 'datetime',
+        'duration_minutes' => 'integer',
+        'updated_by' => 'integer',
     ];
 
     public function user(): BelongsTo

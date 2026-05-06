@@ -57,11 +57,14 @@ Route::middleware('auth')->group(function () {
         Route::post('/lunch-breaks', [LunchBreakController::class, 'store'])->name('lunch-breaks.store');
         Route::delete('/lunch-breaks/{id}', [LunchBreakController::class, 'destroy'])->name('lunch-breaks.destroy');
         Route::post('/lunch-breaks/assign', [LunchBreakController::class, 'assign'])->name('lunch-breaks.assign');
+        Route::post('/lunch-breaks/grid-sync', [LunchBreakController::class, 'gridSync'])->name('lunch-breaks.grid-sync');
         Route::post('/lunch-breaks/complete', [LunchBreakController::class, 'complete'])->name('lunch-breaks.complete');
 
         // Lunch breaks monitoring (web-session JSON API)
         Route::get('/api/lunch-breaks/status', [LunchBreakController::class, 'status'])->name('portal.api.lunch-breaks.status');
         Route::post('/api/lunch-breaks/start', [LunchBreakController::class, 'start'])->name('portal.api.lunch-breaks.start');
+        Route::post('/api/lunch-breaks/stop', [LunchBreakController::class, 'stop'])->name('portal.api.lunch-breaks.stop');
+        Route::post('/api/lunch-breaks/reset', [LunchBreakController::class, 'reset'])->name('portal.api.lunch-breaks.reset');
 
         Route::get('/sales', [SalesController::class, 'summary'])->name('sales.summary');
         Route::get('/sales/records', [SalesRecordController::class, 'page'])->name('sales.records');
