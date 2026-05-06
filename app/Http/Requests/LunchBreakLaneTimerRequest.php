@@ -18,7 +18,7 @@ class LunchBreakLaneTimerRequest extends FormRequest
     {
         return [
             'date' => ['required', 'date_format:Y-m-d'],
-            'lane' => ['required', 'integer', 'between:1,3'],
+            'lane' => ['required', 'integer', 'between:1,5'],
         ];
     }
 

@@ -47,6 +47,15 @@ type ActiveRow = {
     next?: { user: { id: number; name: string } | null };
 };
 
+function addMinutesHHMM(hhmm: string, minutes: number): string {
+    const [h, m] = hhmm.split(':').map((x) => Number(x));
+    if (!Number.isFinite(h) || !Number.isFinite(m)) return hhmm;
+    const total = h * 60 + m + minutes;
+    const hh = String(Math.floor((total + 1440) % 1440 / 60)).padStart(2, '0');
+    const mm = String(((total + 1440) % 1440) % 60).padStart(2, '0');
+    return `${hh}:${mm}`;
+}
+
 function cellKey(time: string, lane: number): string {
     return `${time}_${lane}`;
 }
@@ -350,16 +359,26 @@ export default function Index({
                                 const active = laneRunState[lane]?.active ?? false;
                                 const currentName = row?.current?.user?.name ?? '—';
                                 const nextName = row?.next?.user?.name ?? '—';
+                                const plannedStart = row?.current?.planned_start_time ?? null;
+                                const plannedLabel = plannedStart ? `${plannedStart} - ${addMinutesHHMM(plannedStart, 60)}` : null;
 
                                 return (
                                     <div key={lane} className="rounded-xl border border-wa-accent/15 bg-wa-ink p-4">
-                                        <BreakRunner
-                                            active={active}
-                                            remainingMs={remaining ?? totalMs}
-                                            totalMs={totalMs}
-                                            accent={laneAccent[lane]}
-                                            label={`枠${lane}: ${currentName}（次: ${nextName}）`}
-                                        />
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div className="text-xs font-semibold uppercase tracking-widest text-wa-muted">枠{lane}</div>
+                                            <div className="text-[11px] font-medium text-wa-muted">{plannedLabel ?? '—'}</div>
+                                        </div>
+                                        <div className="mt-2 text-lg font-black tracking-tight text-wa-body">{currentName}</div>
+                                        <div className="mt-1 text-[11px] text-wa-muted">次: {nextName}</div>
+
+                                        <div className="mt-3">
+                                            <BreakRunner
+                                                active={active}
+                                                remainingMs={remaining ?? totalMs}
+                                                totalMs={totalMs}
+                                                accent={laneAccent[lane]}
+                                            />
+                                        </div>
                                         <div className="mt-3 grid gap-2">
                                             <div className="grid grid-cols-2 gap-2">
                                                 <PrimaryButton onClick={() => startLane(lane)} className="w-full justify-center">
@@ -372,9 +391,6 @@ export default function Index({
                                             <SecondaryButton onClick={() => resetLane(lane)} className="w-full justify-center">
                                                 リセット
                                             </SecondaryButton>
-                                        </div>
-                                        <div className="mt-2 text-[11px] text-wa-muted">
-                                            {row?.current?.planned_start_time ? `予定: ${row.current.planned_start_time}` : '予定なし'}
                                         </div>
                                     </div>
                                 );
