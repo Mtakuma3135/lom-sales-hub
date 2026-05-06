@@ -35,7 +35,9 @@ class HomeService
         $kpi = $this->salesService->summary();
         $personalKpi = $this->salesService->personalSummary($actor);
 
-        $tasks = $this->taskRequestService->indexFor($actor);
+        $tasks = $this->taskRequestService->indexFor($actor)
+            ->filter(fn (array $t) => ($t['status'] ?? '') !== 'completed')
+            ->values();
 
         return [
             'notices' => $notices,

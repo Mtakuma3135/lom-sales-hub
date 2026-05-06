@@ -762,7 +762,7 @@ class LunchBreakService
             if (! $row) {
                 return true;
             }
-            $row->started_at = null;
+            $row->finished_at = now();
             $row->updated_by = (int) $actor->id;
             $row->save();
 

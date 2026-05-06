@@ -83,14 +83,13 @@ class TaskRequestService
 
     /**
      * 一般ユーザーは「自分に関係するもの」だけ（to/from が自分）。
+     * completed も含めて返す（フロントエンドのタブで表示切り替え）。
      *
      * @return Collection<int, array<string, mixed>>
      */
     public function indexFor(User $actor): Collection
     {
-        $items = $this->index()->values()->filter(function (array $t): bool {
-            return ($t['status'] ?? '') !== 'completed';
-        })->values();
+        $items = $this->index()->values();
 
         if (($actor->role ?? 'general') === 'admin') {
             return $items;

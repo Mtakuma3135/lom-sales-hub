@@ -64,6 +64,8 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
     const [kotMessage, setKotMessage] = useState<string | null>(null);
     const [kotPending, setKotPending] = useState(false);
 
+    const [pwErrors, setPwErrors] = useState<Record<string, string[]>>({});
+
     const [pressingReveal, setPressingReveal] = useState<Record<number, boolean>>({});
     const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -179,9 +181,14 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
                                         setKotMessage(null);
                                         setKotPending(false);
                                         try {
-                                            const res = await fetch('/api/mypage/kot/punch', {
+                                            const res = await fetch(route('portal.mock.kot.punch'), {
                                                 method: 'POST',
-                                                headers: { Accept: 'application/json' },
+                                                headers: {
+                                                    Accept: 'application/json',
+                                                    'X-Requested-With': 'XMLHttpRequest',
+                                                    'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? '',
+                                                },
+                                                credentials: 'same-origin',
                                             });
                                             const json = await res.json().catch(() => null);
                                             if (res.status === 422) {
@@ -319,6 +326,18 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
                                                                         [c.id]: false,
                                                                     }))
                                                                 }
+                                                                onTouchStart={() =>
+                                                                    setPressingReveal((m) => ({
+                                                                        ...m,
+                                                                        [c.id]: true,
+                                                                    }))
+                                                                }
+                                                                onTouchEnd={() =>
+                                                                    setPressingReveal((m) => ({
+                                                                        ...m,
+                                                                        [c.id]: false,
+                                                                    }))
+                                                                }
                                                                 onBlur={() =>
                                                                     setPressingReveal((m) => ({
                                                                         ...m,
@@ -392,6 +411,15 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
                         </div>
 
                         <div className="mt-5 space-y-3">
+                            {Object.keys(pwErrors).length > 0 && (
+                                <div className="rounded-xl border border-red-500/30 bg-red-950/35 px-4 py-3">
+                                    {Object.entries(pwErrors).map(([field, msgs]) => (
+                                        <div key={field} className="text-xs text-red-300">
+                                            {Array.isArray(msgs) ? msgs.join(', ') : String(msgs)}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                             <input
                                 type="password"
                                 value={currentPw}
@@ -422,9 +450,10 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
                                 >
                                     CANCEL
                                 </button>
-                                <button
+                                    <button
                                     type="button"
                                     onClick={() => {
+                                        setPwErrors({});
                                         router.patch(
                                             route('mypage.password.update'),
                                             {
@@ -438,6 +467,10 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
                                                     setNewPw('');
                                                     setConfirmPw('');
                                                     setPwOpen(false);
+                                                    setPwErrors({});
+                                                },
+                                                onError: (errors) => {
+                                                    setPwErrors(errors as unknown as Record<string, string[]>);
                                                 },
                                             },
                                         );
