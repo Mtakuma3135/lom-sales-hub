@@ -80,10 +80,10 @@ export default function Index({ products }: { products?: ProductsProp }) {
                             <div className="text-xs font-semibold text-wa-accent">{list.length} 件</div>
                         </div>
 
-                        <table className="mt-6 w-full border-collapse">
+                        <table className="mt-6 w-full min-w-[820px] table-fixed border-collapse">
                             <thead>
                                 <tr className="text-left text-xs text-wa-muted">
-                                    <th className="border-b border-wa-accent/20 px-3 py-2 font-bold tracking-widest">NAME</th>
+                                    <th className="w-[38%] border-b border-wa-accent/20 px-3 py-2 font-bold tracking-widest">NAME</th>
                                     <th className="border-b border-wa-accent/20 px-3 py-2 font-bold tracking-widest">CATEGORY</th>
                                     <th className="border-b border-wa-accent/20 px-3 py-2 font-bold tracking-widest">PRICE</th>
                                     <th className="border-b border-wa-accent/20 px-3 py-2 font-bold tracking-widest">STATE</th>
@@ -97,7 +97,8 @@ export default function Index({ products }: { products?: ProductsProp }) {
                                         <td className="border-b border-wa-accent/20 px-3 py-3 font-black tracking-tight text-wa-body">
                                             <Link
                                                 href={route('products.show', { id: p.id })}
-                                                className="block text-wa-accent transition hover:text-wa-accent/80"
+                                                className="block truncate text-wa-accent transition hover:text-wa-accent/80"
+                                                title={p.name}
                                             >
                                                 {p.name}
                                             </Link>

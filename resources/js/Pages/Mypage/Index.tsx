@@ -11,6 +11,7 @@ type CredentialRow = {
     password: string;
     is_password: boolean;
     updated_at: string;
+    is_mock?: boolean;
 };
 
 type MypagePayload = {
@@ -260,8 +261,15 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
                                             key={c.id}
                                             className="rounded-xl border border-wa-accent/15 bg-wa-card p-4 shadow-nordic"
                                         >
-                                            <div className="text-xs font-black tracking-tight text-wa-body">
-                                                {c.service_name}
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div className="min-w-0 text-xs font-black tracking-tight text-wa-body">
+                                                    <span className="block truncate">{c.service_name}</span>
+                                                </div>
+                                                {c.is_mock ? (
+                                                    <span className="shrink-0 rounded-full border border-wa-accent/20 bg-wa-ink px-2 py-0.5 text-[10px] font-semibold text-wa-muted">
+                                                        SAMPLE
+                                                    </span>
+                                                ) : null}
                                             </div>
 
                                             <div className="mt-3 space-y-2">

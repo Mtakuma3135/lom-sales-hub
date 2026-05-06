@@ -71,15 +71,15 @@ export default function Show({ id }: { id: number }) {
             <Head title="商材詳細" />
             <div className="mx-auto max-w-6xl px-6 py-6 text-wa-body wa-body-track">
                 <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-                    <div>
+                    <div className="min-w-0">
                         <div className="text-xs font-bold tracking-widest text-wa-muted">DETAIL</div>
-                        <div className="mt-1 text-lg font-black tracking-tight text-wa-body">
+                        <div className="mt-1 break-words text-lg font-black tracking-tight text-wa-body">
                             {item?.name ?? `#${id}`}
                         </div>
                     </div>
                     <Link
                         href={route('products.index')}
-                        className="rounded-sm border border-wa-accent/25 bg-wa-ink px-4 py-2 text-xs font-black tracking-widest text-wa-body transition hover:border-wa-accent/45"
+                        className="shrink-0 rounded-sm border border-wa-accent/25 bg-wa-ink px-4 py-2 text-xs font-black tracking-widest text-wa-body transition hover:border-wa-accent/45"
                     >
                         一覧へ戻る
                     </Link>
@@ -142,14 +142,14 @@ export default function Show({ id }: { id: number }) {
                                 value={draftManualUrl}
                                 onChange={(e) => setDraftManualUrl(e.target.value)}
                                 readOnly={!isAdmin}
-                                className={'nordic-field mt-3 ' + (!isAdmin ? 'opacity-70' : '')}
+                                className={'nordic-field mt-3 font-mono text-xs ' + (!isAdmin ? 'opacity-70' : '')}
                             />
                             <div className="mt-3 flex items-center justify-between gap-3">
                                 <a
                                     href={draftManualUrl || '#'}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="text-xs font-black tracking-widest text-wa-accent transition hover:text-wa-accent/80"
+                                    className="min-w-0 truncate text-xs font-black tracking-widest text-wa-accent transition hover:text-wa-accent/80"
                                 >
                                     OPEN
                                 </a>

@@ -20,15 +20,53 @@ class CredentialService
         try {
             $this->tryImportFromGas();
 
-            return Credential::query()
+            $items = Credential::query()
                 ->where('visible_on_credentials_page', true)
                 ->orderBy('id')
                 ->get();
+
+            return $this->withSampleRows($items, 10);
         } catch (\Throwable $e) {
             Log::error('CredentialService.index failed', ['error' => $e->getMessage()]);
 
             return collect();
         }
+    }
+
+    /**
+     * DBが少ない時に「表示確認用」ダミーを足す（非productionのみ）
+     *
+     * @param  Collection<int, Credential>  $items
+     * @return Collection<int, Credential>
+     */
+    private function withSampleRows(Collection $items, int $minCount): Collection
+    {
+        if ((string) config('app.env') === 'production') {
+            return $items;
+        }
+        if ($items->count() >= $minCount) {
+            return $items;
+        }
+
+        $need = $minCount - $items->count();
+        $now = now();
+
+        $samples = collect();
+        for ($i = 1; $i <= $need; $i++) {
+            $id = 900000 + $i;
+            $c = new Credential();
+            $c->id = $id;
+            $c->label = "サンプルサービス {$i}";
+            $c->login_id = "sample{$i}@example.com";
+            $c->value = "Passw0rd!{$i}";
+            $c->is_password = true;
+            $c->visible_on_credentials_page = true;
+            $c->setAttribute('is_mock', true);
+            $c->updated_at = $now;
+            $samples->push($c);
+        }
+
+        return $items->concat($samples)->values();
     }
 
     /**
