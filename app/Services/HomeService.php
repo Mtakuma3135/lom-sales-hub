@@ -33,6 +33,7 @@ class HomeService
         $slots = $this->lunchBreakService->index($date);
 
         $kpi = $this->salesService->summary();
+        $personalKpi = $this->salesService->personalSummary($actor);
 
         $tasks = $this->taskRequestService->indexFor($actor);
 
@@ -41,6 +42,7 @@ class HomeService
             'lunchBreaks' => $slots,
             'lunchDate' => $date,
             'kpi' => $kpi,
+            'personalKpi' => $personalKpi,
             'tasks' => $tasks,
         ];
     }

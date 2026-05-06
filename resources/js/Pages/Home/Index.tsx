@@ -125,6 +125,7 @@ export default function Index({
     lunchBreaks: { data: LunchSlot[]; meta?: { date?: string } };
     kpi: { data: KpiPayload; meta?: Record<string, unknown> };
     tasks?: { data: TaskRow[] } | TaskRow[];
+    personalKpi?: { ok: number; ng: number; contract_rate: number };
 }) {
     const pageTitle = title ?? 'ホーム';
     const { props } = usePage<PageProps>();
@@ -135,6 +136,7 @@ export default function Index({
     const noticeRows = notices?.data ?? [];
     const lunchSlots = lunchBreaks?.data ?? [];
     const summary = kpi?.data?.summary ?? { ok: 0, ng: 0, contract_rate: 0 };
+    const personal = personalKpi ?? { ok: 0, ng: 0, contract_rate: 0 };
     const taskRows = parseTaskData(tasks);
 
     const lunchTableRows = useMemo(() => {
@@ -444,57 +446,90 @@ export default function Index({
                         </button>
                     </div>
 
-                    <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                        {[
-                            {
-                                label: '契約率',
-                                value: String(summary.contract_rate),
-                                suffix: '%',
-                                sub: 'OK / (OK + NG)',
-                                valClass: 'text-wa-body',
-                                href: `${route('sales.summary')}?tab=summary`,
-                            },
-                            {
-                                label: 'OK',
-                                value: String(summary.ok),
-                                suffix: '',
-                                sub: '今月合計',
-                                valClass: 'text-teal-300',
-                                href: `${route('sales.records')}?status=ok`,
-                            },
-                            {
-                                label: 'NG',
-                                value: String(summary.ng),
-                                suffix: '',
-                                sub: '今月合計',
-                                valClass: 'text-red-400',
-                                href: `${route('sales.records')}?status=ng`,
-                            },
-                        ].map((k) => (
-                            <div
-                                key={k.label}
-                                role="button"
-                                tabIndex={0}
-                                onClick={() => go(k.href)}
-                                onKeyDown={(e) => {
-                                    if (e.key !== 'Enter' && e.key !== ' ') return;
-                                    e.preventDefault();
-                                    go(k.href);
-                                }}
-                                className="rounded-sm border border-wa-accent/20 bg-wa-ink px-5 py-5 transition hover:border-wa-accent/35 cursor-pointer"
-                            >
-                                <div className="text-xs font-semibold uppercase tracking-wide text-wa-muted">
-                                    {k.label}
-                                </div>
-                                <div
-                                    className={`wa-nums mt-2 text-2xl font-semibold tabular-nums ${k.valClass}`}
-                                >
-                                    <SlotNumber value={k.value} />
-                                    {k.suffix}
-                                </div>
-                                <div className="mt-2 text-xs text-wa-muted">{k.sub}</div>
+                    <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+                        {/* Team KPI */}
+                        <div>
+                            <div className="mb-2 text-[10px] font-bold uppercase tracking-widest text-wa-muted">
+                                チーム全体
                             </div>
-                        ))}
+                            <div className="grid grid-cols-3 gap-3">
+                                {[
+                                    {
+                                        label: '契約率',
+                                        value: String(summary.contract_rate),
+                                        suffix: '%',
+                                        valClass: 'text-wa-body',
+                                    },
+                                    {
+                                        label: 'OK',
+                                        value: String(summary.ok),
+                                        suffix: '',
+                                        valClass: 'text-teal-300',
+                                    },
+                                    {
+                                        label: 'NG',
+                                        value: String(summary.ng),
+                                        suffix: '',
+                                        valClass: 'text-red-400',
+                                    },
+                                ].map((k) => (
+                                    <div
+                                        key={`team-${k.label}`}
+                                        className="rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-4"
+                                    >
+                                        <div className="text-[10px] font-semibold uppercase tracking-wide text-wa-muted">
+                                            {k.label}
+                                        </div>
+                                        <div className={`wa-nums mt-1.5 text-xl font-semibold tabular-nums ${k.valClass}`}>
+                                            <SlotNumber value={k.value} />
+                                            {k.suffix}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Personal KPI */}
+                        <div>
+                            <div className="mb-2 text-[10px] font-bold uppercase tracking-widest text-wa-muted">
+                                個人成績
+                            </div>
+                            <div className="grid grid-cols-3 gap-3">
+                                {[
+                                    {
+                                        label: '契約率',
+                                        value: String(personal.contract_rate),
+                                        suffix: '%',
+                                        valClass: 'text-wa-body',
+                                    },
+                                    {
+                                        label: 'OK',
+                                        value: String(personal.ok),
+                                        suffix: '',
+                                        valClass: 'text-teal-300',
+                                    },
+                                    {
+                                        label: 'NG',
+                                        value: String(personal.ng),
+                                        suffix: '',
+                                        valClass: 'text-red-400',
+                                    },
+                                ].map((k) => (
+                                    <div
+                                        key={`personal-${k.label}`}
+                                        className="rounded-sm border border-teal-500/20 bg-wa-ink px-4 py-4"
+                                    >
+                                        <div className="text-[10px] font-semibold uppercase tracking-wide text-wa-muted">
+                                            {k.label}
+                                        </div>
+                                        <div className={`wa-nums mt-1.5 text-xl font-semibold tabular-nums ${k.valClass}`}>
+                                            <SlotNumber value={k.value} />
+                                            {k.suffix}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
                     </div>
                 </NeonCard>
 

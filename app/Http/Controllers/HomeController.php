@@ -46,6 +46,7 @@ class HomeController extends Controller
             'notices' => $noticesResource,
             'lunchBreaks' => $lunchResource,
             'kpi' => $kpiResource,
+            'personalKpi' => $payload['personalKpi'],
             'tasks' => $tasksResource,
         ]);
     }
