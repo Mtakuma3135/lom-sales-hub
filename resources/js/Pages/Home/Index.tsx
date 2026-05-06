@@ -267,33 +267,35 @@ export default function Index({
         >
             <Head title={pageTitle} />
 
-            <div className="mx-auto max-w-6xl px-6 py-6 text-wa-body wa-body-track space-y-6">
-                {/* ── 1. 周知事項 ── */}
-                <NeonCard elevate={false} className="p-8">
+            <div className="mx-auto max-w-6xl text-wa-body wa-body-track space-y-6">
+                {/* 1. 周知事項 */}
+                <NeonCard elevate={false} className="p-6 sm:p-8">
                     <div className="flex items-center justify-between gap-4">
                         <div>
-                            <div className="text-xs font-bold tracking-widest text-wa-muted">
+                            <div className="text-[10px] font-bold uppercase tracking-widest text-wa-accent">
                                 NOTICES
                             </div>
-                            <div className="mt-1 text-sm font-black tracking-tight text-wa-body">
-                                周知事項
+                            <div className="mt-1 flex items-baseline gap-3">
+                                <span className="text-lg font-black tracking-tight text-wa-body">
+                                    周知事項
+                                </span>
+                                {noticeRows.length > 0 && (
+                                    <span className="text-xs text-wa-muted">
+                                        最新 {noticeRows.length} 件
+                                    </span>
+                                )}
                             </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                            <span className="text-[10px] text-wa-muted">
-                                {noticeRows.length > 0 ? `最新 ${noticeRows.length} 件` : ''}
-                            </span>
-                            <button
-                                type="button"
-                                onClick={() => go(route('notices.index'))}
-                                className="rounded-sm border border-wa-accent/25 bg-wa-subtle px-3 py-1.5 text-xs font-black tracking-tight text-wa-body transition hover:border-wa-accent/40"
-                            >
-                                すべて見る
-                            </button>
-                        </div>
+                        <button
+                            type="button"
+                            onClick={() => go(route('notices.index'))}
+                            className="rounded-sm border border-wa-accent/25 bg-wa-subtle px-4 py-2 text-xs font-bold text-wa-body transition hover:border-wa-accent/40"
+                        >
+                            すべて見る
+                        </button>
                     </div>
 
-                    <div className="mt-5 space-y-3">
+                    <div className="mt-5 space-y-2">
                         {noticeRows.length === 0 ? (
                             <div className="rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-6 text-center text-sm text-wa-muted">
                                 表示できるお知らせはありません
@@ -313,112 +315,88 @@ export default function Index({
                     </div>
                 </NeonCard>
 
-                {/* ── 2. 昼休憩 ── */}
-                <NeonCard elevate={false} className="p-8">
+                {/* 2. 昼休憩 - 2 column layout */}
+                <NeonCard elevate={false} className="p-6 sm:p-8">
                     <div className="flex flex-wrap items-center justify-between gap-4">
                         <div>
-                            <div className="text-xs font-bold tracking-widest text-wa-muted">
+                            <div className="text-[10px] font-bold uppercase tracking-widest text-wa-accent">
                                 LUNCH BREAK
                             </div>
-                            <div className="mt-1 text-sm font-black tracking-tight text-wa-body">
-                                昼休憩
+                            <div className="mt-1 flex items-baseline gap-3">
+                                <span className="text-lg font-black tracking-tight text-wa-body">
+                                    昼休憩
+                                </span>
                             </div>
                         </div>
                         <div className="flex items-center gap-3">
                             {lunchBreaks?.meta?.date && (
-                                <span className="text-[10px] text-wa-muted">
+                                <span className="flex items-center gap-1.5 text-xs text-wa-muted">
+                                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                                    </svg>
                                     {lunchBreaks.meta.date}
                                 </span>
                             )}
                             <button
                                 type="button"
                                 onClick={() => go(route('lunch-breaks.index'))}
-                                className="rounded-sm border border-wa-accent/25 bg-wa-subtle px-3 py-1.5 text-xs font-black tracking-tight text-wa-body transition hover:border-wa-accent/40"
+                                className="rounded-sm border border-wa-accent/25 bg-wa-subtle px-4 py-2 text-xs font-bold text-wa-body transition hover:border-wa-accent/40"
                             >
                                 詳細を見る
                             </button>
                         </div>
                     </div>
 
-                    <div className="mt-5 space-y-4">
-                        <BreakRunner
-                            active={runnerActive}
-                            remainingMs={remainingMs}
-                            totalMs={totalMs}
-                            label={
-                                activeNamesLabel ??
-                                (timerState
-                                    ? `ローカルタイマー（開始 ${timerState.startTime}）`
-                                    : '休憩が始まるとランナーが走ります')
-                            }
-                        />
+                    <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
+                        {/* Left: Runner + Progress */}
+                        <div className="space-y-3">
+                            <div className="rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-4">
+                                <div className="text-[10px] font-bold uppercase tracking-widest text-wa-muted">
+                                    現在の昼休憩ランナー
+                                </div>
+                                <div className="mt-2 text-lg font-black tracking-tight text-wa-body">
+                                    {runnerActive
+                                        ? (activeNamesLabel ?? (timerState ? `開始 ${timerState.startTime}` : '実行中'))
+                                        : '未開始'}
+                                </div>
 
-                        <div className="rounded-sm border border-wa-accent/20 bg-wa-ink p-4">
-                            <div className="flex items-center justify-between gap-3">
-                                <div className="text-xs font-semibold uppercase tracking-widest text-wa-muted">
-                                    60分プログレス
-                                </div>
-                                <div
-                                    className={
-                                        'text-xs font-semibold ' +
-                                        (isWarning ? 'timer-breath text-red-400' : 'text-wa-muted')
-                                    }
-                                >
-                                    {runnerActive ? `残り ${fmt(remainingMs)}` : '未開始'}
-                                </div>
-                            </div>
-                            <div className="mt-3 h-2 w-full bg-wa-subtle">
-                                <div
-                                    className={
-                                        'h-full transition-[width] duration-500 ease-out ' +
-                                        (isWarning ? 'bg-red-500' : 'bg-wa-accent')
-                                    }
-                                    style={{
-                                        width: `${
-                                            runnerActive
-                                                ? Math.min(100, Math.max(0, ((totalMs - remainingMs) / totalMs) * 100))
-                                                : 0
-                                        }%`,
-                                    }}
+                                <BreakRunner
+                                    active={runnerActive}
+                                    remainingMs={remainingMs}
+                                    totalMs={totalMs}
+                                    label={undefined}
                                 />
                             </div>
                         </div>
 
-                        <div className="overflow-x-auto">
+                        {/* Right: Reservation table */}
+                        <div className="overflow-x-auto rounded-sm border border-wa-accent/20 bg-wa-ink">
                             <table className="min-w-full border-separate border-spacing-0 text-sm">
                                 <thead>
-                                    <tr className="text-left text-xs font-semibold uppercase tracking-wider text-wa-muted">
-                                        <th className="border-b border-wa-accent/20 px-4 py-2">
-                                            時間
-                                        </th>
-                                        <th className="border-b border-wa-accent/20 px-4 py-2">
-                                            休憩者
-                                        </th>
+                                    <tr className="text-left text-[10px] font-bold uppercase tracking-wider text-wa-muted">
+                                        <th className="border-b border-wa-accent/20 px-4 py-3">時間帯</th>
+                                        <th className="border-b border-wa-accent/20 px-4 py-3">担当者</th>
+                                        <th className="border-b border-wa-accent/20 px-4 py-3">ステータス</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {lunchTableRows.length === 0 ? (
                                         <tr>
-                                            <td
-                                                colSpan={2}
-                                                className="border-b border-wa-accent/15 px-4 py-4 text-wa-muted"
-                                            >
+                                            <td colSpan={3} className="px-4 py-4 text-wa-muted">
                                                 本日の枠はありません
                                             </td>
                                         </tr>
                                     ) : (
                                         lunchTableRows.map((r) => (
-                                            <tr
-                                                key={r.time}
-                                                className="transition-colors hover:bg-wa-ink/80"
-                                            >
-                                                <td className="border-b border-wa-accent/15 px-4 py-3 font-medium text-wa-body">
+                                            <tr key={r.time} className="transition-colors hover:bg-wa-subtle/30">
+                                                <td className="border-b border-wa-accent/10 px-4 py-3 font-medium text-wa-body">
                                                     {r.time}
                                                 </td>
-                                                <td className="border-b border-wa-accent/15 px-4 py-3">
-                                                    <span className="inline-flex rounded-sm border border-wa-accent/25 bg-wa-card px-3 py-1 text-xs font-semibold text-wa-muted">
-                                                        {r.name}
-                                                    </span>
+                                                <td className="border-b border-wa-accent/10 px-4 py-3 text-wa-body">
+                                                    {r.name}
+                                                </td>
+                                                <td className="border-b border-wa-accent/10 px-4 py-3 text-wa-muted">
+                                                    未開始
                                                 </td>
                                             </tr>
                                         ))
@@ -429,19 +407,19 @@ export default function Index({
                     </div>
                 </NeonCard>
 
-                {/* ── 3. KPI ── */}
-                <NeonCard elevate={false} className="p-8">
+                {/* 3. KPI */}
+                <NeonCard elevate={false} className="p-6 sm:p-8">
                     <div className="flex items-center justify-between gap-4">
                         <div>
-                            <div className="text-xs font-bold tracking-widest text-wa-muted">KPI</div>
-                            <div className="mt-1 text-sm font-black tracking-tight text-wa-body">
+                            <div className="text-[10px] font-bold uppercase tracking-widest text-wa-accent">KPI</div>
+                            <div className="mt-1 text-lg font-black tracking-tight text-wa-body">
                                 今月の実績
                             </div>
                         </div>
                         <button
                             type="button"
                             onClick={() => go(route('sales.summary'))}
-                            className="rounded-sm border border-wa-accent/25 bg-wa-subtle px-3 py-1.5 text-xs font-black tracking-tight text-wa-body transition hover:border-wa-accent/40"
+                            className="rounded-sm border border-wa-accent/25 bg-wa-subtle px-4 py-2 text-xs font-bold text-wa-body transition hover:border-wa-accent/40"
                         >
                             詳細を見る
                         </button>
@@ -455,33 +433,13 @@ export default function Index({
                             </div>
                             <div className="grid grid-cols-3 gap-3">
                                 {[
-                                    {
-                                        label: '契約率',
-                                        value: String(summary.contract_rate),
-                                        suffix: '%',
-                                        valClass: 'text-wa-body',
-                                    },
-                                    {
-                                        label: 'OK',
-                                        value: String(summary.ok),
-                                        suffix: '',
-                                        valClass: 'text-teal-300',
-                                    },
-                                    {
-                                        label: 'NG',
-                                        value: String(summary.ng),
-                                        suffix: '',
-                                        valClass: 'text-red-400',
-                                    },
+                                    { label: '契約率', value: String(summary.contract_rate), suffix: '%', valClass: 'text-wa-body' },
+                                    { label: 'OK', value: String(summary.ok), suffix: '', valClass: 'text-teal-300' },
+                                    { label: 'NG', value: String(summary.ng), suffix: '', valClass: 'text-red-400' },
                                 ].map((k) => (
-                                    <div
-                                        key={`team-${k.label}`}
-                                        className="rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-5"
-                                    >
-                                        <div className="text-[10px] font-semibold uppercase tracking-wide text-wa-muted">
-                                            {k.label}
-                                        </div>
-                                        <div className={`wa-nums mt-1.5 text-xl font-semibold tabular-nums ${k.valClass}`}>
+                                    <div key={`team-${k.label}`} className="rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-5 text-center">
+                                        <div className="text-[10px] font-semibold uppercase tracking-wide text-wa-muted">{k.label}</div>
+                                        <div className={`wa-nums mt-2 text-2xl font-black tabular-nums ${k.valClass}`}>
                                             <SlotNumber value={k.value} />
                                             {k.suffix}
                                         </div>
@@ -491,39 +449,19 @@ export default function Index({
                         </div>
 
                         {/* Personal KPI */}
-                        <div>
+                        <div className="rounded-sm border border-teal-500/25 p-3">
                             <div className="mb-2 text-[10px] font-bold uppercase tracking-widest text-wa-muted">
                                 個人成績
                             </div>
                             <div className="grid grid-cols-3 gap-3">
                                 {[
-                                    {
-                                        label: '契約率',
-                                        value: String(personal.contract_rate),
-                                        suffix: '%',
-                                        valClass: 'text-wa-body',
-                                    },
-                                    {
-                                        label: 'OK',
-                                        value: String(personal.ok),
-                                        suffix: '',
-                                        valClass: 'text-teal-300',
-                                    },
-                                    {
-                                        label: 'NG',
-                                        value: String(personal.ng),
-                                        suffix: '',
-                                        valClass: 'text-red-400',
-                                    },
+                                    { label: '契約率', value: String(personal.contract_rate), suffix: '%', valClass: 'text-wa-body' },
+                                    { label: 'OK', value: String(personal.ok), suffix: '', valClass: 'text-teal-300' },
+                                    { label: 'NG', value: String(personal.ng), suffix: '', valClass: 'text-red-400' },
                                 ].map((k) => (
-                                    <div
-                                        key={`personal-${k.label}`}
-                                        className="rounded-sm border border-teal-500/20 bg-wa-ink px-4 py-5"
-                                    >
-                                        <div className="text-[10px] font-semibold uppercase tracking-wide text-wa-muted">
-                                            {k.label}
-                                        </div>
-                                        <div className={`wa-nums mt-1.5 text-xl font-semibold tabular-nums ${k.valClass}`}>
+                                    <div key={`personal-${k.label}`} className="rounded-sm border border-teal-500/20 bg-wa-ink px-4 py-5 text-center">
+                                        <div className="text-[10px] font-semibold uppercase tracking-wide text-wa-muted">{k.label}</div>
+                                        <div className={`wa-nums mt-2 text-2xl font-black tabular-nums ${k.valClass}`}>
                                             <SlotNumber value={k.value} />
                                             {k.suffix}
                                         </div>
@@ -534,31 +472,29 @@ export default function Index({
                     </div>
                 </NeonCard>
 
-                {/* ── 4. タスク管理 ── */}
-                <NeonCard elevate={false} className="p-8">
+                {/* 4. タスク管理 */}
+                <NeonCard elevate={false} className="p-6 sm:p-8">
                     <div className="flex items-center justify-between gap-4">
                         <div>
-                            <div className="text-xs font-bold tracking-widest text-wa-muted">
-                                TASKS
-                            </div>
-                            <div className="mt-1 text-sm font-black tracking-tight text-wa-body">
-                                タスク管理
+                            <div className="text-[10px] font-bold uppercase tracking-widest text-wa-accent">TASKS</div>
+                            <div className="mt-1 flex items-baseline gap-3">
+                                <span className="text-lg font-black tracking-tight text-wa-body">
+                                    タスク管理
+                                </span>
+                                {activeTasks.length > 0 && (
+                                    <span className="text-xs text-wa-muted">
+                                        未完了 {activeTasks.length} 件
+                                    </span>
+                                )}
                             </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                            <span className="text-[10px] text-wa-muted">
-                                {activeTasks.length > 0
-                                    ? `未完了 ${activeTasks.length} 件`
-                                    : ''}
-                            </span>
-                            <button
-                                type="button"
-                                onClick={() => go(route('task-requests.index'))}
-                                className="rounded-sm border border-wa-accent/25 bg-wa-subtle px-3 py-1.5 text-xs font-black tracking-tight text-wa-body transition hover:border-wa-accent/40"
-                            >
-                                すべて見る
-                            </button>
-                        </div>
+                        <button
+                            type="button"
+                            onClick={() => go(route('task-requests.index'))}
+                            className="rounded-sm border border-wa-accent/25 bg-wa-subtle px-4 py-2 text-xs font-bold text-wa-body transition hover:border-wa-accent/40"
+                        >
+                            すべて見る
+                        </button>
                     </div>
 
                     {activeTasks.length === 0 ? (
@@ -578,28 +514,32 @@ export default function Index({
                                         e.preventDefault();
                                         go(route('task-requests.index'));
                                     }}
-                                    className="group rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-4 transition hover:border-wa-accent/35 cursor-pointer"
+                                    className="group flex items-center justify-between gap-4 rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-4 transition hover:border-wa-accent/35 cursor-pointer"
                                 >
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div className="min-w-0 flex-1">
-                                            <div className="flex items-center gap-2">
-                                                <StatusBadge variant={priorityVariant(t.priority)}>
-                                                    {priorityLabel(t.priority)}
-                                                </StatusBadge>
-                                                <StatusBadge variant={statusVariant(t.status)}>
-                                                    {statusLabel(t.status)}
-                                                </StatusBadge>
-                                            </div>
-                                            <div className="mt-2 text-sm font-black tracking-tight text-wa-body">
-                                                {t.title}
-                                            </div>
-                                            <div className="mt-1 text-xs text-wa-muted">
-                                                依頼元: {t.requester} / 期限: {t.due_date}
-                                            </div>
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-2">
+                                            <StatusBadge variant={priorityVariant(t.priority)}>
+                                                {priorityLabel(t.priority)}
+                                            </StatusBadge>
+                                            <StatusBadge variant={statusVariant(t.status)}>
+                                                {statusLabel(t.status)}
+                                            </StatusBadge>
                                         </div>
-                                        <div className="shrink-0 text-[10px] text-wa-muted">
-                                            #{t.id}
+                                        <div className="mt-2 text-sm font-bold text-wa-body">
+                                            {t.title}
                                         </div>
+                                        <div className="mt-1 flex items-center gap-1 text-xs text-wa-muted">
+                                            依頼元: {t.requester} / 期限: {t.due_date}
+                                        </div>
+                                    </div>
+                                    <div className="flex shrink-0 items-center gap-3">
+                                        <span className="flex items-center gap-1 text-xs text-wa-muted">
+                                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                                            </svg>
+                                            {t.due_date}
+                                        </span>
+                                        <span className="text-xs text-wa-muted">›</span>
                                     </div>
                                 </div>
                             ))}
