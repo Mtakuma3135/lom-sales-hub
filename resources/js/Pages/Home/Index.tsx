@@ -331,7 +331,7 @@ export default function Index({
                                         active={active}
                                         remainingMs={active ? rem! : totalMs}
                                         totalMs={totalMs}
-                                        label={`枠${lane}: ${currentName}（次: ${nextName}）`}
+                                        label={`${lane}  ${currentName}（次: ${nextName}）`}
                                     />
                                 );
                             })}
