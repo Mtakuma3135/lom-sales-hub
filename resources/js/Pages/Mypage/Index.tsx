@@ -1,8 +1,10 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import NeonCard from '@/Components/NeonCard';
 import SectionHeader from '@/Components/UI/SectionHeader';
+import { apiFetch } from '@/lib/fetch';
+import { showAppToast } from '@/lib/toast';
 
 type CredentialRow = {
     id: number;
@@ -63,6 +65,7 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
     const [kotPulse, setKotPulse] = useState(false);
     const [kotMessage, setKotMessage] = useState<string | null>(null);
     const [kotPending, setKotPending] = useState(false);
+    const [pwErrors, setPwErrors] = useState<Record<string, string[]>>({});
 
     const [pressingReveal, setPressingReveal] = useState<Record<number, boolean>>({});
     const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -179,9 +182,8 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
                                         setKotMessage(null);
                                         setKotPending(false);
                                         try {
-                                            const res = await fetch('/api/mypage/kot/punch', {
+                                            const res = await apiFetch(route('portal.mock.kot.punch'), {
                                                 method: 'POST',
-                                                headers: { Accept: 'application/json' },
                                             });
                                             const json = await res.json().catch(() => null);
                                             if (res.status === 422) {
@@ -392,27 +394,42 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
                         </div>
 
                         <div className="mt-5 space-y-3">
-                            <input
-                                type="password"
-                                value={currentPw}
-                                onChange={(e) => setCurrentPw(e.target.value)}
-                                placeholder="現在のパスワード"
-                                className="nordic-field"
-                            />
-                            <input
-                                type="password"
-                                value={newPw}
-                                onChange={(e) => setNewPw(e.target.value)}
-                                placeholder="新しいパスワード"
-                                className="nordic-field"
-                            />
-                            <input
-                                type="password"
-                                value={confirmPw}
-                                onChange={(e) => setConfirmPw(e.target.value)}
-                                placeholder="新しいパスワード（確認）"
-                                className="nordic-field"
-                            />
+                            <div>
+                                <input
+                                    type="password"
+                                    value={currentPw}
+                                    onChange={(e) => setCurrentPw(e.target.value)}
+                                    placeholder="現在のパスワード"
+                                    className={`nordic-field ${pwErrors.current_password ? 'border-red-500/50' : ''}`}
+                                />
+                                {pwErrors.current_password?.map((msg, i) => (
+                                    <div key={i} className="mt-1 text-xs text-red-400">{msg}</div>
+                                ))}
+                            </div>
+                            <div>
+                                <input
+                                    type="password"
+                                    value={newPw}
+                                    onChange={(e) => setNewPw(e.target.value)}
+                                    placeholder="新しいパスワード"
+                                    className={`nordic-field ${pwErrors.new_password ? 'border-red-500/50' : ''}`}
+                                />
+                                {pwErrors.new_password?.map((msg, i) => (
+                                    <div key={i} className="mt-1 text-xs text-red-400">{msg}</div>
+                                ))}
+                            </div>
+                            <div>
+                                <input
+                                    type="password"
+                                    value={confirmPw}
+                                    onChange={(e) => setConfirmPw(e.target.value)}
+                                    placeholder="新しいパスワード（確認）"
+                                    className={`nordic-field ${pwErrors.new_password_confirmation ? 'border-red-500/50' : ''}`}
+                                />
+                                {pwErrors.new_password_confirmation?.map((msg, i) => (
+                                    <div key={i} className="mt-1 text-xs text-red-400">{msg}</div>
+                                ))}
+                            </div>
 
                             <div className="mt-4 flex items-center justify-end gap-2">
                                 <button
@@ -425,6 +442,7 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
                                 <button
                                     type="button"
                                     onClick={() => {
+                                        setPwErrors({});
                                         router.patch(
                                             route('mypage.password.update'),
                                             {
@@ -438,6 +456,18 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
                                                     setNewPw('');
                                                     setConfirmPw('');
                                                     setPwOpen(false);
+                                                    setPwErrors({});
+                                                    showAppToast('パスワードを変更しました');
+                                                },
+                                                onError: (errors) => {
+                                                    setPwErrors(
+                                                        Object.fromEntries(
+                                                            Object.entries(errors).map(([k, v]) => [
+                                                                k,
+                                                                Array.isArray(v) ? v : [String(v)],
+                                                            ]),
+                                                        ),
+                                                    );
                                                 },
                                             },
                                         );

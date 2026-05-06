@@ -89,6 +89,8 @@ class LunchBreakController extends Controller
             return Redirect::route('login');
         }
 
+        $lunchBreakService->store($actor, $request->lunchDate(), $request->lunchStartTime());
+
         return Redirect::route('lunch-breaks.index', ['date' => $request->lunchDate()]);
     }
 

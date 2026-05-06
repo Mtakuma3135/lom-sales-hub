@@ -21,7 +21,9 @@ class HomeService
      *     notices: Collection<int, \App\Models\Notice>,
      *     lunchBreaks: \Illuminate\Support\Collection<int, array{start_time:string,end_time:string,capacity:int,reservations:\Illuminate\Support\Collection<int,\App\Models\LunchBreak>}>,
      *     lunchDate: string,
-     *     kpi: array{summary:array{ok:int,ng:int,contract_rate:float},ranking:\Illuminate\Support\Collection<int,mixed>,trend:\Illuminate\Support\Collection<int,mixed>}
+     *     kpi: array{summary:array{ok:int,ng:int,contract_rate:float},ranking:\Illuminate\Support\Collection<int,mixed>,trend:\Illuminate\Support\Collection<int,mixed>},
+     *     personalKpi: array{ok:int,ng:int,contract_rate:float},
+     *     tasks: Collection<int, array<string, mixed>>
      * }
      */
     public function dashboard(User $actor): array

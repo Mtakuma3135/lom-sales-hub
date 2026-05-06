@@ -6,8 +6,9 @@ import NoticeFeedItem from '@/Components/NoticeFeedItem';
 import BreakRunner from '@/Components/BreakRunner';
 import StatusBadge from '@/Components/StatusBadge';
 import { PageProps } from '@/types';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import SectionHeader from '@/Components/UI/SectionHeader';
+import { apiFetch } from '@/lib/fetch';
 
 type NoticeRow = {
     id: number;
@@ -154,29 +155,36 @@ export default function Index({
         });
     }, [lunchSlots]);
 
-    const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+    const [today, setToday] = useState(() => new Date().toISOString().slice(0, 10));
     const totalMs = 60 * 60 * 1000;
     const [timerState, setTimerState] = useState<{ startedAt: number; startTime: string } | null>(null);
     const [nowMs, setNowMs] = useState<number>(() => Date.now());
     const [lanesFromApi, setLanesFromApi] = useState<LunchLaneStatus[]>([]);
+    const fetchErrorCount = useRef(0);
 
     const fetchLunchStatus = useCallback(async () => {
+        const currentDate = new Date().toISOString().slice(0, 10);
+        if (currentDate !== today) setToday(currentDate);
         try {
-            const url = `${route('portal.api.lunch-breaks.status')}?date=${encodeURIComponent(today)}`;
-            const res = await fetch(url, {
-                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                credentials: 'same-origin',
-            });
-            if (!res.ok) return;
+            const url = `${route('portal.api.lunch-breaks.status')}?date=${encodeURIComponent(currentDate)}`;
+            const res = await apiFetch(url);
+            if (!res.ok) {
+                fetchErrorCount.current += 1;
+                return;
+            }
+            fetchErrorCount.current = 0;
             const json = (await res.json()) as { data?: { active?: LunchLaneStatus[] } };
             const rows = (json as any)?.data?.active;
             setLanesFromApi(Array.isArray(rows) ? (rows as LunchLaneStatus[]) : []);
-        } catch { /* ignore */ }
+        } catch {
+            fetchErrorCount.current += 1;
+        }
     }, [today]);
 
     useEffect(() => {
         void fetchLunchStatus();
-        const id = window.setInterval(() => void fetchLunchStatus(), 5000);
+        const intervalMs = fetchErrorCount.current > 3 ? 30_000 : 10_000;
+        const id = window.setInterval(() => void fetchLunchStatus(), intervalMs);
         return () => window.clearInterval(id);
     }, [fetchLunchStatus]);
 
@@ -207,13 +215,17 @@ export default function Index({
             return null;
         };
 
-        setTimerState(read());
+        const initial = read();
+        setTimerState(initial);
         setNowMs(Date.now());
+
+        const hasActiveTimer = initial !== null || lanesFromApi.some((r) => r.current?.started_at);
+        const tickInterval = hasActiveTimer ? 500 : 5000;
 
         const tick = window.setInterval(() => {
             setNowMs(Date.now());
             setTimerState(read());
-        }, 500);
+        }, tickInterval);
 
         const onStorage = (e: StorageEvent) => {
             if (!e.key?.startsWith(`lunchBreakTimer:${today}:`)) return;
@@ -225,7 +237,7 @@ export default function Index({
             window.clearInterval(tick);
             window.removeEventListener('storage', onStorage);
         };
-    }, [today, userId]);
+    }, [today, userId, lanesFromApi]);
 
     const elapsedMs = timerState ? Math.max(0, nowMs - timerState.startedAt) : 0;
     const remainingLocal = timerState ? Math.max(0, totalMs - elapsedMs) : totalMs;
@@ -317,24 +329,72 @@ export default function Index({
                         action={{ label: '詳細を見る', onClick: () => go(route('lunch-breaks.index')), variant: 'secondary' }}
                     />
 
-                    <div className="mt-5 space-y-4">
-                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-                            {[1, 2, 3, 4, 5].map((lane) => {
-                                const row = lanesFromApi.find((r) => r.lane === lane) ?? null;
-                                const rem = row ? laneRemainingMs(row, nowMs, totalMs) : null;
-                                const active = rem !== null && rem > 0 && rem < totalMs;
-                                const currentName = row?.current?.user?.name ?? '—';
-                                const nextName = row?.next?.user?.name ?? '—';
-                                return (
-                                    <BreakRunner
-                                        key={lane}
-                                        active={active}
-                                        remainingMs={active ? rem! : totalMs}
-                                        totalMs={totalMs}
-                                        label={`枠${lane}: ${currentName}（次: ${nextName}）`}
-                                    />
-                                );
-                            })}
+                    <div className="mt-5">
+                        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                            {/* Runner summary */}
+                            <div className="space-y-3">
+                                {(() => {
+                                    const activeRow = lanesFromApi.find((r) => {
+                                        const rem = laneRemainingMs(r, nowMs, totalMs);
+                                        return rem !== null && rem > 0 && rem < totalMs;
+                                    });
+                                    const rem = activeRow ? laneRemainingMs(activeRow, nowMs, totalMs) : null;
+                                    const isActive = rem !== null && rem > 0 && rem < totalMs;
+                                    const currentName = activeRow?.current?.user?.name ?? null;
+                                    return (
+                                        <BreakRunner
+                                            active={isActive}
+                                            remainingMs={isActive ? rem! : totalMs}
+                                            totalMs={totalMs}
+                                            label={
+                                                activeNamesLabel
+                                                    ?? (currentName ? `現在: ${currentName}` : '現在の昼休憩ランナー')
+                                            }
+                                        />
+                                    );
+                                })()}
+                            </div>
+
+                            {/* Schedule table */}
+                            <div className="rounded-xl border border-wa-accent/15 bg-wa-ink overflow-hidden">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="border-b border-wa-accent/15">
+                                            <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-wa-muted">時間帯</th>
+                                            <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-wa-muted">担当者</th>
+                                            <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-wa-muted">ステータス</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {lunchTableRows.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={3} className="px-4 py-4 text-center text-xs text-wa-muted">
+                                                    本日の休憩予定はありません
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            lunchTableRows.map((row, i) => {
+                                                const laneRow = lanesFromApi.find((r) => {
+                                                    const names = r.current?.user?.name;
+                                                    return names === row.name;
+                                                });
+                                                const isRunning = laneRow?.current?.started_at != null;
+                                                return (
+                                                    <tr key={i} className="border-b border-wa-accent/10 last:border-0">
+                                                        <td className="px-4 py-2.5 text-xs text-wa-body">{row.time}</td>
+                                                        <td className="px-4 py-2.5 text-xs font-semibold text-wa-body">{row.name}</td>
+                                                        <td className="px-4 py-2.5">
+                                                            <span className={`text-[10px] font-bold ${isRunning ? 'text-teal-300' : 'text-wa-muted'}`}>
+                                                                {isRunning ? '休憩中' : '未開始'}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </NeonCard>
