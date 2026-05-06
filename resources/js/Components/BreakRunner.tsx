@@ -24,7 +24,7 @@ export default function BreakRunner({
     const elapsedMs = Math.max(0, totalMs - Math.max(0, remainingMs));
     const pct = totalMs > 0 ? Math.min(100, Math.max(0, (elapsedMs / totalMs) * 100)) : 0;
     const accentBar =
-        accent === 'sky' ? 'bg-sky-500' : accent === 'amber' ? 'bg-amber-500' : 'bg-wa-accent';
+        accent === 'emerald' ? 'bg-emerald-500' : accent === 'sky' ? 'bg-sky-500' : accent === 'amber' ? 'bg-amber-500' : 'bg-wa-accent';
 
     return (
         <div className="rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-4">
