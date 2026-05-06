@@ -27,7 +27,7 @@ export default function BreakRunner({
         accent === 'sky' ? 'bg-sky-500' : accent === 'amber' ? 'bg-amber-500' : 'bg-wa-accent';
 
     return (
-        <div className="rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-4">
+        <div className="rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="text-xs font-semibold uppercase tracking-widest text-wa-muted">休憩</div>
                 <div
@@ -40,7 +40,7 @@ export default function BreakRunner({
                 </div>
             </div>
             {label ? <div className="mt-2 text-sm font-semibold text-wa-body">{label}</div> : null}
-            <div className="relative mt-4 overflow-hidden rounded-sm border border-wa-accent/20 bg-wa-card">
+            <div className="relative mt-4 overflow-hidden rounded-xl border border-wa-accent/15 bg-wa-card">
                 <div className="h-10">
                     <div className="absolute inset-0">
                         <div className="absolute left-0 top-1/2 h-2 w-full -translate-y-1/2 bg-wa-subtle" />
@@ -64,7 +64,7 @@ export default function BreakRunner({
                         </div>
                     )}
                 </div>
-                <div className="border-t border-wa-accent/20 px-3 py-2 text-[11px] font-medium text-wa-muted">
+                <div className="border-t border-wa-accent/15 px-3 py-2 text-[11px] font-medium text-wa-muted">
                     {active ? `進捗 ${Math.round(pct)}%` : '開始すると1時間で完走します'}
                 </div>
             </div>

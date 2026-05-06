@@ -18,9 +18,9 @@ use Illuminate\Support\Facades\Session;
 
 class LunchBreakService
 {
-    private const CAPACITY_PER_SLOT = 3;
+    private const CAPACITY_PER_SLOT = 5;
 
-    private const LANES = 3;
+    private const LANES = 5;
 
     /** タイムテーブル表示開始（30分刻み） */
     private const TIMETABLE_DAY_START = '11:00';
@@ -258,10 +258,10 @@ class LunchBreakService
                 ->get(['id', 'name', 'role']);
 
             if ($users->isNotEmpty()) {
-                $this->notifyAssignedUsers($users, '—', '—');
+                // 個別アサイン通知は不要：スケジュール更新通知のみに統一
+                $this->notifyScheduleUpdated();
             }
 
-            $this->pushLunchScheduleToGas($date);
         } catch (\Throwable $e) {
             Log::error('LunchBreakService.syncTimetable failed', [
                 'actor_id' => $actor->id,
@@ -270,6 +270,25 @@ class LunchBreakService
             ]);
 
             throw $e;
+        }
+    }
+
+    private function notifyScheduleUpdated(): bool
+    {
+        try {
+            $payload = DiscordPayloadFactory::lunchBreakScheduleUpdated();
+            $log = DiscordNotificationLog::query()->create([
+                'event_type' => 'lunch_break.schedule_updated',
+                'payload' => $payload,
+                'triggered_by' => null,
+            ]);
+            SendDiscordNotification::dispatch((int) $log->id);
+            return true;
+        } catch (\Throwable $e) {
+            Log::warning('LunchBreakService.notifyScheduleUpdated exception', [
+                'error' => $e->getMessage(),
+            ]);
+            return false;
         }
     }
 
@@ -683,6 +702,11 @@ class LunchBreakService
             }
             if ($nextUserId === null) {
                 throw new \RuntimeException('No next user in lane.', 422);
+            }
+
+            // 休憩者本人が押す運用（adminは例外）
+            if (($actor->role ?? 'general') !== 'admin' && (int) $actor->id !== (int) $nextUserId) {
+                throw new \RuntimeException('Not allowed to start this lane.', 403);
             }
 
             $plannedStart = substr((string) ($plan->firstWhere('user_id', $nextUserId)?->start_time ?? ''), 0, 5) ?: null;
