@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Credential;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
@@ -42,11 +43,14 @@ class MypageService
                 ['label' => '業務依頼', 'href' => '#'],
             ]);
 
+            $credentials = $this->credentials();
+
             return [
                 'profile' => $profile,
                 'attendance' => $attendance,
                 'integrations' => $integrations,
                 'quick_links' => $quickLinks,
+                'credentials' => $credentials,
             ];
         } catch (\Throwable $e) {
             Log::error('MypageService.index failed', ['error' => $e->getMessage()]);
@@ -59,6 +63,7 @@ class MypageService
                 'attendance' => null,
                 'integrations' => collect(),
                 'quick_links' => collect(),
+                'credentials' => collect(),
             ];
         }
     }
@@ -105,6 +110,22 @@ class MypageService
                 'error_dates' => [],
                 'cached_at' => now()->toISOString(),
             ];
+        }
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int, Credential>
+     */
+    private function credentials(): \Illuminate\Support\Collection
+    {
+        try {
+            return Credential::query()
+                ->where('visible_on_credentials_page', true)
+                ->orderBy('id')
+                ->get();
+        } catch (\Throwable $e) {
+            Log::error('MypageService.credentials failed', ['error' => $e->getMessage()]);
+            return collect();
         }
     }
 

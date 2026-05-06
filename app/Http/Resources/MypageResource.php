@@ -12,11 +12,14 @@ class MypageResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $credentials = $this->resource['credentials'] ?? collect();
+
         return [
             'profile' => $this->resource['profile'],
             'attendance' => $this->resource['attendance'] ?? null,
             'integrations' => $this->resource['integrations'],
             'quick_links' => $this->resource['quick_links'],
+            'credentials' => CredentialResource::collection($credentials),
         ];
     }
 }
