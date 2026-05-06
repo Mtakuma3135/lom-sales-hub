@@ -98,10 +98,10 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
 
                         <div className="mt-5 grid grid-cols-2 gap-3">
                             <button type="button" className={btnPrimary}>
-                                連携設定
+                                🔗 連携設定
                             </button>
                             <button type="button" onClick={() => setPwOpen(true)} className={btnGhost}>
-                                パスワード変更
+                                🔒 パスワード変更
                             </button>
                         </div>
 
@@ -158,11 +158,12 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="mt-4 rounded-sm border border-teal-500/35 bg-wa-ink p-4">
-                                        <div className="text-sm font-black tracking-tight text-teal-200">
+                                    <div className="mt-4 rounded-sm border border-teal-500/35 bg-wa-ink p-6 text-center">
+                                        <div className="text-3xl">✅</div>
+                                        <div className="mt-2 text-lg font-black tracking-tight text-teal-200">
                                             エラーなし
                                         </div>
-                                        <div className="mt-2 text-xs text-teal-300">
+                                        <div className="mt-2 text-xs text-wa-muted">
                                             cached_at: {attendance.cached_at}
                                         </div>
                                     </div>
@@ -271,9 +272,17 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
                                     return (
                                         <div
                                             key={c.id}
-                                            className="rounded-sm border border-wa-accent/20 bg-wa-card p-4"
+                                            className="rounded-sm border border-wa-accent/20 bg-wa-ink p-4"
                                         >
-                                            <div className="text-xs font-black tracking-tight text-wa-body">
+                                            <div className="flex items-center gap-2 text-xs font-black tracking-tight text-wa-body">
+                                                <span className="text-sm opacity-60">
+                                                    {c.service_name.toLowerCase().includes('slack') ? '💬' :
+                                                     c.service_name.toLowerCase().includes('salesforce') ? '☁️' :
+                                                     c.service_name.toLowerCase().includes('wiki') ? '🏢' :
+                                                     c.service_name.toLowerCase().includes('google') ? '📧' :
+                                                     c.service_name.toLowerCase().includes('drive') ? '📁' :
+                                                     '🔑'}
+                                                </span>
                                                 {c.service_name}
                                             </div>
 
@@ -367,7 +376,8 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
                                                 </div>
                                             </div>
 
-                                            <div className="mt-2 text-right text-[10px] text-wa-muted">
+                                            <div className="mt-3 flex items-center justify-end gap-1 border-t border-wa-accent/10 pt-2 text-[10px] text-wa-muted">
+                                                <span>📅</span>
                                                 {c.updated_at}
                                             </div>
                                         </div>

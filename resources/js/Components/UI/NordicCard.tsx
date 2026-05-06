@@ -15,8 +15,8 @@ export default function NordicCard({
     Omit<React.ComponentPropsWithoutRef<typeof motion.div>, 'className' | 'children'>) {
     return (
         <motion.div
-            className={`rounded-sm border border-wa-accent/20 bg-wa-card p-6 text-wa-body wa-body-track transition-colors ${
-                elevate ? 'hover:border-wa-accent/35' : ''
+            className={`rounded-sm border border-wa-accent/25 bg-wa-card p-6 text-wa-body wa-body-track transition-colors ${
+                elevate ? 'hover:border-wa-accent/40' : ''
             } ${className}`}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}

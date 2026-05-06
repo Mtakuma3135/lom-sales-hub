@@ -15,10 +15,10 @@ export default {
             colors: {
                 /** モダン和風（墨黒 / 銅アクセント）— Dashboard・案件KPI などで使用 */
                 wa: {
-                    ink: '#141414',
+                    ink: '#0f0f0f',
                     card: '#1e1e1e',
                     accent: '#C08457',
-                    subtle: '#282828',
+                    subtle: '#2c2c2c',
                     body: '#d6d3d1',
                     muted: '#a8a29e',
                 },
