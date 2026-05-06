@@ -12,12 +12,13 @@ class UserService
     public function index(int $perPage = 20): LengthAwarePaginator
     {
         return User::query()
+            ->with('department')
             ->orderByDesc('id')
             ->paginate($perPage);
     }
 
     /**
-     * @param  array{name:string,employee_code:string,email:string,password:string,role:string,is_active?:bool}  $data
+     * @param  array{name:string,employee_code:string,email?:string|null,password:string,role:string,is_active?:bool}  $data
      */
     public function store(array $data): User
     {
@@ -25,10 +26,11 @@ class UserService
             return User::query()->create([
                 'name' => $data['name'],
                 'employee_code' => $data['employee_code'],
-                'email' => $data['email'],
+                'email' => $data['email'] ?? null,
                 'password' => Hash::make($data['password']),
                 'role' => $data['role'],
                 'is_active' => $data['is_active'] ?? true,
+                'department_id' => null,
             ]);
         } catch (\Throwable $e) {
             Log::error('UserService.store failed', [
@@ -60,7 +62,7 @@ class UserService
 
             $user->save();
 
-            return $user->refresh();
+            return $user->refresh()->load('department');
         } catch (\Throwable $e) {
             Log::error('UserService.update failed', [
                 'id' => $id,

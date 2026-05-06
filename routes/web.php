@@ -9,7 +9,7 @@ use App\Http\Controllers\Admin\AdminPageController;
 use App\Http\Controllers\Admin\DiscordNotificationLogController as AdminDiscordNotificationLogController;
 use App\Http\Controllers\Admin\DiscordNotificationLogPageController;
 use App\Http\Controllers\Admin\AuditLogController as AdminAuditLogController;
-use App\Http\Controllers\Admin\AuditLogPageController;
+use App\Http\Controllers\Admin\DepartmentController as AdminDepartmentController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\LunchBreakController;
 use App\Http\Controllers\MypageController;
@@ -57,7 +57,14 @@ Route::middleware('auth')->group(function () {
         Route::post('/lunch-breaks', [LunchBreakController::class, 'store'])->name('lunch-breaks.store');
         Route::delete('/lunch-breaks/{id}', [LunchBreakController::class, 'destroy'])->name('lunch-breaks.destroy');
         Route::post('/lunch-breaks/assign', [LunchBreakController::class, 'assign'])->name('lunch-breaks.assign');
+        Route::post('/lunch-breaks/grid-sync', [LunchBreakController::class, 'gridSync'])->name('lunch-breaks.grid-sync');
         Route::post('/lunch-breaks/complete', [LunchBreakController::class, 'complete'])->name('lunch-breaks.complete');
+
+        // Lunch breaks monitoring (web-session JSON API)
+        Route::get('/api/lunch-breaks/status', [LunchBreakController::class, 'status'])->name('portal.api.lunch-breaks.status');
+        Route::post('/api/lunch-breaks/start', [LunchBreakController::class, 'start'])->name('portal.api.lunch-breaks.start');
+        Route::post('/api/lunch-breaks/stop', [LunchBreakController::class, 'stop'])->name('portal.api.lunch-breaks.stop');
+        Route::post('/api/lunch-breaks/reset', [LunchBreakController::class, 'reset'])->name('portal.api.lunch-breaks.reset');
 
         Route::get('/sales', [SalesController::class, 'summary'])->name('sales.summary');
         Route::get('/sales/records', [SalesRecordController::class, 'page'])->name('sales.records');
@@ -79,7 +86,6 @@ Route::middleware('auth')->group(function () {
         Route::post('/csv', fn () => back())->name('admin.csv.upload.store');
         Route::get('/credentials', [AdminPageController::class, 'credentials'])->name('admin.credentials.index');
         Route::get('/discord-notifications', [DiscordNotificationLogPageController::class, 'index'])->name('admin.discord-notifications.index');
-        Route::get('/audit-logs', [AuditLogPageController::class, 'index'])->name('admin.audit-logs.index');
 
         // Webセッション用 JSON API（UI接続の最短ルート）
         Route::get('/api/csv/uploads', [AdminCsvController::class, 'uploads'])->name('portal.api.csv.uploads');
@@ -92,8 +98,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/api/discord-notifications/{id}', [AdminDiscordNotificationLogController::class, 'show'])->name('portal.api.discord-notifications.show');
         Route::post('/api/discord-notifications/{id}/retry', [AdminDiscordNotificationLogController::class, 'retry'])->name('portal.api.discord-notifications.retry');
 
-        Route::get('/api/audit-logs', [AdminAuditLogController::class, 'index'])->name('portal.api.audit-logs.index');
-        Route::get('/api/audit-logs/{id}', [AdminAuditLogController::class, 'show'])->name('portal.api.audit-logs.show');
+        // (moved) audit logs are now under /portal/admin/audit-logs (resource)
+
+        Route::get('/api/departments', [AdminDepartmentController::class, 'index'])->name('portal.api.departments.index');
 
         // Webセッション用 JSON API（一般ログインで使用）
         Route::get('/api/sales/records', [SalesRecordController::class, 'index'])->name('portal.api.sales.records');
@@ -112,6 +119,8 @@ Route::middleware('auth')->group(function () {
             Route::post('/users', [AdminUserController::class, 'store'])->name('users.store');
             Route::patch('/users/{id}', [AdminUserController::class, 'update'])->name('users.update');
             Route::delete('/users/{id}', [AdminUserController::class, 'destroy'])->name('users.destroy');
+
+            Route::resource('audit-logs', AdminAuditLogController::class)->only(['index', 'show']);
 
             // 旧URL互換（/portal/admin/* → /portal/*）
             Route::redirect('/csv', '/portal/csv');

@@ -18,6 +18,7 @@ class MypageController extends Controller
             abort(401);
         }
 
+        $user->loadMissing('department');
         $attendance = $mypageService->attendance($user);
 
         return response()->json([
@@ -25,7 +26,11 @@ class MypageController extends Controller
                 'id' => (int) $user->id,
                 'name' => (string) $user->name,
                 'employee_code' => (string) ($user->employee_code ?? ''),
-                'department' => (string) ($user->department ?? ''),
+                'department' => $user->department ? [
+                    'id' => (int) $user->department->id,
+                    'name' => (string) $user->department->name,
+                    'code' => (string) $user->department->code,
+                ] : null,
             ],
             'attendance' => $attendance,
         ]);

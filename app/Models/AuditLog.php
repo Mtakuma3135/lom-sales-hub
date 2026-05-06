@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class AuditLog extends Model
 {
@@ -17,5 +18,10 @@ class AuditLog extends Model
         'actor_id' => 'integer',
         'related_id' => 'integer',
     ];
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'actor_id');
+    }
 }
 

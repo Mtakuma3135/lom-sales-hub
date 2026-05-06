@@ -1,3 +1,118 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer utilities {
+  /** 和風ダッシュボード: 本文は字間を広げ、数字はタブラー＋ライニングでシャープに */
+  .wa-body-track {
+    letter-spacing: 0.055em;
+  }
+  .wa-nums {
+    font-variant-numeric: lining-nums tabular-nums;
+  }
+}
+
+@layer components {
+  /** フォーム（モダン和風ダーク） */
+  .nordic-field {
+    @apply w-full rounded-sm border border-wa-accent/25 bg-wa-ink px-4 py-3 text-sm text-wa-body shadow-none placeholder:text-wa-muted focus:border-wa-accent/45 focus:outline-none focus:ring-1 focus:ring-wa-accent/30;
+  }
+
+  /* --- JSON（ポータル全体ダーク面） --- */
+  .json-pre-light {
+    @apply mt-2 overflow-auto rounded-sm border border-wa-accent/20 bg-wa-ink p-3 text-xs leading-6 text-wa-body;
+  }
+  .json-key-light {
+    @apply font-medium text-wa-accent;
+  }
+  .json-string-light {
+    @apply text-wa-muted;
+  }
+  .json-number-light {
+    @apply text-amber-400/90;
+  }
+  .json-boolean-light {
+    @apply text-teal-400/90;
+  }
+  .json-null-light {
+    @apply text-wa-muted;
+  }
+
+  /* --- 旧ダーク用（互換・一部ページで theme=dark） --- */
+  .json-pre {
+    @apply mt-2 overflow-auto rounded-xl bg-black/40 p-3 text-xs leading-5;
+    color: rgba(255,255,255,0.82);
+  }
+  .json-key { color: rgba(34,211,238,0.95); }
+  .json-string { color: rgba(167,243,208,0.92); }
+  .json-number { color: rgba(216,180,254,0.92); }
+  .json-boolean { color: rgba(251,191,36,0.92); }
+  .json-null { color: rgba(244,63,94,0.85); }
+
+  /* Eco timer: 残り時間の呼吸 */
+  @keyframes timerBreath {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.72; }
+  }
+  .timer-breath {
+    animation: timerBreath 2.6s ease-in-out infinite;
+  }
+
+  .neon-badge {
+    @apply inline-flex items-center rounded-sm border px-2.5 py-1 text-[11px] font-semibold wa-body-track;
+  }
+  .neon-badge--success { @apply border-teal-500/35 bg-wa-ink text-teal-300; }
+  .neon-badge--danger { @apply border-red-500/35 bg-wa-ink text-red-400; }
+  .neon-badge--warning { @apply border-amber-500/35 bg-wa-ink text-amber-300; }
+  .neon-badge--primary { @apply border-wa-accent/35 bg-wa-ink text-wa-accent; }
+  .neon-badge--muted { @apply border-wa-accent/20 bg-wa-ink text-wa-muted; }
+
+  .action-button {
+    @apply relative overflow-hidden rounded-sm border border-wa-accent/45 bg-wa-accent px-4 py-3 text-sm font-semibold tracking-widest text-wa-ink transition hover:border-wa-accent hover:bg-wa-accent/90;
+  }
+  .action-button:disabled { @apply opacity-45; }
+
+  .action-button__ripple {
+    @apply hidden;
+  }
+
+  @keyframes kpiFlash {
+    0% { opacity: 1; }
+    40% { opacity: 0.85; }
+    100% { opacity: 1; }
+  }
+  .kpi-flash-once {
+    animation: kpiFlash 0.85s ease-out 1;
+  }
+
+  /* 昼休憩: ランナーがトラック上をループ */
+  @keyframes runnerRun {
+    0% {
+      left: 0;
+      transform: translate(0, -50%);
+    }
+    100% {
+      left: calc(100% - 1.75rem);
+      transform: translate(0, -50%);
+    }
+  }
+  .runner-sprite {
+    animation: runnerRun 5s linear infinite;
+  }
+
+  /* 休憩開始直後のセル発火 */
+  @keyframes lunchCellGlow {
+    0%,
+    100% {
+      box-shadow: inset 0 0 0 0 rgba(192, 132, 87, 0);
+      background-color: rgba(26, 26, 26, 0.96);
+    }
+    50% {
+      box-shadow: inset 0 0 12px 2px rgba(192, 132, 87, 0.22);
+      background-color: rgba(34, 34, 34, 0.98);
+    }
+  }
+  .lunch-cell-alert {
+    animation: lunchCellGlow 0.85s ease-in-out 4;
+  }
+}

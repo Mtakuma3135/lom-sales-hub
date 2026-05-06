@@ -4,7 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\LunchBreakAssignRequest;
+use App\Http\Requests\LunchBreakGridSyncRequest;
 use App\Http\Requests\LunchBreakCompleteRequest;
+use App\Http\Requests\LunchBreakStartRequest;
+use App\Http\Requests\LunchBreakLaneTimerRequest;
 use App\Http\Requests\LunchBreakStoreRequest;
 use App\Http\Resources\LunchBreakSlotResource;
 use App\Services\LunchBreakService;
@@ -62,13 +65,18 @@ class LunchBreakController extends Controller
             }
         }
 
+        $timetable = $lunchBreakService->timetableGrid($date);
+
         return Inertia::render('LunchBreaks/Index', [
+            'date' => $date,
             'slots' => $slotsResource,
+            'timetable' => $timetable,
             'users' => [
                 'data' => $users,
                 'meta' => [],
             ],
             'myAssignment' => $myAssignment,
+            'serverNow' => now()->toISOString(),
         ]);
     }
 
@@ -118,6 +126,20 @@ class LunchBreakController extends Controller
         return Redirect::route('lunch-breaks.index', ['date' => $request->lunchDate()]);
     }
 
+    public function gridSync(LunchBreakGridSyncRequest $request, LunchBreakService $lunchBreakService): RedirectResponse
+    {
+        $this->authorize('assign', LunchBreak::class);
+
+        $actor = $request->user();
+        if ($actor === null) {
+            return Redirect::route('login');
+        }
+
+        $lunchBreakService->syncTimetable($actor, $request->lunchDate(), $request->cells());
+
+        return Redirect::route('lunch-breaks.index', ['date' => $request->lunchDate()]);
+    }
+
     public function complete(LunchBreakCompleteRequest $request, LunchBreakService $lunchBreakService)
     {
         $actor = $request->user();
@@ -128,6 +150,82 @@ class LunchBreakController extends Controller
         $success = $lunchBreakService->complete($actor, $request->lunchDate());
 
         return response()->json(['data' => ['success' => $success], 'meta' => []], $success ? 200 : 500);
+    }
+
+    public function status(Request $request, LunchBreakService $lunchBreakService)
+    {
+        $this->authorize('viewAny', LunchBreak::class);
+
+        $date = (string) ($request->query('date') ?? now()->toDateString());
+
+        $slots = $lunchBreakService->index($date);
+        $slotsResource = LunchBreakSlotResource::collection($slots)
+            ->additional(['meta' => ['date' => $date]])
+            ->response()
+            ->getData(true);
+
+        $active = $lunchBreakService->activeStatus($date);
+
+        return response()->json([
+            'data' => [
+                'slots' => $slotsResource,
+                'active' => $active,
+            ],
+            'meta' => [
+                'date' => $date,
+                'server_time' => now()->toISOString(),
+            ],
+        ]);
+    }
+
+    public function start(LunchBreakStartRequest $request, LunchBreakService $lunchBreakService)
+    {
+        $this->authorize('viewAny', LunchBreak::class);
+
+        $actor = $request->user();
+        if ($actor === null) {
+            return response()->json(['data' => ['success' => false], 'meta' => []], 401);
+        }
+
+        $row = $lunchBreakService->startLaneTimer($actor, $request->lunchDate(), $request->lane());
+
+        return response()->json([
+            'data' => [
+                'success' => true,
+                'active' => $row,
+            ],
+            'meta' => [
+                'date' => $request->lunchDate(),
+            ],
+        ]);
+    }
+
+    public function stop(LunchBreakLaneTimerRequest $request, LunchBreakService $lunchBreakService)
+    {
+        $this->authorize('viewAny', LunchBreak::class);
+
+        $actor = $request->user();
+        if ($actor === null) {
+            return response()->json(['data' => ['success' => false], 'meta' => []], 401);
+        }
+
+        $success = $lunchBreakService->stopLaneTimer($actor, $request->lunchDate(), $request->lane());
+
+        return response()->json(['data' => ['success' => $success], 'meta' => ['date' => $request->lunchDate()]], $success ? 200 : 500);
+    }
+
+    public function reset(LunchBreakLaneTimerRequest $request, LunchBreakService $lunchBreakService)
+    {
+        $this->authorize('viewAny', LunchBreak::class);
+
+        $actor = $request->user();
+        if ($actor === null) {
+            return response()->json(['data' => ['success' => false], 'meta' => []], 401);
+        }
+
+        $success = $lunchBreakService->resetLaneTimer($actor, $request->lunchDate(), $request->lane());
+
+        return response()->json(['data' => ['success' => $success], 'meta' => ['date' => $request->lunchDate()]], $success ? 200 : 500);
     }
 }
 

@@ -12,8 +12,24 @@ export default {
 
     theme: {
         extend: {
+            colors: {
+                /** モダン和風（墨黒 / 銅アクセント）— Dashboard・案件KPI などで使用 */
+                wa: {
+                    ink: '#1A1A1A',
+                    card: '#222222',
+                    accent: '#C08457',
+                    subtle: '#2a2a2a',
+                    body: '#d6d3d1',
+                    muted: '#a8a29e',
+                },
+            },
             fontFamily: {
-                sans: ['Figtree', ...defaultTheme.fontFamily.sans],
+                /** 和モダン: 欧文 Inter × 本文 Noto Sans JP */
+                sans: ['Inter', 'Noto Sans JP', 'ui-sans-serif', 'system-ui', ...defaultTheme.fontFamily.sans],
+            },
+            boxShadow: {
+                nordic: '0 8px 30px rgb(28 25 23 / 0.04)',
+                'nordic-hover': '0 12px 36px rgb(28 25 23 / 0.07)',
             },
         },
     },

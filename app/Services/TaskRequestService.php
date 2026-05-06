@@ -5,8 +5,10 @@ namespace App\Services;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
+use App\Models\DiscordNotificationLog;
 use App\Models\User;
-use Illuminate\Support\Facades\Http;
+use App\Jobs\SendDiscordNotification;
+use App\Notifications\Discord\DiscordPayloadFactory;
 
 class TaskRequestService
 {
@@ -28,7 +30,7 @@ class TaskRequestService
                     'id' => 101,
                     'title' => 'トークスクリプトの更新依頼（本人確認）',
                     'requester' => '品質管理',
-                    'priority' => 'high',
+                    'priority' => 'urgent',
                     'status' => 'pending',
                     'due_date' => '2026-04-30',
                     'created_at' => '2026-04-22 11:10',
@@ -39,7 +41,7 @@ class TaskRequestService
                     'id' => 102,
                     'title' => '商材資料の差し替え（Driveリンク更新）',
                     'requester' => '商品企画',
-                    'priority' => 'medium',
+                    'priority' => 'important',
                     'status' => 'in_progress',
                     'due_date' => '2026-04-27',
                     'created_at' => '2026-04-21 16:40',
@@ -50,7 +52,7 @@ class TaskRequestService
                     'id' => 103,
                     'title' => 'KPI画面に「前月比」表示を追加',
                     'requester' => 'マネージャー',
-                    'priority' => 'low',
+                    'priority' => 'normal',
                     'status' => 'completed',
                     'due_date' => '2026-04-25',
                     'created_at' => '2026-04-18 09:05',
@@ -61,7 +63,7 @@ class TaskRequestService
                     'id' => 104,
                     'title' => '周知事項のPIN運用ルール策定',
                     'requester' => '総務',
-                    'priority' => 'medium',
+                    'priority' => 'important',
                     'status' => 'pending',
                     'due_date' => '2026-04-24',
                     'created_at' => '2026-04-17 13:20',
@@ -86,7 +88,10 @@ class TaskRequestService
      */
     public function indexFor(User $actor): Collection
     {
-        $items = $this->index()->values();
+        $items = $this->index()->values()->filter(function (array $t): bool {
+            return ($t['status'] ?? '') !== 'completed';
+        })->values();
+
         if (($actor->role ?? 'general') === 'admin') {
             return $items;
         }
@@ -165,8 +170,8 @@ class TaskRequestService
                 'chat_sent' => false,
             ];
 
-            $chatSent = $this->notifyGoogleChat($actor, $to, $title);
-            $row['chat_sent'] = $chatSent;
+            $notifyOk = $this->notifyDiscordTaskRequest($actor, $to, $title);
+            $row['chat_sent'] = $notifyOk;
 
             $updated = $items->prepend($row)->values();
             Session::put(self::SESSION_KEY, $updated->all());
@@ -184,23 +189,34 @@ class TaskRequestService
         }
     }
 
-    private function notifyGoogleChat(User $from, User $to, string $title): bool
+    /**
+     * 業務依頼作成時の Discord 通知（ログ作成＋ジョブ送信。Webhook 未設定時は false）
+     */
+    private function notifyDiscordTaskRequest(User $from, User $to, string $title): bool
     {
         try {
-            $url = (string) config('services.google_chat.webhook_url', '');
-            if ($url === '') {
+            if ((string) config('services.discord.webhook_url', '') === '') {
                 return false;
             }
 
-            $text = "業務依頼が届きました。\n宛先: {$to->name}\n差出人: {$from->name}\n件名: {$title}";
+            $payload = DiscordPayloadFactory::taskRequestCreated(
+                (string) ($from->name ?? '—'),
+                (string) ($to->name ?? '—'),
+                $title
+            );
 
-            $res = Http::timeout(3)->post($url, [
-                'text' => $text,
+            $log = DiscordNotificationLog::query()->create([
+                'event_type' => 'task_request.created',
+                'payload' => $payload,
+                'triggered_by' => (int) $from->id,
             ]);
 
-            return $res->successful();
+            SendDiscordNotification::dispatch((int) $log->id);
+
+            return true;
         } catch (\Throwable $e) {
-            Log::warning('TaskRequestService.notifyGoogleChat failed', ['error' => $e->getMessage()]);
+            Log::warning('TaskRequestService.notifyDiscordTaskRequest failed', ['error' => $e->getMessage()]);
+
             return false;
         }
     }

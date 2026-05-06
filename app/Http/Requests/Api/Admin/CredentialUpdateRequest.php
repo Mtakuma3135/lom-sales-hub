@@ -14,14 +14,20 @@ class CredentialUpdateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'value' => ['required', 'string', 'max:500'],
+            'login_id' => ['nullable', 'string', 'max:500'],
+            'password' => ['required', 'string', 'max:4000'],
             'updated_at' => ['required', 'date_format:Y-m-d H:i:s'],
         ];
     }
 
-    public function value(): string
+    public function loginId(): string
     {
-        return (string) $this->input('value');
+        return (string) $this->input('login_id', '');
+    }
+
+    public function password(): string
+    {
+        return (string) $this->input('password', '');
     }
 
     public function updatedAt(): string
@@ -29,4 +35,3 @@ class CredentialUpdateRequest extends FormRequest
         return (string) $this->input('updated_at');
     }
 }
-

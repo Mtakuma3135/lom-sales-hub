@@ -12,6 +12,7 @@ class Credential extends Model
     /** @var array<string, string> */
     protected $casts = [
         'is_password' => 'boolean',
+        'visible_on_credentials_page' => 'boolean',
     ];
 }
 

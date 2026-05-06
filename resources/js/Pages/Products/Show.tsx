@@ -1,6 +1,10 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
+import { PageProps } from '@/types';
+import NeonCard from '@/Components/NeonCard';
+import ActionButton from '@/Components/ActionButton';
+import StatusBadge from '@/Components/StatusBadge';
 
 type Product = {
     id: number;
@@ -14,7 +18,7 @@ type Product = {
 };
 
 export default function Show({ id }: { id: number }) {
-    const { props } = usePage<{ auth?: { user?: { role?: string } } }>();
+    const { props } = usePage<PageProps>();
     const isAdmin = (props.auth?.user?.role ?? 'general') === 'admin';
 
     const [item, setItem] = useState<Product | null>(null);
@@ -63,95 +67,93 @@ export default function Show({ id }: { id: number }) {
     }, [api]);
 
     return (
-        <AuthenticatedLayout header={<h2 className="text-sm font-black tracking-tight">PRODUCT / DETAIL</h2>}>
+        <AuthenticatedLayout header={<h2 className="text-sm font-black tracking-tight text-wa-body">PRODUCT / DETAIL</h2>}>
             <Head title="商材詳細" />
-            <div className="mx-auto max-w-6xl px-6 py-6 text-slate-100">
+            <div className="mx-auto max-w-6xl px-6 py-6 text-wa-body wa-body-track">
                 <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
                     <div>
-                        <div className="text-xs font-bold tracking-widest text-white/60">DETAIL</div>
-                        <div className="mt-1 text-lg font-black tracking-tight text-white">
+                        <div className="text-xs font-bold tracking-widest text-wa-muted">DETAIL</div>
+                        <div className="mt-1 text-lg font-black tracking-tight text-wa-body">
                             {item?.name ?? `#${id}`}
                         </div>
                     </div>
                     <Link
                         href={route('products.index')}
-                        className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-black tracking-widest text-white/80 hover:bg-white/10"
+                        className="rounded-sm border border-wa-accent/25 bg-wa-ink px-4 py-2 text-xs font-black tracking-widest text-wa-body transition hover:border-wa-accent/45"
                     >
                         一覧へ戻る
                     </Link>
                 </div>
 
                 {errorMessage ? (
-                    <div className="mb-4 rounded-2xl border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-xs text-rose-100/80">
+                    <div className="mb-4 rounded-sm border border-red-500/35 bg-wa-ink px-4 py-3 text-xs text-red-300">
                         {errorMessage}
                     </div>
                 ) : null}
                 {successMessage ? (
-                    <div className="mb-4 rounded-2xl border border-cyan-400/20 bg-cyan-500/10 px-4 py-3 text-xs text-cyan-100/80">
+                    <div className="mb-4 rounded-sm border border-teal-500/35 bg-wa-ink px-4 py-3 text-xs text-teal-300">
                         {successMessage}
                     </div>
                 ) : null}
 
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_18px_60px_rgba(0,0,0,0.55)] backdrop-blur-md">
-                        <div className="text-xs font-bold tracking-widest text-white/60">META</div>
-                        <div className="mt-4 space-y-2 text-sm text-white/75">
+                    <NeonCard>
+                        <div className="text-xs font-bold tracking-widest text-wa-muted">META</div>
+                        <div className="mt-4 space-y-2 text-sm text-wa-muted">
                             <div>
-                                <span className="text-white/45">カテゴリ</span>：{item?.category ?? '—'}
+                                <span className="text-wa-body/80">カテゴリ</span>：{item?.category ?? '—'}
                             </div>
                             <div>
-                                <span className="text-white/45">料金</span>：
+                                <span className="text-wa-body/80">料金</span>：
                                 {item ? (item.price === 0 ? '無料' : `¥${item.price.toLocaleString()}`) : '—'}
                             </div>
                             <div>
-                                <span className="text-white/45">状態</span>：{item?.is_active ? '有効' : '停止'}
+                                <span className="text-wa-body/80">状態</span>：
+                                <span className="ml-2">
+                                    <StatusBadge variant={item?.is_active ? 'success' : 'muted'}>
+                                        {item?.is_active ? '有効' : '停止'}
+                                    </StatusBadge>
+                                </span>
                             </div>
                             <div>
-                                <span className="text-white/45">更新</span>：{item?.updated_at ?? '—'}
+                                <span className="text-wa-body/80">更新</span>：{item?.updated_at ?? '—'}
                             </div>
                         </div>
-                    </div>
+                    </NeonCard>
 
-                    <div className="lg:col-span-2 space-y-6">
-                        <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_18px_60px_rgba(0,0,0,0.55)] backdrop-blur-md">
-                            <div className="text-xs font-bold tracking-widest text-white/60">TALK SCRIPT</div>
+                    <div className="space-y-6 lg:col-span-2">
+                        <NeonCard>
+                            <div className="text-xs font-bold tracking-widest text-wa-muted">TALK SCRIPT</div>
                             <textarea
                                 value={draftScript}
                                 onChange={(e) => setDraftScript(e.target.value)}
                                 rows={10}
                                 readOnly={!isAdmin}
                                 className={
-                                    'mt-3 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/30 shadow-[0_0_0_1px_rgba(255,255,255,0.06)] transition-colors focus:bg-white focus:text-black ' +
-                                    (!isAdmin ? 'opacity-70' : '')
+                                    'nordic-field mt-3 min-h-[200px] ' + (!isAdmin ? 'opacity-70' : '')
                                 }
                             />
-                            <div className="mt-4 text-xs text-white/45">
-                                管理者のみ編集可能
-                            </div>
-                        </div>
+                            <div className="mt-4 text-xs text-wa-muted">管理者のみ編集可能</div>
+                        </NeonCard>
 
-                        <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_18px_60px_rgba(0,0,0,0.55)] backdrop-blur-md">
-                            <div className="text-xs font-bold tracking-widest text-white/60">MANUAL URL</div>
+                        <NeonCard>
+                            <div className="text-xs font-bold tracking-widest text-wa-muted">MANUAL URL</div>
                             <input
                                 value={draftManualUrl}
                                 onChange={(e) => setDraftManualUrl(e.target.value)}
                                 readOnly={!isAdmin}
-                                className={
-                                    'mt-3 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/30 shadow-[0_0_0_1px_rgba(255,255,255,0.06)] transition-colors focus:bg-white focus:text-black ' +
-                                    (!isAdmin ? 'opacity-70' : '')
-                                }
+                                className={'nordic-field mt-3 ' + (!isAdmin ? 'opacity-70' : '')}
                             />
                             <div className="mt-3 flex items-center justify-between gap-3">
                                 <a
                                     href={draftManualUrl || '#'}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="text-xs font-black tracking-widest text-cyan-200/80 hover:text-cyan-200"
+                                    className="text-xs font-black tracking-widest text-wa-accent transition hover:text-wa-accent/80"
                                 >
                                     OPEN
                                 </a>
-                                <button
-                                    type="button"
+                                <ActionButton
                                     disabled={!isAdmin || isSaving || isLoading}
                                     onClick={async () => {
                                         setIsSaving(true);
@@ -173,20 +175,16 @@ export default function Show({ id }: { id: number }) {
                                             setIsSaving(false);
                                         }
                                     }}
-                                    className="rounded-2xl bg-gradient-to-r from-purple-500 to-cyan-400 px-4 py-2 text-xs font-black tracking-widest text-[#0b1020] shadow-[0_0_22px_rgba(34,211,238,0.22)] hover:brightness-110 disabled:opacity-40"
                                 >
                                     {isSaving ? 'SAVING…' : 'SAVE'}
-                                </button>
+                                </ActionButton>
                             </div>
-                        </div>
+                        </NeonCard>
                     </div>
                 </div>
 
-                {isLoading ? (
-                    <div className="mt-6 text-sm text-white/45">読み込み中…</div>
-                ) : null}
+                {isLoading ? <div className="mt-6 text-sm text-wa-muted">読み込み中…</div> : null}
             </div>
         </AuthenticatedLayout>
     );
 }
-

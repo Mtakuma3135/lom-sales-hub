@@ -25,13 +25,13 @@ export default function ForgotPassword({ status }: { status?: string }) {
         <GuestLayout>
             <Head title="パスワード再発行" />
 
-            <div className="mb-6 text-slate-700 text-center text-sm">
+            <div className="mb-6 text-center text-sm leading-relaxed text-wa-muted">
                 パスワードをお忘れですか？ご登録のメールアドレスを入力してください。<br />
                 パスワード再設定用のリンクをメールでお送りします。
             </div>
 
             {status && (
-                <div className="mb-4 text-sm font-medium text-green-600 text-center">
+                <div className="mb-4 border border-teal-500/35 bg-wa-ink px-4 py-3 text-center text-sm font-medium text-teal-300">
                     {status}
                 </div>
             )}

@@ -1,6 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
+import NeonCard from '@/Components/NeonCard';
 
 type LogRow = {
     id: number;
@@ -18,15 +19,36 @@ type LogDetail = LogRow & {
     updated_at: string;
 };
 
+/** DB / API の日時を日本時間で表示（Discord や端末の体感時刻と揃える） */
+function formatLogAt(raw: string | null | undefined): string {
+    if (!raw) return '—';
+    const d = new Date(raw);
+    if (Number.isNaN(d.getTime())) return String(raw);
+    return (
+        d.toLocaleString('ja-JP', {
+            timeZone: 'Asia/Tokyo',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false,
+        }) + ' JST'
+    );
+}
+
 function statusBadge(statusCode: number | null): { label: string; className: string } {
     if (statusCode && statusCode >= 200 && statusCode < 300) {
-        return { label: `OK ${statusCode}`, className: 'border-cyan-400/20 bg-cyan-500/10 text-cyan-100/85' };
+        return { label: `OK ${statusCode}`, className: 'border-teal-500/35 bg-wa-ink text-teal-300' };
     }
     if (statusCode === null) {
-        return { label: 'PENDING', className: 'border-white/10 bg-white/5 text-white/70' };
+        return { label: 'PENDING', className: 'border-wa-accent/25 bg-wa-ink text-wa-muted' };
     }
-    return { label: `NG ${statusCode}`, className: 'border-rose-400/20 bg-rose-500/10 text-rose-100/85' };
+    return { label: `NG ${statusCode}`, className: 'border-red-500/35 bg-wa-ink text-red-300' };
 }
+
+const filterField = 'nordic-field py-2 text-xs font-black tracking-tight';
 
 export default function Index() {
     const [items, setItems] = useState<LogRow[]>([]);
@@ -34,7 +56,8 @@ export default function Index() {
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const [filterEventType, setFilterEventType] = useState<string>('');
-    const [filterStatus, setFilterStatus] = useState<string>('failed');
+    // デフォルトは絞り込みなし（成功通知が failed フィルタでは除外されるため）
+    const [filterStatus, setFilterStatus] = useState<string>('');
     const [filterTriggeredBy, setFilterTriggeredBy] = useState<string>('');
     const [filterDateFrom, setFilterDateFrom] = useState<string>('');
     const [filterDateTo, setFilterDateTo] = useState<string>('');
@@ -101,21 +124,24 @@ export default function Index() {
         return Array.from(set).sort();
     }, [items]);
 
+    const ghostBtn =
+        'rounded-sm border border-wa-accent/25 bg-wa-ink px-3 py-2 text-xs font-black tracking-tight text-wa-body transition hover:border-wa-accent/40 hover:bg-wa-card disabled:opacity-50';
+
     return (
-        <AuthenticatedLayout header={<h2 className="text-sm font-black tracking-tight">DISCORD / AUDIT LOG</h2>}>
+        <AuthenticatedLayout header={<h2 className="text-sm font-black tracking-tight text-wa-body">DISCORD / AUDIT LOG</h2>}>
             <Head title="Discord通知ログ（管理者）" />
-            <div className="mx-auto max-w-6xl px-6 py-6 text-slate-100">
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_18px_60px_rgba(0,0,0,0.55)] backdrop-blur-md">
+            <div className="mx-auto max-w-6xl px-6 py-6 text-wa-body wa-body-track">
+                <NeonCard elevate={false}>
                     <div className="flex flex-wrap items-start justify-between gap-4">
                         <div>
-                            <div className="text-xs font-bold tracking-widest text-white/60">LIST</div>
-                            <div className="mt-1 text-lg font-black tracking-tight text-white">通知ログ</div>
+                            <div className="text-xs font-bold tracking-widest text-wa-muted">LIST</div>
+                            <div className="mt-1 text-lg font-black tracking-tight text-wa-body">通知ログ</div>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
                             <select
                                 value={filterEventType}
                                 onChange={(e) => setFilterEventType(e.target.value)}
-                                className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-black tracking-tight text-white/80 focus:bg-white focus:text-black"
+                                className={filterField}
                             >
                                 <option value="">EVENT: ALL</option>
                                 {uniqueEventTypes.map((t) => (
@@ -124,11 +150,7 @@ export default function Index() {
                                     </option>
                                 ))}
                             </select>
-                            <select
-                                value={filterStatus}
-                                onChange={(e) => setFilterStatus(e.target.value)}
-                                className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-black tracking-tight text-white/80 focus:bg-white focus:text-black"
-                            >
+                            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className={filterField}>
                                 <option value="">STATUS: ALL</option>
                                 <option value="success">SUCCESS</option>
                                 <option value="failed">FAILED/PENDING</option>
@@ -137,24 +159,14 @@ export default function Index() {
                                 value={filterTriggeredBy}
                                 onChange={(e) => setFilterTriggeredBy(e.target.value)}
                                 placeholder="triggered_by"
-                                className="w-28 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-black tracking-tight text-white/80 placeholder:text-white/30 focus:bg-white focus:text-black"
+                                className={`${filterField} w-28`}
                             />
-                            <input
-                                type="date"
-                                value={filterDateFrom}
-                                onChange={(e) => setFilterDateFrom(e.target.value)}
-                                className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-black tracking-tight text-white/80 focus:bg-white focus:text-black"
-                            />
-                            <input
-                                type="date"
-                                value={filterDateTo}
-                                onChange={(e) => setFilterDateTo(e.target.value)}
-                                className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-black tracking-tight text-white/80 focus:bg-white focus:text-black"
-                            />
+                            <input type="date" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)} className={filterField} />
+                            <input type="date" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} className={filterField} />
                             <button
                                 type="button"
                                 onClick={() => void load()}
-                                className="rounded-xl bg-gradient-to-r from-purple-500/30 to-cyan-400/20 px-3 py-2 text-xs font-black tracking-tight text-white shadow-[0_0_0_1px_rgba(34,211,238,0.14)] hover:brightness-110"
+                                className="rounded-sm border border-wa-accent/45 bg-wa-accent px-3 py-2 text-xs font-black tracking-tight text-wa-ink shadow-sm ring-1 ring-wa-accent/30 transition hover:bg-wa-accent/90"
                             >
                                 REFRESH
                             </button>
@@ -162,32 +174,32 @@ export default function Index() {
                     </div>
 
                     {errorMessage ? (
-                        <div className="mt-4 rounded-2xl border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-xs text-rose-100/80">
+                        <div className="mt-4 rounded-sm border border-red-500/35 bg-wa-ink px-4 py-3 text-xs text-red-300">
                             {errorMessage}
                         </div>
                     ) : null}
                     {successMessage ? (
-                        <div className="mt-4 rounded-2xl border border-cyan-400/20 bg-cyan-500/10 px-4 py-3 text-xs text-cyan-100/80">
+                        <div className="mt-4 rounded-sm border border-teal-500/35 bg-wa-ink px-4 py-3 text-xs text-teal-300">
                             {successMessage}
                         </div>
                     ) : null}
 
-                    <div className="mt-4 overflow-hidden rounded-2xl border border-white/10">
+                    <div className="mt-4 overflow-hidden rounded-sm border border-wa-accent/20">
                         <table className="w-full text-left text-sm">
-                            <thead className="bg-white/5 text-xs font-bold tracking-widest text-white/55">
+                            <thead className="bg-wa-card text-xs font-bold tracking-widest text-wa-muted">
                                 <tr>
                                     <th className="px-4 py-3">ID</th>
                                     <th className="px-4 py-3">EVENT</th>
                                     <th className="px-4 py-3">STATUS</th>
                                     <th className="px-4 py-3">BY</th>
-                                    <th className="px-4 py-3">AT</th>
+                                    <th className="px-4 py-3">AT（JST）</th>
                                     <th className="px-4 py-3">ACTION</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-white/10 bg-[#0b1020]/35">
+                            <tbody className="divide-y divide-wa-accent/15 bg-wa-ink">
                                 {isLoading ? (
                                     <tr>
-                                        <td className="px-4 py-6 text-sm text-white/40" colSpan={6}>
+                                        <td className="px-4 py-6 text-sm text-wa-muted" colSpan={6}>
                                             読み込み中…
                                         </td>
                                     </tr>
@@ -196,26 +208,24 @@ export default function Index() {
                                         const badge = statusBadge(x.status_code);
                                         const canRetry = x.status_code === null || x.status_code >= 300;
                                         return (
-                                            <tr key={x.id} className="hover:bg-white/5">
-                                                <td className="px-4 py-3 font-mono text-xs text-white/80">
+                                            <tr key={x.id} className="transition-colors hover:bg-wa-card/80">
+                                                <td className="px-4 py-3 font-mono text-xs text-wa-body">
                                                     {x.id}
                                                     {x.parent_id ? (
-                                                        <span className="ml-2 text-[10px] text-white/35">↳ {x.parent_id}</span>
+                                                        <span className="ml-2 text-[10px] text-wa-muted">↳ {x.parent_id}</span>
                                                     ) : null}
                                                 </td>
-                                                <td className="px-4 py-3 text-white/80">{x.event_type}</td>
+                                                <td className="px-4 py-3 text-wa-body">{x.event_type}</td>
                                                 <td className="px-4 py-3">
                                                     <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-black ${badge.className}`}>
                                                         {badge.label}
                                                     </span>
                                                     {x.error_message ? (
-                                                        <div className="mt-1 text-[11px] text-rose-100/70">{x.error_message}</div>
+                                                        <div className="mt-1 text-[11px] text-red-400">{x.error_message}</div>
                                                     ) : null}
                                                 </td>
-                                                <td className="px-4 py-3 font-mono text-xs text-white/55">
-                                                    {x.triggered_by ?? '—'}
-                                                </td>
-                                                <td className="px-4 py-3 font-mono text-xs text-white/55">{x.created_at}</td>
+                                                <td className="px-4 py-3 font-mono text-xs text-wa-muted">{x.triggered_by ?? '—'}</td>
+                                                <td className="px-4 py-3 font-mono text-xs text-wa-muted">{formatLogAt(x.created_at)}</td>
                                                 <td className="px-4 py-3">
                                                     <button
                                                         type="button"
@@ -235,7 +245,7 @@ export default function Index() {
                                                                 setIsDetailLoading(false);
                                                             }
                                                         }}
-                                                        className="mr-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-black tracking-tight text-white/80 hover:bg-white/10"
+                                                        className={`${ghostBtn} mr-2`}
                                                     >
                                                         DETAIL
                                                     </button>
@@ -257,7 +267,7 @@ export default function Index() {
                                                                 setIsRetryingId(null);
                                                             }
                                                         }}
-                                                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-black tracking-tight text-white/80 hover:bg-white/10 disabled:opacity-50"
+                                                        className={ghostBtn}
                                                     >
                                                         {isRetryingId === x.id ? 'RETRYING…' : 'RETRY'}
                                                     </button>
@@ -267,7 +277,7 @@ export default function Index() {
                                     })
                                 ) : (
                                     <tr>
-                                        <td className="px-4 py-6 text-sm text-white/40" colSpan={6}>
+                                        <td className="px-4 py-6 text-sm text-wa-muted" colSpan={6}>
                                             ログがありません
                                         </td>
                                     </tr>
@@ -275,14 +285,14 @@ export default function Index() {
                             </tbody>
                         </table>
                     </div>
-                </div>
+                </NeonCard>
             </div>
 
             {detailId !== null ? (
-                <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 sm:items-center">
-                    <div className="w-full max-w-3xl overflow-hidden rounded-2xl border border-white/10 bg-[#050510] shadow-[0_0_60px_rgba(34,211,238,0.10)]">
-                        <div className="flex items-center justify-between border-b border-white/10 bg-white/5 px-5 py-4">
-                            <div className="text-sm font-black tracking-tight text-white">DETAIL #{detailId}</div>
+                <div className="fixed inset-0 z-50 flex items-end justify-center bg-wa-ink/75 p-4 backdrop-blur-sm sm:items-center">
+                    <div className="w-full max-w-3xl overflow-hidden rounded-sm border border-wa-accent/25 bg-wa-card shadow-xl shadow-black/50 ring-1 ring-wa-accent/10">
+                        <div className="flex items-center justify-between border-b border-wa-accent/20 bg-wa-ink px-5 py-4">
+                            <div className="text-sm font-black tracking-tight text-wa-body">DETAIL #{detailId}</div>
                             <button
                                 type="button"
                                 onClick={() => {
@@ -290,45 +300,52 @@ export default function Index() {
                                     setDetail(null);
                                     setIsDetailLoading(false);
                                 }}
-                                className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-black tracking-tight text-white/80 hover:bg-white/10"
+                                className={ghostBtn}
                             >
                                 CLOSE
                             </button>
                         </div>
-                        <div className="max-h-[70vh] space-y-4 overflow-auto p-5 text-sm">
+                        <div className="max-h-[70vh] space-y-4 overflow-auto p-5 text-sm text-wa-body">
                             {isDetailLoading ? (
-                                <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-6 text-sm text-white/40">
+                                <div className="rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-6 text-sm text-wa-muted">
                                     読み込み中…
                                 </div>
                             ) : detail ? (
                                 <>
                                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                        <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                                            <div className="text-[11px] font-bold tracking-widest text-white/55">EVENT</div>
-                                            <div className="mt-1 text-white/80">{detail.event_type}</div>
+                                        <div className="rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-3">
+                                            <div className="text-[11px] font-bold tracking-widest text-wa-muted">EVENT</div>
+                                            <div className="mt-1 text-wa-body">{detail.event_type}</div>
                                         </div>
-                                        <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                                            <div className="text-[11px] font-bold tracking-widest text-white/55">STATUS</div>
-                                            <div className="mt-1 text-white/80">{detail.status_code ?? '—'}</div>
+                                        <div className="rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-3">
+                                            <div className="text-[11px] font-bold tracking-widest text-wa-muted">STATUS</div>
+                                            <div className="mt-1 text-wa-body">{detail.status_code ?? '—'}</div>
+                                        </div>
+                                        <div className="rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-3 sm:col-span-2">
+                                            <div className="text-[11px] font-bold tracking-widest text-wa-muted">AT（JST）</div>
+                                            <div className="mt-1 font-mono text-xs text-wa-body">
+                                                {formatLogAt(detail.created_at)}
+                                                {detail.updated_at && detail.updated_at !== detail.created_at ? (
+                                                    <span className="ml-2 text-wa-muted">
+                                                        （更新 {formatLogAt(detail.updated_at)}）
+                                                    </span>
+                                                ) : null}
+                                            </div>
                                         </div>
                                     </div>
 
-                                    <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                                        <div className="text-[11px] font-bold tracking-widest text-white/55">PAYLOAD</div>
-                                        <pre className="mt-2 overflow-auto rounded-xl bg-black/40 p-3 text-xs text-white/80">
-                                            {JSON.stringify(detail.payload, null, 2)}
-                                        </pre>
+                                    <div className="rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-3">
+                                        <div className="text-[11px] font-bold tracking-widest text-wa-muted">PAYLOAD</div>
+                                        <pre className="json-pre-light mt-2">{JSON.stringify(detail.payload, null, 2)}</pre>
                                     </div>
 
-                                    <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                                        <div className="text-[11px] font-bold tracking-widest text-white/55">RESPONSE</div>
-                                        <pre className="mt-2 overflow-auto rounded-xl bg-black/40 p-3 text-xs text-white/80">
-                                            {detail.response_body ?? '—'}
-                                        </pre>
+                                    <div className="rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-3">
+                                        <div className="text-[11px] font-bold tracking-widest text-wa-muted">RESPONSE</div>
+                                        <pre className="json-pre-light mt-2">{detail.response_body ?? '—'}</pre>
                                     </div>
                                 </>
                             ) : (
-                                <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-6 text-sm text-white/40">
+                                <div className="rounded-sm border border-wa-accent/20 bg-wa-card px-4 py-6 text-sm text-wa-muted">
                                     データがありません
                                 </div>
                             )}
@@ -339,4 +356,3 @@ export default function Index() {
         </AuthenticatedLayout>
     );
 }
-

@@ -16,6 +16,7 @@ class AuthService
     {
         try {
             $user = User::query()
+                ->with('department')
                 ->where('employee_code', $employeeCode)
                 ->first();
 
@@ -71,7 +72,7 @@ class AuthService
 
     public function me(User $user): User
     {
-        return $user;
+        return $user->loadMissing('department');
     }
 }
 

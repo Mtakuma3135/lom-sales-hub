@@ -2,30 +2,29 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Credential;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * @property array{id:int,label:string,value:string,is_password:bool,updated_at:string} $resource
+ * @mixin Credential
  */
 class CredentialResource extends JsonResource
 {
     /**
-     * @return array{id:int,label:string,value:string,masked_value:string,is_password:bool,updated_at:string}
+     * @return array<string, mixed>
      */
     public function toArray(Request $request): array
     {
-        $value = (string) ($this->resource['value'] ?? '');
-        $isPassword = (bool) ($this->resource['is_password'] ?? false);
+        $password = $this->is_password ? (string) $this->value : '';
 
         return [
-            'id' => (int) ($this->resource['id'] ?? 0),
-            'label' => (string) ($this->resource['label'] ?? ''),
-            'value' => $isPassword ? '••••••••' : $value,
-            'masked_value' => $isPassword ? '••••••••' : $value,
-            'is_password' => $isPassword,
-            'updated_at' => (string) ($this->resource['updated_at'] ?? ''),
+            'id' => (int) $this->id,
+            'service_name' => (string) $this->label,
+            'login_id' => (string) ($this->login_id ?? ''),
+            'password' => $password,
+            'is_password' => (bool) $this->is_password,
+            'updated_at' => $this->updated_at?->format('Y-m-d H:i:s') ?? '',
         ];
     }
 }
-

@@ -18,6 +18,7 @@ class LunchBreak extends Model
         'date',
         'start_time',
         'end_time',
+        'lane',
     ];
 
     /**
@@ -25,6 +26,7 @@ class LunchBreak extends Model
      */
     protected $casts = [
         'date' => 'date',
+        'lane' => 'integer',
     ];
 
     public function user(): BelongsTo

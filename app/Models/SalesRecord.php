@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class SalesRecord extends Model
 {
@@ -19,5 +20,10 @@ class SalesRecord extends Model
         'customer_count' => 'integer',
         'raw' => 'array',
     ];
+
+    public function department(): BelongsTo
+    {
+        return $this->belongsTo(Department::class);
+    }
 }
 

@@ -46,21 +46,25 @@ class SendKotPunchJob implements ShouldQueue
             return;
         }
 
-        $apiUrl = (string) config('services.kot.api_url', '');
         $apiToken = (string) config('services.kot.api_token', '');
+        $endpoint = 'https://api.kingtime.jp/v1/daily-workings/timerecord';
 
         $at = Carbon::parse($this->atIso);
         $payload = $kotService->buildPunchPayload($user, $at);
 
-        if ($apiUrl === '' || $apiToken === '') {
-            // 本番URL未設定時は「処理保留」として監査ログだけ残す
+        if ($apiToken === '') {
+            Log::info('SendKotPunchJob mock (no KOT_API_TOKEN)', [
+                'endpoint' => $endpoint,
+                'payload' => $payload,
+            ]);
+
             $this->auditLog(
                 integration: 'kot',
                 eventType: 'punch',
-                status: 'pending',
+                status: 'success',
                 requestPayload: $payload,
                 actor: $user,
-                meta: ['reason' => 'not_configured'],
+                meta: ['mode' => 'mock', 'reason' => 'no_token'],
             );
             return;
         }
@@ -69,12 +73,27 @@ class SendKotPunchJob implements ShouldQueue
             $res = Http::timeout(5)
                 ->acceptJson()
                 ->withToken($apiToken)
-                ->post(rtrim($apiUrl, '/').'/punch', [
+                ->post($endpoint, [
                     // KOT仕様
                     'employeeCode' => $payload['employeeCode'],
                     'workingDate' => $payload['workingDate'],
                     'time' => $payload['time'],
                 ]);
+
+            if ($res->status() === 422) {
+                // 既打刻（処理済み扱い）：例外を投げない
+                $this->auditLog(
+                    integration: 'kot',
+                    eventType: 'punch',
+                    status: 'success',
+                    statusCode: 422,
+                    requestPayload: $payload,
+                    responseBody: $res->body(),
+                    actor: $user,
+                    meta: ['processed' => true],
+                );
+                return;
+            }
 
             $this->auditLog(
                 integration: 'kot',

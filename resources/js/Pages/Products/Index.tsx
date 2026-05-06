@@ -1,5 +1,8 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
+import NeonCard from '@/Components/NeonCard';
+import ActionButton from '@/Components/ActionButton';
+import StatusBadge from '@/Components/StatusBadge';
 
 type Product = {
     id: number;
@@ -45,100 +48,77 @@ export default function Index({ products }: { products?: ProductsProp }) {
         ];
 
     return (
-        <AuthenticatedLayout header={<h2 className="text-sm font-black tracking-tight">PRODUCTS / CATALOG</h2>}>
+        <AuthenticatedLayout header={<h2 className="text-sm font-black tracking-tight text-wa-body">PRODUCTS / CATALOG</h2>}>
             <Head title="商材一覧" />
-            <div className="mx-auto max-w-6xl px-6 py-6 text-slate-100">
-                <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                    {/* 左：検索・絞り込み */}
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_18px_60px_rgba(0,0,0,0.55)] backdrop-blur-md">
-                        <div className="text-xs font-bold tracking-widest text-white/60">SEARCH</div>
-                        <div className="mt-2 text-sm font-black tracking-tight text-white">検索 / 絞り込み</div>
-                        <div className="mt-4 space-y-3">
-                            <input
-                                type="text"
-                                placeholder="商材名で検索"
-                                className="w-full rounded-2xl border border-white/10 bg-[#0b1020]/60 px-4 py-3 text-sm font-semibold text-white/90 shadow-[0_0_0_1px_rgba(255,255,255,0.06)] placeholder:text-white/35 focus:outline-none focus:ring-2 focus:ring-cyan-400/30 focus:bg-white focus:text-black transition-colors"
-                            />
-                            <select className="w-full rounded-2xl border border-white/10 bg-[#0b1020]/60 px-4 py-3 text-sm font-semibold text-white/90 shadow-[0_0_0_1px_rgba(255,255,255,0.06)] focus:outline-none focus:ring-2 focus:ring-cyan-400/30">
+            <div className="mx-auto max-w-6xl px-6 py-6 text-wa-body wa-body-track">
+                <div className="grid grid-cols-1 gap-9 lg:grid-cols-3">
+                    <NeonCard>
+                        <div className="text-xs font-bold tracking-widest text-wa-muted">SEARCH</div>
+                        <div className="mt-3 text-sm font-black tracking-tight text-wa-body">検索 / 絞り込み</div>
+                        <div className="mt-6 space-y-4">
+                            <input type="text" placeholder="商材名で検索" className="nordic-field" />
+                            <select className="nordic-field">
                                 <option>カテゴリ：すべて</option>
                                 <option>回線</option>
                                 <option>モバイル</option>
                                 <option>オプション</option>
                             </select>
-                            <label className="flex items-center gap-2 text-sm font-semibold text-white/75">
-                                <input type="checkbox" className="h-4 w-4" defaultChecked />
+                            <label className="flex items-center gap-2 text-sm font-semibold text-wa-body">
+                                <input type="checkbox" className="h-4 w-4 rounded-sm border-wa-accent/35 text-wa-accent" defaultChecked />
                                 有効な商材のみ
                             </label>
-                            <button
-                                type="button"
-                                className="w-full rounded-2xl bg-gradient-to-r from-purple-500 to-cyan-400 px-3 py-3 text-sm font-black tracking-tight text-[#0b1020] shadow-[0_0_22px_rgba(34,211,238,0.22)] hover:brightness-110"
-                            >
-                                検索
-                            </button>
+                            <ActionButton className="w-full">検索</ActionButton>
                         </div>
-                    </div>
+                    </NeonCard>
 
-                    {/* 右：一覧テーブル */}
-                    <div className="lg:col-span-2 overflow-x-auto rounded-2xl border border-white/10 bg-white/5 p-6 shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_18px_60px_rgba(0,0,0,0.55)] backdrop-blur-md">
+                    <NeonCard className="lg:col-span-2 overflow-x-auto" elevate={false}>
                         <div className="flex items-center justify-between">
                             <div>
-                                <div className="text-xs font-bold tracking-widest text-white/60">CATALOG</div>
-                                <div className="mt-1 text-lg font-black tracking-tight text-white">商材一覧</div>
+                                <div className="text-xs font-bold tracking-widest text-wa-muted">CATALOG</div>
+                                <div className="mt-2 text-lg font-black tracking-tight text-wa-body">商材一覧</div>
                             </div>
-                            <div className="text-xs font-semibold text-cyan-200/80">{list.length} 件</div>
+                            <div className="text-xs font-semibold text-wa-accent">{list.length} 件</div>
                         </div>
 
-                        <table className="mt-4 w-full border-collapse">
+                        <table className="mt-6 w-full border-collapse">
                             <thead>
-                                <tr className="text-left text-xs text-white/60">
-                                    <th className="border-b border-white/10 px-3 py-2 font-bold tracking-widest">NAME</th>
-                                    <th className="border-b border-white/10 px-3 py-2 font-bold tracking-widest">CATEGORY</th>
-                                    <th className="border-b border-white/10 px-3 py-2 font-bold tracking-widest">PRICE</th>
-                                    <th className="border-b border-white/10 px-3 py-2 font-bold tracking-widest">STATE</th>
-                                    <th className="border-b border-white/10 px-3 py-2 font-bold tracking-widest">UPDATED</th>
-                                    <th className="border-b border-white/10 px-3 py-2 font-bold tracking-widest">ACTIONS</th>
+                                <tr className="text-left text-xs text-wa-muted">
+                                    <th className="border-b border-wa-accent/20 px-3 py-2 font-bold tracking-widest">NAME</th>
+                                    <th className="border-b border-wa-accent/20 px-3 py-2 font-bold tracking-widest">CATEGORY</th>
+                                    <th className="border-b border-wa-accent/20 px-3 py-2 font-bold tracking-widest">PRICE</th>
+                                    <th className="border-b border-wa-accent/20 px-3 py-2 font-bold tracking-widest">STATE</th>
+                                    <th className="border-b border-wa-accent/20 px-3 py-2 font-bold tracking-widest">UPDATED</th>
+                                    <th className="border-b border-wa-accent/20 px-3 py-2 font-bold tracking-widest">ACTIONS</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {list.map((p) => (
-                                    <tr key={p.id} className="text-sm hover:bg-white/5 transition-colors">
-                                        <td className="border-b border-white/10 px-3 py-3 font-black tracking-tight text-white">
-                                            {p.name}
+                                    <tr key={p.id} className="text-sm transition-colors hover:bg-wa-ink/80">
+                                        <td className="border-b border-wa-accent/20 px-3 py-3 font-black tracking-tight text-wa-body">
+                                            <Link
+                                                href={route('products.show', { id: p.id })}
+                                                className="block text-wa-accent transition hover:text-wa-accent/80"
+                                            >
+                                                {p.name}
+                                            </Link>
                                         </td>
-                                        <td className="border-b border-white/10 px-3 py-3 text-white/70">
-                                            {p.category}
-                                        </td>
-                                        <td className="border-b border-white/10 px-3 py-3 text-white/85 font-semibold">
+                                        <td className="border-b border-wa-accent/20 px-3 py-3 text-wa-muted">{p.category}</td>
+                                        <td className="border-b border-wa-accent/20 px-3 py-3 font-semibold text-wa-body">
                                             {p.price === 0 ? '無料' : `¥${p.price.toLocaleString()}`}
                                         </td>
-                                        <td className="border-b border-white/10 px-3 py-3">
-                                            <span
-                                                className={
-                                                    'inline-flex items-center rounded-full px-2.5 py-1 text-xs font-black tracking-tight ' +
-                                                    (p.is_active
-                                                        ? 'bg-emerald-500/15 text-emerald-200 ring-1 ring-inset ring-emerald-400/25'
-                                                        : 'bg-white/5 text-white/70 ring-1 ring-inset ring-white/10')
-                                                }
-                                            >
+                                        <td className="border-b border-wa-accent/20 px-3 py-3">
+                                            <StatusBadge variant={p.is_active ? 'success' : 'muted'}>
                                                 {p.is_active ? '有効' : '停止'}
-                                            </span>
+                                            </StatusBadge>
                                         </td>
-                                        <td className="border-b border-white/10 px-3 py-3 text-white/55">
-                                            {p.updated_at}
-                                        </td>
-                                        <td className="border-b border-white/10 px-3 py-3">
+                                        <td className="border-b border-wa-accent/20 px-3 py-3 text-wa-muted">{p.updated_at}</td>
+                                        <td className="border-b border-wa-accent/20 px-3 py-3">
                                             <div className="flex items-center gap-2">
                                                 <Link
                                                     href={route('products.show', { id: p.id })}
-                                                    className="rounded-2xl bg-white/5 px-4 py-2 text-xs font-black tracking-tight text-white/80 shadow-[0_0_0_1px_rgba(255,255,255,0.08)] hover:bg-white/10"
+                                                    className="rounded-sm border border-wa-accent/25 bg-wa-ink px-4 py-2 text-xs font-black tracking-tight text-wa-body transition hover:border-wa-accent/40"
                                                 >
                                                     詳細
-                                                </Link>
-                                                <Link
-                                                    href={route('products.show', { id: p.id })}
-                                                    className="rounded-2xl bg-white/5 px-4 py-2 text-xs font-black tracking-tight text-white/80 shadow-[0_0_0_1px_rgba(255,255,255,0.08)] hover:bg-white/10"
-                                                >
-                                                    編集
                                                 </Link>
                                             </div>
                                         </td>
@@ -146,10 +126,9 @@ export default function Index({ products }: { products?: ProductsProp }) {
                                 ))}
                             </tbody>
                         </table>
-                    </div>
+                    </NeonCard>
                 </div>
             </div>
         </AuthenticatedLayout>
     );
 }
-

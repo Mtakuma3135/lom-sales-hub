@@ -17,7 +17,7 @@ class CredentialController extends Controller
 
         $items = $credentialService->index();
 
-        return response()->json(CredentialResource::collection($items));
+        return CredentialResource::collection($items)->response();
     }
 
     public function update(CredentialUpdateRequest $request, CredentialService $credentialService, int $id): JsonResponse
@@ -25,15 +25,15 @@ class CredentialController extends Controller
         $credential = new Credential(['id' => $id]);
         $this->authorize('update', $credential);
 
-        $updated = $credentialService->update($id, $request->value(), $request->updatedAt());
+        $result = $credentialService->update(
+            $id,
+            $request->loginId(),
+            $request->password(),
+            $request->updatedAt(),
+        );
 
-        return response()->json([
-            'id' => (int) $updated['id'],
-            'label' => (string) $updated['label'],
-            'sheet_cell' => $updated['sheet_cell'] ?? null,
-            'gas_synced' => (bool) ($updated['gas_synced'] ?? false),
-            'updated_at' => (string) ($updated['updated_at'] ?? ''),
-        ]);
+        return CredentialResource::make($result['credential'])
+            ->additional(['gas_synced' => $result['gas_synced']])
+            ->response();
     }
 }
-

@@ -35,12 +35,7 @@ return [
         ],
     ],
 
-    'google_chat' => [
-        'webhook_url' => env('GOOGLE_CHAT_WEBHOOK_URL', ''),
-    ],
-
     'discord' => [
-        // NOTE: 互換対応: 既存の GOOGLE_CHAT_WEBHOOK_URL にDiscord URLを入れても動く
         'webhook_url' => env('DISCORD_WEBHOOK_URL', env('GOOGLE_CHAT_WEBHOOK_URL', '')),
     ],
 
@@ -54,6 +49,12 @@ return [
     'gas' => [
         // CSVアップロード後にダミー転送（Queue）するURL
         'dummy_url' => env('GAS_DUMMY_URL', ''),
+        // 監査ログ・手動テストなど（未設定時は dummy_url と同じ）
+        'audit_log_url' => env('GAS_AUDIT_LOG_URL', ''),
+        // ID/パス一覧の取得・更新（未設定時は dummy_url で pull / push を試行）
+        'credentials_url' => env('GAS_CREDENTIALS_URL', ''),
+        // 昼休憩タイムテーブル同期（RestSchedule 等）。未設定時は dummy_url
+        'lunch_schedule_url' => env('GAS_LUNCH_SCHEDULE_URL', ''),
         'signing_secret' => env('GAS_SIGNING_SECRET', ''),
     ],
 

@@ -34,11 +34,11 @@ export default function ResetPassword({
         <GuestLayout>
             <Head title="パスワード再設定" />
 
-            <h1 className="text-2xl font-bold text-center mt-8 mb-8">パスワード再設定</h1>
+            <h1 className="mb-8 mt-8 text-center text-2xl font-semibold text-wa-body">パスワード再設定</h1>
 
-            <form 
+            <form
                 onSubmit={submit}
-                className="max-w-md mx-auto bg-white rounded-lg shadow p-8 space-y-6"
+                className="mx-auto max-w-md space-y-6 rounded-sm border border-wa-accent/20 bg-wa-ink p-8"
             >
                 {/* メールアドレス */}
                 <div>

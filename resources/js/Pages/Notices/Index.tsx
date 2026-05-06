@@ -1,6 +1,12 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
+import { PageProps } from '@/types';
+import NeonCard from '@/Components/NeonCard';
+import ActionButton from '@/Components/ActionButton';
+import StatusBadge from '@/Components/StatusBadge';
+import DetailDrawer from '@/Components/DetailDrawer';
+import NoticeFeedItem from '@/Components/NoticeFeedItem';
 
 type Notice = {
     id: number;
@@ -14,8 +20,11 @@ type NoticesProp = {
     data: Notice[];
 };
 
+const btnGhost =
+    'w-full rounded-sm border border-wa-accent/25 bg-wa-ink px-3 py-3 text-sm font-black tracking-tight text-wa-body transition hover:border-wa-accent/40';
+
 export default function Index({ notices }: { notices?: NoticesProp }) {
-    const { props } = usePage<{ auth?: { user?: { role?: string } } }>();
+    const { props } = usePage<PageProps>();
     const isAdmin = (props.auth?.user?.role ?? 'general') === 'admin';
 
     const list =
@@ -53,6 +62,8 @@ export default function Index({ notices }: { notices?: NoticesProp }) {
 
     const [items, setItems] = useState<Notice[]>(list);
     const [selectedId, setSelectedId] = useState<number | null>(null);
+    const [selectedNotice, setSelectedNotice] = useState<Notice | null>(null);
+    const [isDetailLoading, setIsDetailLoading] = useState<boolean>(false);
     const [isCreating, setIsCreating] = useState<boolean>(false);
     const [q, setQ] = useState<string>('');
     const [draftTitle, setDraftTitle] = useState<string>('');
@@ -106,9 +117,20 @@ export default function Index({ notices }: { notices?: NoticesProp }) {
         };
     }, [api]);
 
+    // Home などから `?open=<id>` で遷移したとき、自動で詳細を開く
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const raw = params.get('open');
+        const id = raw ? Number(raw) : NaN;
+        if (!Number.isFinite(id) || id <= 0) return;
+        void openDetail(id);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     const openCreate = () => {
         setIsCreating(true);
         setSelectedId(null);
+        setSelectedNotice(null);
         setDraftTitle('');
         setDraftBody('');
         setDraftPinned(false);
@@ -120,6 +142,7 @@ export default function Index({ notices }: { notices?: NoticesProp }) {
     const openEdit = async (id: number) => {
         setIsCreating(false);
         setSelectedId(id);
+        setSelectedNotice(null);
         setErrorMessage(null);
         setSuccessMessage(null);
         try {
@@ -136,21 +159,40 @@ export default function Index({ notices }: { notices?: NoticesProp }) {
         }
     };
 
+    const openDetail = async (id: number) => {
+        setIsCreating(false);
+        setSelectedId(id);
+        setSelectedNotice(null);
+        setIsDetailLoading(true);
+        setErrorMessage(null);
+        try {
+            const res = await api.show(id);
+            if (!res.ok) throw new Error();
+            const json = (await res.json()) as any;
+            const n = (json?.data ?? json) as Notice;
+            setSelectedNotice(n);
+        } catch {
+            setSelectedNotice(null);
+            setErrorMessage('詳細の取得に失敗しました。');
+        } finally {
+            setIsDetailLoading(false);
+        }
+    };
+
     return (
-        <AuthenticatedLayout header={<h2 className="text-sm font-black tracking-tight">NOTICE / FEED</h2>}>
+        <AuthenticatedLayout header={<h2 className="text-sm font-black tracking-tight text-wa-body">NOTICE / FEED</h2>}>
             <Head title="周知事項" />
-            <div className="mx-auto max-w-6xl px-6 py-6 text-slate-100">
+            <div className="mx-auto max-w-6xl px-6 py-6 text-wa-body wa-body-track">
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                    {/* 左：フィルタカード */}
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_18px_60px_rgba(0,0,0,0.55)] backdrop-blur-md">
-                        <div className="text-xs font-bold tracking-widest text-white/60">FILTER</div>
-                        <div className="mt-2 text-sm font-black tracking-tight text-white">絞り込み</div>
+                    <NeonCard>
+                        <div className="text-xs font-bold tracking-widest text-wa-muted">FILTER</div>
+                        <div className="mt-2 text-sm font-black tracking-tight text-wa-body">絞り込み</div>
                         <div className="mt-4 space-y-3">
                             <input
                                 value={q}
                                 onChange={(e) => setQ(e.target.value)}
                                 placeholder="キーワード検索"
-                                className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/30 shadow-[0_0_0_1px_rgba(255,255,255,0.06)] transition-colors focus:bg-white focus:text-black"
+                                className="nordic-field"
                             />
                             <button
                                 type="button"
@@ -165,42 +207,34 @@ export default function Index({ notices }: { notices?: NoticesProp }) {
                                         setErrorMessage('検索に失敗しました。');
                                     }
                                 }}
-                                className="w-full rounded-2xl bg-white/5 px-3 py-3 text-sm font-black tracking-tight text-white/80 shadow-[0_0_0_1px_rgba(255,255,255,0.08)] hover:bg-white/10"
+                                className={btnGhost}
                             >
                                 検索
                             </button>
-                            <div className="rounded-xl border border-white/10 bg-[#0b1020]/60 px-3 py-3 text-xs text-white/65">
+                            <div className="rounded-sm border border-teal-500/25 bg-wa-ink px-3 py-3 text-xs text-teal-300/90">
                                 PIN は常に最上部に表示されます
                             </div>
-                            <button
-                                type="button"
-                                disabled={!isAdmin}
-                                onClick={openCreate}
-                                className="w-full rounded-2xl bg-gradient-to-r from-purple-500 to-cyan-400 px-3 py-3 text-sm font-black tracking-tight text-[#0b1020] shadow-[0_0_22px_rgba(34,211,238,0.22)] hover:brightness-110 disabled:opacity-40"
-                            >
+                            <ActionButton className="w-full" disabled={!isAdmin} onClick={openCreate}>
                                 新規作成（管理者）
-                            </button>
-                            <button
-                                type="button"
-                                className="w-full rounded-2xl bg-white/5 px-3 py-3 text-sm font-black tracking-tight text-white/80 shadow-[0_0_0_1px_rgba(255,255,255,0.08)] hover:bg-white/10"
-                            >
+                            </ActionButton>
+                            <button type="button" className={btnGhost}>
                                 下書き
                             </button>
 
                             {errorMessage ? (
-                                <div className="rounded-2xl border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-xs text-rose-100/80">
+                                <div className="rounded-sm border border-red-500/35 bg-wa-ink px-4 py-3 text-xs text-red-300">
                                     {errorMessage}
                                 </div>
                             ) : null}
                             {successMessage ? (
-                                <div className="rounded-2xl border border-cyan-400/20 bg-cyan-500/10 px-4 py-3 text-xs text-cyan-100/80">
+                                <div className="rounded-sm border border-teal-500/35 bg-wa-ink px-4 py-3 text-xs text-teal-300">
                                     {successMessage}
                                 </div>
                             ) : null}
 
                             {(isCreating || selectedId !== null) && isAdmin ? (
-                                <div className="rounded-2xl border border-white/10 bg-[#0b1020]/55 p-4">
-                                    <div className="text-xs font-bold tracking-widest text-white/60">
+                                <div className="rounded-sm border border-wa-accent/20 bg-wa-ink p-4">
+                                    <div className="text-xs font-bold tracking-widest text-wa-muted">
                                         {isCreating ? 'CREATE' : 'EDIT'}
                                     </div>
                                     <div className="mt-3 space-y-3">
@@ -208,21 +242,22 @@ export default function Index({ notices }: { notices?: NoticesProp }) {
                                             value={draftTitle}
                                             onChange={(e) => setDraftTitle(e.target.value)}
                                             placeholder="タイトル（最大100）"
-                                            className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/30 shadow-[0_0_0_1px_rgba(255,255,255,0.06)] transition-colors focus:bg-white focus:text-black"
+                                            className="nordic-field"
                                         />
                                         <textarea
                                             value={draftBody}
                                             onChange={(e) => setDraftBody(e.target.value)}
                                             rows={5}
                                             placeholder="本文（最大10000）"
-                                            className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/30 shadow-[0_0_0_1px_rgba(255,255,255,0.06)] transition-colors focus:bg-white focus:text-black"
+                                            className="nordic-field min-h-[120px]"
                                         />
-                                        <div className="flex items-center justify-between gap-2">
-                                            <label className="flex items-center gap-2 text-xs font-semibold text-white/70">
+                                        <div className="flex flex-wrap items-center justify-between gap-2">
+                                            <label className="flex items-center gap-2 text-xs font-semibold text-wa-body">
                                                 <input
                                                     type="checkbox"
                                                     checked={draftPinned}
                                                     onChange={(e) => setDraftPinned(e.target.checked)}
+                                                    className="rounded-sm border-wa-accent/35 text-wa-accent"
                                                 />
                                                 PIN
                                             </label>
@@ -230,7 +265,7 @@ export default function Index({ notices }: { notices?: NoticesProp }) {
                                                 value={draftPublishedAt}
                                                 onChange={(e) => setDraftPublishedAt(e.target.value)}
                                                 placeholder="published_at (YYYY-MM-DD HH:mm:ss)"
-                                                className="w-48 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white placeholder:text-white/30 transition-colors focus:bg-white focus:text-black"
+                                                className="nordic-field w-48 py-2 text-xs"
                                             />
                                         </div>
                                         <div className="flex items-center justify-end gap-2">
@@ -239,6 +274,7 @@ export default function Index({ notices }: { notices?: NoticesProp }) {
                                                 onClick={() => {
                                                     setIsCreating(false);
                                                     setSelectedId(null);
+                                                    setSelectedNotice(null);
                                                     setDraftTitle('');
                                                     setDraftBody('');
                                                     setDraftPinned(false);
@@ -246,12 +282,11 @@ export default function Index({ notices }: { notices?: NoticesProp }) {
                                                     setErrorMessage(null);
                                                     setSuccessMessage(null);
                                                 }}
-                                                className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-black tracking-widest text-white/80 hover:bg-white/10"
+                                                className="rounded-sm border border-wa-accent/25 bg-wa-card px-4 py-2 text-xs font-black tracking-widest text-wa-body transition hover:border-wa-accent/40"
                                             >
                                                 CLOSE
                                             </button>
-                                            <button
-                                                type="button"
+                                            <ActionButton
                                                 disabled={isSaving}
                                                 onClick={async () => {
                                                     setIsSaving(true);
@@ -289,79 +324,113 @@ export default function Index({ notices }: { notices?: NoticesProp }) {
                                                         setIsSaving(false);
                                                     }
                                                 }}
-                                                className="rounded-2xl bg-gradient-to-r from-purple-500 to-cyan-400 px-4 py-2 text-xs font-black tracking-widest text-[#0b1020] shadow-[0_0_22px_rgba(34,211,238,0.22)] hover:brightness-110 disabled:opacity-50"
                                             >
                                                 {isSaving ? 'SAVING…' : 'SAVE'}
-                                            </button>
+                                            </ActionButton>
                                         </div>
                                     </div>
                                 </div>
                             ) : null}
                         </div>
-                    </div>
+                    </NeonCard>
 
-                    {/* 右：一覧 */}
-                    <div className="lg:col-span-2 rounded-2xl border border-white/10 bg-white/5 p-6 shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_18px_60px_rgba(0,0,0,0.55)] backdrop-blur-md">
+                    <NeonCard className="lg:col-span-2" elevate={false}>
                         <div className="flex items-center justify-between">
                             <div>
-                                <div className="text-xs font-bold tracking-widest text-white/60">FEED</div>
-                                <div className="mt-1 text-lg font-black tracking-tight text-white">お知らせ</div>
+                                <div className="text-xs font-bold tracking-widest text-wa-muted">FEED</div>
+                                <div className="mt-1 text-lg font-black tracking-tight text-wa-body">お知らせ</div>
                             </div>
-                            <div className="text-xs font-semibold text-cyan-200/80">
-                                {list.length} 件
-                            </div>
+                            <div className="text-xs font-semibold text-wa-accent">{list.length} 件</div>
                         </div>
 
                         <div className="mt-4 space-y-3">
                             {items.map((n) => (
-                                <div
-                                    key={n.id}
-                                    className="group relative overflow-hidden rounded-2xl border border-white/10 bg-[#0b1020]/50 px-4 py-4 shadow-[0_0_0_1px_rgba(255,255,255,0.05)] transition hover:shadow-[0_0_0_1px_rgba(34,211,238,0.25),0_0_26px_rgba(168,85,247,0.18)]"
-                                >
-                                    <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-200 group-hover:opacity-100 bg-gradient-to-r from-purple-500/10 via-transparent to-cyan-400/10" />
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div className="relative min-w-0">
-                                            <div className="flex items-center gap-2">
-                                                {n.is_pinned ? (
-                                                    <span className="inline-flex items-center rounded-full bg-gradient-to-r from-purple-500/25 to-cyan-400/20 px-2.5 py-1 text-[11px] font-black text-white ring-1 ring-inset ring-white/10 shadow-[0_0_18px_rgba(34,211,238,0.18)]">
-                                                        PIN
-                                                    </span>
-                                                ) : null}
-                                                <div className="truncate text-sm font-black tracking-tight text-white">
-                                                    {n.title}
-                                                </div>
-                                            </div>
-                                            <div className="mt-2 line-clamp-2 text-sm text-white/70">
-                                                {n.body}
-                                            </div>
-                                            <div className="mt-2 text-xs text-white/45">
-                                                公開: {n.published_at}
-                                            </div>
-                                        </div>
+                                <div key={n.id} className="space-y-2">
+                                    <NoticeFeedItem
+                                        title={n.title}
+                                        body={n.body}
+                                        publishedAt={n.published_at}
+                                        isPinned={n.is_pinned}
+                                        onOpen={() => openDetail(n.id)}
+                                    />
 
-                                        <div className="relative flex shrink-0 flex-col gap-2">
-                                            <button
-                                                type="button"
-                                                onClick={() => openEdit(n.id)}
-                                                className="rounded-2xl bg-white/5 px-4 py-2 text-xs font-black tracking-tight text-white/80 shadow-[0_0_0_1px_rgba(255,255,255,0.08)] hover:bg-white/10"
-                                            >
-                                                {isAdmin ? '編集' : '詳細'}
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className="rounded-2xl bg-white/5 px-4 py-2 text-xs font-black tracking-tight text-white/80 shadow-[0_0_0_1px_rgba(255,255,255,0.08)] hover:bg-white/10"
-                                            >
-                                                既読
-                                            </button>
-                                        </div>
+                                    <div className="flex items-center justify-end gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (isAdmin) openEdit(n.id);
+                                                else openDetail(n.id);
+                                            }}
+                                            className="rounded-sm border border-wa-accent/25 bg-wa-ink px-4 py-2 text-xs font-black tracking-tight text-wa-body transition hover:border-wa-accent/40 hover:bg-wa-card"
+                                        >
+                                            {isAdmin ? '編集' : '詳細'}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={(e) => e.stopPropagation()}
+                                            className="rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-2 text-xs font-black tracking-tight text-wa-muted transition hover:border-wa-accent/35 hover:text-wa-body"
+                                        >
+                                            既読
+                                        </button>
                                     </div>
                                 </div>
                             ))}
                         </div>
-                    </div>
+                    </NeonCard>
                 </div>
             </div>
+
+            <DetailDrawer
+                open={selectedId !== null}
+                title={`NOTICE #${selectedId ?? ''}`}
+                onClose={() => {
+                    setSelectedId(null);
+                    setSelectedNotice(null);
+                    setIsDetailLoading(false);
+                }}
+            >
+                {isDetailLoading ? (
+                    <div className="rounded-sm border border-wa-accent/20 bg-wa-card px-4 py-6 text-sm text-wa-muted">
+                        読み込み中…
+                    </div>
+                ) : selectedNotice ? (
+                    <div className="space-y-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                    {selectedNotice.is_pinned ? <StatusBadge variant="primary" pulse>PIN</StatusBadge> : null}
+                                    <div className="truncate text-base font-black tracking-tight text-wa-body">
+                                        {selectedNotice.title}
+                                    </div>
+                                </div>
+                                <div className="mt-2 text-xs text-wa-muted">公開: {selectedNotice.published_at}</div>
+                            </div>
+                            {isAdmin ? (
+                                <ActionButton
+                                    onClick={() => {
+                                        const id = selectedNotice.id;
+                                        setSelectedId(null);
+                                        setSelectedNotice(null);
+                                        openEdit(id);
+                                    }}
+                                >
+                                    編集へ
+                                </ActionButton>
+                            ) : null}
+                        </div>
+
+                        <div className="rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-3">
+                            <div className="text-[11px] font-bold tracking-widest text-wa-muted">BODY</div>
+                            <div className="mt-2 whitespace-pre-wrap text-sm text-wa-body">{selectedNotice.body}</div>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="rounded-sm border border-wa-accent/20 bg-wa-card px-4 py-6 text-sm text-wa-muted">
+                        データがありません
+                    </div>
+                )}
+            </DetailDrawer>
         </AuthenticatedLayout>
     );
 }
-

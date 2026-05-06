@@ -27,9 +27,9 @@ class ConfirmablePasswordController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        // 現在認証済みユーザーのメールアドレス・パスワードで再認証
+        // 社員コード + パスワードで再認証
         $credentials = [
-            'email' => $request->user()->email,
+            'employee_code' => $request->user()->employee_code,
             'password' => $request->password,
         ];
 

@@ -16,7 +16,7 @@ class TaskRequestIndexRequest extends FormRequest
         return [
             'type' => ['nullable', 'in:received,sent'],
             'status' => ['nullable', 'in:pending,completed'],
-            'priority' => ['nullable', 'in:urgent,normal'],
+            'priority' => ['nullable', 'in:urgent,important,normal'],
             'sort' => ['nullable', 'in:created_at_desc,created_at_asc'],
         ];
     }

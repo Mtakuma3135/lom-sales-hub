@@ -36,7 +36,7 @@ export default function Login({
 
             {/* ステータスメッセージ表示（指示書準拠） */}
             {status && (
-                <div className="mb-4 rounded-md bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+                <div className="mb-4 border border-teal-500/35 bg-wa-ink px-4 py-3 text-sm font-medium text-teal-300">
                     {status}
                 </div>
             )}
@@ -44,7 +44,7 @@ export default function Login({
             <form onSubmit={submit} className="space-y-5">
                 {/* 社員コード入力 */}
                 <div>
-                    <InputLabel htmlFor="employee_code" value="社員コード" />
+                    <InputLabel htmlFor="employee_code" value="社員番号" />
                     <TextInput
                         id="employee_code"
                         type="text"
@@ -83,7 +83,7 @@ export default function Login({
                             checked={data.remember}
                             onChange={e => setData('remember', e.target.checked)}
                         />
-                        <span className="ms-2 text-sm text-slate-600">
+                        <span className="ms-2 text-sm text-wa-muted">
                             ログイン情報を記憶する
                         </span>
                     </label>
@@ -99,7 +99,7 @@ export default function Login({
                         <div className="mt-4 text-center">
                             <Link
                                 href={route('password.request')}
-                                className="text-sm text-slate-500 underline hover:text-slate-700"
+                                className="text-sm text-wa-muted underline transition hover:text-wa-body"
                             >
                                 パスワードをお忘れですか？
                             </Link>
