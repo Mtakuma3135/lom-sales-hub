@@ -24,7 +24,21 @@ export default function BreakRunner({
     const elapsedMs = Math.max(0, totalMs - Math.max(0, remainingMs));
     const pct = totalMs > 0 ? Math.min(100, Math.max(0, (elapsedMs / totalMs) * 100)) : 0;
     const accentBar =
-        accent === 'emerald' ? 'bg-emerald-500' : accent === 'sky' ? 'bg-sky-500' : accent === 'amber' ? 'bg-amber-500' : 'bg-wa-accent';
+        accent === 'emerald'
+            ? 'bg-emerald-500'
+            : accent === 'sky'
+              ? 'bg-sky-500'
+              : accent === 'amber'
+                ? 'bg-amber-500'
+                : 'bg-wa-accent';
+    const accentGlow =
+        accent === 'emerald'
+            ? 'bg-emerald-400 shadow-[0_0_18px_rgba(52,211,153,0.30)]'
+            : accent === 'sky'
+              ? 'bg-sky-400 shadow-[0_0_18px_rgba(56,189,248,0.35)]'
+              : accent === 'amber'
+                ? 'bg-amber-400 shadow-[0_0_18px_rgba(251,191,36,0.30)]'
+                : 'bg-wa-accent shadow-[0_0_18px_rgba(192,132,87,0.28)]';
 
     return (
         <div className="rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-4">
@@ -51,13 +65,13 @@ export default function BreakRunner({
                         />
                     </div>
                     {active ? (
-                        <div
-                            className={`absolute top-1/2 -translate-y-1/2 text-xl leading-none transition-[left] duration-500 ease-out`}
-                            style={{ left: `calc(${pct}% - 0.5rem)` }}
-                            aria-hidden
-                        >
-                            🏃
-                        </div>
+                        <>
+                            <div
+                                className={`pointer-events-none absolute top-1 bottom-1 w-[2px] ${accentGlow} transition-[left] duration-500 ease-out`}
+                                style={{ left: `calc(${pct}% - 1px)` }}
+                                aria-hidden
+                            />
+                        </>
                     ) : (
                         <div className="flex h-full items-center justify-center text-xs font-medium text-wa-muted">
                             待機中
