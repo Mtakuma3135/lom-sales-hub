@@ -13,6 +13,36 @@
 }
 
 @layer components {
+  /* --- Modern dark surfaces (mockup-like) --- */
+  .wa-surface {
+    @apply relative overflow-hidden rounded-2xl border border-wa-accent/15 bg-wa-card shadow-nordic;
+  }
+
+  .wa-surface::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(1200px 400px at 12% 0%, rgba(192,132,87,0.10), rgba(192,132,87,0) 55%),
+      linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0));
+    opacity: 0.95;
+  }
+
+  .wa-surface::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), inset 0 0 0 1px rgba(0,0,0,0.35);
+    opacity: 0.85;
+  }
+
+  .wa-surface__inner {
+    @apply relative rounded-xl border border-wa-accent/10 bg-wa-ink/70;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25);
+  }
+
   /** フォーム（モダン和風ダーク） */
   .nordic-field {
     @apply w-full rounded-sm border border-wa-accent/25 bg-wa-ink px-4 py-3 text-sm text-wa-body shadow-none placeholder:text-wa-muted focus:border-wa-accent/45 focus:outline-none focus:ring-1 focus:ring-wa-accent/30;
@@ -59,7 +89,7 @@
   }
 
   .neon-badge {
-    @apply inline-flex items-center rounded-sm border px-2.5 py-1 text-[11px] font-semibold wa-body-track;
+    @apply inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold wa-body-track;
   }
   .neon-badge--success { @apply border-teal-500/35 bg-wa-ink text-teal-300; }
   .neon-badge--danger { @apply border-red-500/35 bg-wa-ink text-red-400; }
