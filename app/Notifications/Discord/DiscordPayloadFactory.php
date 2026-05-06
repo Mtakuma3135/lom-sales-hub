@@ -40,6 +40,14 @@ class DiscordPayloadFactory
     }
 
     /**
+     * @return array{content:string}
+     */
+    public static function lunchBreakScheduleUpdated(): array
+    {
+        return ['content' => '昼休憩のタイムスケジュールが更新されました！'];
+    }
+
+    /**
      * 業務依頼作成時の Discord 通知本文
      *
      * @return array{content:string}
