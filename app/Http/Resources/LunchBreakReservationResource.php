@@ -16,7 +16,7 @@ class LunchBreakReservationResource extends JsonResource
         $isAdmin = (($actor?->role ?? 'general') === 'admin');
         $isSelf = $actor && (int) ($this->resource->user_id ?? 0) === (int) $actor->id;
 
-        $canExposeUser = $isAdmin || $isSelf;
+        $canExposeFullUser = $isAdmin || $isSelf;
 
         return [
             'id' => $this->resource->id,
@@ -24,9 +24,9 @@ class LunchBreakReservationResource extends JsonResource
             'start_time' => (string) $this->resource->start_time,
             'end_time' => (string) $this->resource->end_time,
             'user' => [
-                'id' => $canExposeUser ? $this->resource->user?->id : null,
-                'name' => $canExposeUser ? $this->resource->user?->name : '—',
-                'role' => $canExposeUser ? $this->resource->user?->role : null,
+                'id' => $canExposeFullUser ? $this->resource->user?->id : null,
+                'name' => (string) ($this->resource->user?->name ?? '—'),
+                'role' => $canExposeFullUser ? $this->resource->user?->role : null,
             ],
         ];
     }

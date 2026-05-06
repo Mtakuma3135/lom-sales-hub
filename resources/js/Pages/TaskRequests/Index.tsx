@@ -5,6 +5,8 @@ import NeonCard from '@/Components/NeonCard';
 import ActionButton from '@/Components/ActionButton';
 import StatusBadge from '@/Components/StatusBadge';
 import DetailDrawer from '@/Components/DetailDrawer';
+import { apiFetch } from '@/lib/fetch';
+import { showAppToast } from '@/lib/toast';
 
 type Task = {
     id: number;
@@ -129,38 +131,53 @@ export default function Index({
     const dailyProgress = dailyTotal > 0 ? Math.round((dailyCompleted / dailyTotal) * 100) : 0;
 
     const onDailyStatusChange = async (id: number, status: string) => {
-        setDailyItems((prev) => prev.map((d) => (d.id === id ? { ...d, status } : d)));
-        await fetch(route('portal.api.daily-tasks.status', { id }), {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-            credentials: 'same-origin',
-            body: JSON.stringify({ status }),
-        });
+        const prev = dailyItems.find((d) => d.id === id)?.status;
+        setDailyItems((items) => items.map((d) => (d.id === id ? { ...d, status } : d)));
+        try {
+            const res = await apiFetch(route('portal.api.daily-tasks.status', { id }), {
+                method: 'PATCH',
+                body: JSON.stringify({ status }),
+            });
+            if (!res.ok) throw new Error(`status ${res.status}`);
+        } catch {
+            setDailyItems((items) => items.map((d) => (d.id === id ? { ...d, status: prev ?? 'pending' } : d)));
+            showAppToast('ステータスの更新に失敗しました');
+        }
     };
 
     const onAddTemplate = async () => {
         if (!newTaskTitle.trim()) return;
-        const res = await fetch(route('portal.api.daily-tasks.templates.store'), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-            credentials: 'same-origin',
-            body: JSON.stringify({ title: newTaskTitle.trim() }),
-        });
-        if (!res.ok) return;
-        const json = (await res.json()) as { data: DailyTemplate };
-        setTemplates((prev) => [...prev, json.data]);
-        setDailyItems((prev) => [...prev, { id: json.data.id, title: json.data.title, status: 'pending' }]);
-        setNewTaskTitle('');
+        try {
+            const res = await apiFetch(route('portal.api.daily-tasks.templates.store'), {
+                method: 'POST',
+                body: JSON.stringify({ title: newTaskTitle.trim() }),
+            });
+            if (!res.ok) throw new Error(`status ${res.status}`);
+            const json = (await res.json()) as { data: DailyTemplate };
+            setTemplates((prev) => [...prev, json.data]);
+            setDailyItems((prev) => [...prev, { id: json.data.id, title: json.data.title, status: 'pending' }]);
+            setNewTaskTitle('');
+            showAppToast('タスクを追加しました');
+        } catch {
+            showAppToast('タスクの追加に失敗しました');
+        }
     };
 
     const onRemoveTemplate = async (id: number) => {
+        const prevTemplates = templates;
+        const prevDaily = dailyItems;
         setTemplates((prev) => prev.filter((t) => t.id !== id));
         setDailyItems((prev) => prev.filter((d) => d.id !== id));
-        await fetch(route('portal.api.daily-tasks.templates.destroy', { id }), {
-            method: 'DELETE',
-            headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-            credentials: 'same-origin',
-        });
+        try {
+            const res = await apiFetch(route('portal.api.daily-tasks.templates.destroy', { id }), {
+                method: 'DELETE',
+            });
+            if (!res.ok) throw new Error(`status ${res.status}`);
+        } catch {
+            setTemplates(prevTemplates);
+            setDailyItems(prevDaily);
+            showAppToast('タスクの削除に失敗しました');
+        }
     };
 
     return (
