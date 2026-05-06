@@ -8,6 +8,8 @@ import StatusBadge from '@/Components/StatusBadge';
 import { PageProps } from '@/types';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import SectionHeader from '@/Components/UI/SectionHeader';
+import PrimaryButton from '@/Components/PrimaryButton';
+import SecondaryButton from '@/Components/SecondaryButton';
 
 type NoticeRow = {
     id: number;
@@ -33,6 +35,7 @@ type LunchLaneStatus = {
     current: {
         user: { id: number; name: string } | null;
         started_at?: string | null;
+        planned_start_time?: string | null;
         duration_minutes?: number;
     };
     next?: { user: { id: number; name: string } | null };
@@ -63,6 +66,15 @@ function laneRemainingMs(row: LunchLaneStatus, nowMs: number, totalMs: number): 
 function formatTime(t: string | undefined): string {
     if (!t) return '';
     return t.length >= 8 ? t.slice(0, 5) : t.length >= 5 ? t.slice(0, 5) : t;
+}
+
+function addMinutesHHMM(hhmm: string, minutes: number): string {
+    const [h, m] = hhmm.split(':').map((x) => Number(x));
+    if (!Number.isFinite(h) || !Number.isFinite(m)) return hhmm;
+    const total = h * 60 + m + minutes;
+    const hh = String(Math.floor((total + 1440) % 1440 / 60)).padStart(2, '0');
+    const mm = String(((total + 1440) % 1440) % 60).padStart(2, '0');
+    return `${hh}:${mm}`;
 }
 
 const priorityLabel = (p: string): string => {
@@ -191,65 +203,10 @@ export default function Index({
     }, [fetchLunchStatus, today]);
 
     useEffect(() => {
-        if (!userId) return;
-        const read = () => {
-            const prefix = `lunchBreakTimer:${today}:`;
-            const suffix = `:${userId}`;
-            for (let i = 0; i < localStorage.length; i++) {
-                const k = localStorage.key(i);
-                if (!k) continue;
-                if (!k.startsWith(prefix) || !k.endsWith(suffix)) continue;
-                const startedAt = Number(localStorage.getItem(k) ?? '');
-                const startTime = k.slice(prefix.length, k.length - suffix.length);
-                if (!Number.isFinite(startedAt)) continue;
-                return { startedAt, startTime };
-            }
-            return null;
-        };
-
-        setTimerState(read());
-        setNowMs(Date.now());
-
-        const tick = window.setInterval(() => {
-            setNowMs(Date.now());
-            setTimerState(read());
-        }, 500);
-
-        const onStorage = (e: StorageEvent) => {
-            if (!e.key?.startsWith(`lunchBreakTimer:${today}:`)) return;
-            setTimerState(read());
-        };
-        window.addEventListener('storage', onStorage);
-
-        return () => {
-            window.clearInterval(tick);
-            window.removeEventListener('storage', onStorage);
-        };
-    }, [today, userId]);
-
-    const elapsedMs = timerState ? Math.max(0, nowMs - timerState.startedAt) : 0;
-    const remainingLocal = timerState ? Math.max(0, totalMs - elapsedMs) : totalMs;
-
-    const minApiRemaining = useMemo(() => {
-        const vals = lanesFromApi
-            .map((r) => laneRemainingMs(r, nowMs, totalMs))
-            .filter((n): n is number => n !== null && n > 0 && n < totalMs);
-        return vals.length ? Math.min(...vals) : null;
-    }, [lanesFromApi, nowMs, totalMs]);
-
-    const remainingMs = minApiRemaining !== null ? minApiRemaining : remainingLocal;
-    const hasApiActive = minApiRemaining !== null;
-    const hasLocalActive = timerState !== null && remainingLocal > 0 && remainingLocal < totalMs;
-    const runnerActive = hasApiActive || hasLocalActive;
-    const isWarning = runnerActive ? remainingMs <= 5 * 60 * 1000 && remainingMs > 0 : false;
-
-    const activeNamesLabel = useMemo(() => {
-        const names = lanesFromApi
-            .map((r) => r.current?.user?.name)
-            .filter((n): n is string => !!n && n.length > 0);
-        if (names.length === 0) return null;
-        return `休憩中: ${names.join('、')}`;
-    }, [lanesFromApi]);
+        setTimerState(null);
+        const id = window.setInterval(() => setNowMs(Date.now()), 1000);
+        return () => window.clearInterval(id);
+    }, []);
 
     const fmt = (ms: number) => {
         const s = Math.floor(ms / 1000);
@@ -269,6 +226,42 @@ export default function Index({
         () => taskRows.filter((t) => t.status === 'pending' || t.status === 'in_progress'),
         [taskRows],
     );
+
+    const csrf = () =>
+        (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? '';
+
+    const postJson = async (url: string, body: any) => {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': csrf(),
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify(body),
+        });
+        return res.ok;
+    };
+
+    const startLane = async (lane: number) => {
+        await postJson(route('portal.api.lunch-breaks.start'), { date: today, lane });
+        void fetchLunchStatus();
+        window.dispatchEvent(new CustomEvent('lunch-schedule-updated', { detail: { date: today } }));
+    };
+
+    const stopLane = async (lane: number) => {
+        await postJson(route('portal.api.lunch-breaks.stop'), { date: today, lane });
+        void fetchLunchStatus();
+        window.dispatchEvent(new CustomEvent('lunch-schedule-updated', { detail: { date: today } }));
+    };
+
+    const resetLane = async (lane: number) => {
+        await postJson(route('portal.api.lunch-breaks.reset'), { date: today, lane });
+        void fetchLunchStatus();
+        window.dispatchEvent(new CustomEvent('lunch-schedule-updated', { detail: { date: today } }));
+    };
 
     return (
         <AuthenticatedLayout
@@ -325,14 +318,50 @@ export default function Index({
                                 const active = rem !== null && rem > 0 && rem < totalMs;
                                 const currentName = row?.current?.user?.name ?? '—';
                                 const nextName = row?.next?.user?.name ?? '—';
+                                const plannedStart = row?.current?.planned_start_time ?? null;
+                                const plannedLabel = plannedStart
+                                    ? `${plannedStart} - ${addMinutesHHMM(plannedStart, 60)}`
+                                    : null;
                                 return (
-                                    <BreakRunner
-                                        key={lane}
-                                        active={active}
-                                        remainingMs={active ? rem! : totalMs}
-                                        totalMs={totalMs}
-                                        label={`${lane}  ${currentName}（次: ${nextName}）`}
-                                    />
+                                    <div key={lane} className="rounded-xl border border-wa-accent/15 bg-wa-ink p-4">
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div className="text-sm font-black tracking-tight text-wa-body">{lane}</div>
+                                            <div className="text-[11px] font-medium text-wa-muted">{plannedLabel ?? '—'}</div>
+                                        </div>
+                                        <div className="mt-2 text-lg font-black tracking-tight text-wa-body">{currentName}</div>
+                                        <div className="mt-1 text-[11px] text-wa-muted">次: {nextName}</div>
+
+                                        <div className="mt-3">
+                                            <BreakRunner
+                                                active={active}
+                                                remainingMs={active ? rem! : totalMs}
+                                                totalMs={totalMs}
+                                            />
+                                        </div>
+
+                                        <div className="mt-3 grid gap-2">
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <PrimaryButton
+                                                    onClick={() => startLane(lane)}
+                                                    className="w-full justify-center whitespace-nowrap px-3 py-2 text-[11px]"
+                                                >
+                                                    スタート
+                                                </PrimaryButton>
+                                                <SecondaryButton
+                                                    onClick={() => stopLane(lane)}
+                                                    className="w-full justify-center whitespace-nowrap px-3 py-2 text-[11px]"
+                                                >
+                                                    ストップ
+                                                </SecondaryButton>
+                                            </div>
+                                            <SecondaryButton
+                                                onClick={() => resetLane(lane)}
+                                                className="w-full justify-center whitespace-nowrap px-3 py-2 text-[11px]"
+                                            >
+                                                リセット
+                                            </SecondaryButton>
+                                        </div>
+                                    </div>
                                 );
                             })}
                         </div>
