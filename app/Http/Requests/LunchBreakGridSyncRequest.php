@@ -20,7 +20,7 @@ class LunchBreakGridSyncRequest extends FormRequest
             'date' => ['required', 'date_format:Y-m-d'],
             'cells' => ['required', 'array', 'min:1'],
             'cells.*.time' => ['required', 'regex:/^\d{2}:\d{2}$/'],
-            'cells.*.lane' => ['required', 'integer', 'between:1,3'],
+            'cells.*.lane' => ['required', 'integer', 'between:1,5'],
             'cells.*.user_id' => ['nullable', 'integer', 'exists:users,id'],
         ];
     }
