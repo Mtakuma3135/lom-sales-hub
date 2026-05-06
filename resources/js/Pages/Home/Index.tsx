@@ -61,6 +61,12 @@ function laneRemainingMs(row: LunchLaneStatus, nowMs: number, totalMs: number): 
     return Math.max(0, totalMs - (nowMs - t0));
 }
 
+function parseIsoMs(raw: unknown): number | null {
+    if (typeof raw !== 'string' || raw.length === 0) return null;
+    const ms = new Date(raw).getTime();
+    return Number.isFinite(ms) ? ms : null;
+}
+
 function formatTime(t: string | undefined): string {
     if (!t) return '';
     return t.length >= 8 ? t.slice(0, 5) : t.length >= 5 ? t.slice(0, 5) : t;
@@ -166,6 +172,7 @@ export default function Index({
 
     const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
     const totalMs = 60 * 60 * 1000;
+    const [serverOffsetMs, setServerOffsetMs] = useState<number>(0);
     const [nowMs, setNowMs] = useState<number>(() => Date.now());
     const [lanesFromApi, setLanesFromApi] = useState<LunchLaneStatus[]>([]);
 
@@ -177,9 +184,17 @@ export default function Index({
                 credentials: 'same-origin',
             });
             if (!res.ok) return;
-            const json = (await res.json()) as { data?: { active?: LunchLaneStatus[] } };
+            const json = (await res.json()) as {
+                data?: { active?: LunchLaneStatus[] };
+                meta?: { server_time?: string };
+            };
             const rows = (json as any)?.data?.active;
             setLanesFromApi(Array.isArray(rows) ? (rows as LunchLaneStatus[]) : []);
+
+            const serverMs = parseIsoMs((json as any)?.meta?.server_time);
+            if (serverMs !== null) {
+                setServerOffsetMs(serverMs - Date.now());
+            }
         } catch { /* ignore */ }
     }, [today]);
 
@@ -200,9 +215,9 @@ export default function Index({
     }, [fetchLunchStatus, today]);
 
     useEffect(() => {
-        const id = window.setInterval(() => setNowMs(Date.now()), 1000);
+        const id = window.setInterval(() => setNowMs(Date.now() + serverOffsetMs), 1000);
         return () => window.clearInterval(id);
-    }, []);
+    }, [serverOffsetMs]);
 
     const fmt = (ms: number) => {
         const s = Math.floor(ms / 1000);
