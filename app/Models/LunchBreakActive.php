@@ -40,5 +40,10 @@ class LunchBreakActive extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    public function updatedByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'updated_by');
+    }
 }
 
