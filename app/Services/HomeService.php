@@ -11,6 +11,7 @@ class HomeService
         private NoticeService $noticeService,
         private LunchBreakService $lunchBreakService,
         private SalesService $salesService,
+        private TaskRequestService $taskRequestService,
     ) {}
 
     /**
@@ -33,11 +34,14 @@ class HomeService
 
         $kpi = $this->salesService->summary();
 
+        $tasks = $this->taskRequestService->indexFor($actor);
+
         return [
             'notices' => $notices,
             'lunchBreaks' => $slots,
             'lunchDate' => $date,
             'kpi' => $kpi,
+            'tasks' => $tasks,
         ];
     }
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Resources\LunchBreakSlotResource;
 use App\Http\Resources\NoticeResource;
 use App\Http\Resources\SalesSummaryResource;
+use App\Http\Resources\TaskRequestResource;
 use App\Services\HomeService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -36,10 +37,16 @@ class HomeController extends Controller
             ->response()
             ->getData(true);
 
+        $tasksResource = TaskRequestResource::collection($payload['tasks'])
+            ->additional(['meta' => []])
+            ->response()
+            ->getData(true);
+
         return Inertia::render('Home/Index', [
             'notices' => $noticesResource,
             'lunchBreaks' => $lunchResource,
             'kpi' => $kpiResource,
+            'tasks' => $tasksResource,
         ]);
     }
 }

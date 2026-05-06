@@ -1,10 +1,10 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router, usePage } from '@inertiajs/react';
-import DashboardTileLink from '@/Components/DashboardTileLink';
 import NeonCard from '@/Components/NeonCard';
 import SlotNumber from '@/Components/UI/SlotNumber';
 import NoticeFeedItem from '@/Components/NoticeFeedItem';
 import BreakRunner from '@/Components/BreakRunner';
+import StatusBadge from '@/Components/StatusBadge';
 import { PageProps } from '@/types';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -37,6 +37,20 @@ type LunchLaneStatus = {
     next?: { user: { id: number; name: string } | null };
 };
 
+type KpiPayload = {
+    summary: { ok: number; ng: number; contract_rate: number };
+};
+
+type TaskRow = {
+    id: number;
+    title: string;
+    requester: string;
+    priority: 'urgent' | 'important' | 'normal' | string;
+    status: 'pending' | 'in_progress' | 'completed' | 'rejected' | string;
+    due_date: string;
+    created_at: string;
+};
+
 function laneRemainingMs(row: LunchLaneStatus, nowMs: number, totalMs: number): number | null {
     const started = row.current?.started_at;
     if (!started) return null;
@@ -45,13 +59,58 @@ function laneRemainingMs(row: LunchLaneStatus, nowMs: number, totalMs: number): 
     return Math.max(0, totalMs - (nowMs - t0));
 }
 
-type KpiPayload = {
-    summary: { ok: number; ng: number; contract_rate: number };
-};
-
 function formatTime(t: string | undefined): string {
     if (!t) return '';
     return t.length >= 8 ? t.slice(0, 5) : t.length >= 5 ? t.slice(0, 5) : t;
+}
+
+const priorityLabel = (p: string): string => {
+    switch (p) {
+        case 'urgent': return '至急';
+        case 'important': return '重要';
+        case 'normal': return '順次';
+        case 'high': return '至急';
+        case 'medium': return '重要';
+        case 'low': return '順次';
+        default: return p;
+    }
+};
+
+const priorityVariant = (p: string): 'danger' | 'primary' | 'muted' => {
+    switch (p) {
+        case 'urgent': case 'high': return 'danger';
+        case 'important': case 'medium': return 'primary';
+        default: return 'muted';
+    }
+};
+
+const statusLabel = (s: string): string => {
+    switch (s) {
+        case 'pending': return '未対応';
+        case 'in_progress': return '対応中';
+        case 'completed': return '完了';
+        case 'rejected': return '却下';
+        default: return s;
+    }
+};
+
+const statusVariant = (s: string): 'primary' | 'success' | 'danger' | 'muted' => {
+    switch (s) {
+        case 'pending': case 'in_progress': return 'primary';
+        case 'completed': return 'success';
+        case 'rejected': return 'danger';
+        default: return 'muted';
+    }
+};
+
+function parseTaskData(raw: unknown): TaskRow[] {
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw as TaskRow[];
+    if (typeof raw === 'object' && raw !== null && 'data' in raw) {
+        const d = (raw as { data: unknown }).data;
+        if (Array.isArray(d)) return d as TaskRow[];
+    }
+    return [];
 }
 
 export default function Index({
@@ -59,28 +118,24 @@ export default function Index({
     notices,
     lunchBreaks,
     kpi,
+    tasks,
 }: {
     title?: string;
     notices: { data: NoticeRow[]; meta?: Record<string, unknown> };
     lunchBreaks: { data: LunchSlot[]; meta?: { date?: string } };
     kpi: { data: KpiPayload; meta?: Record<string, unknown> };
+    tasks?: { data: TaskRow[] } | TaskRow[];
 }) {
     const pageTitle = title ?? 'ホーム';
     const { props } = usePage<PageProps>();
     const userId = props.auth?.user?.id ?? null;
-    const userName = props.auth?.user?.name ?? 'ゲスト';
 
     const go = (href: string) => router.visit(href, { preserveScroll: true });
-    const onCardKeyDown =
-        (href: string) => (e: React.KeyboardEvent<HTMLDivElement>) => {
-            if (e.key !== 'Enter' && e.key !== ' ') return;
-            e.preventDefault();
-            go(href);
-        };
 
     const noticeRows = notices?.data ?? [];
     const lunchSlots = lunchBreaks?.data ?? [];
     const summary = kpi?.data?.summary ?? { ok: 0, ng: 0, contract_rate: 0 };
+    const taskRows = parseTaskData(tasks);
 
     const lunchTableRows = useMemo(() => {
         return lunchSlots.map((slot) => {
@@ -112,9 +167,7 @@ export default function Index({
             const json = (await res.json()) as { data?: { active?: LunchLaneStatus[] } };
             const rows = (json as any)?.data?.active;
             setLanesFromApi(Array.isArray(rows) ? (rows as LunchLaneStatus[]) : []);
-        } catch {
-            /* ignore */
-        }
+        } catch { /* ignore */ }
     }, [today]);
 
     useEffect(() => {
@@ -149,8 +202,7 @@ export default function Index({
         }, 500);
 
         const onStorage = (e: StorageEvent) => {
-            if (!e.key) return;
-            if (!e.key.startsWith(`lunchBreakTimer:${today}:`)) return;
+            if (!e.key?.startsWith(`lunchBreakTimer:${today}:`)) return;
             setTimerState(read());
         };
         window.addEventListener('storage', onStorage);
@@ -172,11 +224,9 @@ export default function Index({
     }, [lanesFromApi, nowMs, totalMs]);
 
     const remainingMs = minApiRemaining !== null ? minApiRemaining : remainingLocal;
-
     const hasApiActive = minApiRemaining !== null;
     const hasLocalActive = timerState !== null && remainingLocal > 0 && remainingLocal < totalMs;
     const runnerActive = hasApiActive || hasLocalActive;
-
     const isWarning = runnerActive ? remainingMs <= 5 * 60 * 1000 && remainingMs > 0 : false;
 
     const activeNamesLabel = useMemo(() => {
@@ -201,161 +251,93 @@ export default function Index({
         return d.toLocaleString('ja-JP', { dateStyle: 'short', timeStyle: 'short' });
     };
 
+    const activeTasks = useMemo(
+        () => taskRows.filter((t) => t.status === 'pending' || t.status === 'in_progress'),
+        [taskRows],
+    );
+
     return (
         <AuthenticatedLayout
             header={
-                <div className="flex items-center gap-2">
-                    <span className="wa-body-track text-sm font-semibold text-wa-body">ホーム</span>
-                </div>
+                <span className="wa-body-track text-sm font-semibold text-wa-body">ホーム</span>
             }
         >
             <Head title={pageTitle} />
 
-            <div className="mx-auto max-w-6xl space-y-14 text-wa-body sm:space-y-16">
-                <NeonCard
-                    elevate
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => go(route('mypage.index'))}
-                    onKeyDown={onCardKeyDown(route('mypage.index'))}
-                    className="cursor-pointer p-10 sm:p-12"
-                >
-                    <div className="text-xs font-semibold uppercase tracking-widest text-wa-muted">ようこそ</div>
-                    <div className="mt-4 text-2xl font-semibold tracking-tight text-wa-body">{userName}さん</div>
-                    <p className="mt-3 text-sm leading-relaxed text-wa-muted">本日も無理のないペースで進めましょう。</p>
-                </NeonCard>
-
-                <div className="grid grid-cols-1 gap-12 lg:grid-cols-3 lg:gap-14">
-                    <NeonCard
-                        elevate
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => go(route('notices.index'))}
-                        onKeyDown={onCardKeyDown(route('notices.index'))}
-                        className="cursor-pointer p-10 sm:p-12 lg:col-span-2"
-                    >
-                        <div className="flex items-center justify-between gap-4">
-                            <div>
-                                <div className="text-xs font-semibold uppercase tracking-widest text-wa-muted">周知</div>
-                                <div className="mt-3 text-lg font-semibold tracking-tight text-wa-body">
-                                    新着のお知らせ
-                                </div>
-                            </div>
-                            <span className="rounded-sm border border-wa-accent/35 bg-wa-ink px-3 py-1 text-xs font-medium text-wa-accent">
-                                最新 {noticeRows.length} 件
-                            </span>
-                        </div>
-
-                        <div className="mt-10 space-y-5">
-                            {noticeRows.length === 0 ? (
-                                <div className="text-sm text-wa-muted">表示できるお知らせはありません。</div>
-                            ) : (
-                                noticeRows.map((n) => (
-                                    <div key={n.id} onClick={(e) => e.stopPropagation()}>
-                                        <NoticeFeedItem
-                                            title={n.title}
-                                            body={n.body ?? undefined}
-                                            publishedAt={publishedLabel(n.published_at)}
-                                            isPinned={n.is_pinned}
-                                            onOpen={() => go(`${route('notices.index')}?open=${n.id}`)}
-                                        />
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                    </NeonCard>
-
-                    <NeonCard
-                        elevate
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => go(route('sales.summary'))}
-                        onKeyDown={onCardKeyDown(route('sales.summary'))}
-                        className="cursor-pointer p-10 sm:p-12"
-                    >
-                        <div className="flex items-center justify-between gap-2">
-                            <div>
-                                <div className="text-xs font-semibold uppercase tracking-widest text-wa-muted">KPI</div>
-                                <div className="mt-3 text-lg font-semibold tracking-tight text-wa-body">今月</div>
-                            </div>
-                        </div>
-
-                        <div className="mt-10 grid grid-cols-1 gap-6">
-                            {[
-                                {
-                                    label: '契約率',
-                                    value: String(summary.contract_rate),
-                                    suffix: '%',
-                                    sub: 'OK / (OK + NG)',
-                                    valClass: 'text-wa-body',
-                                    href: `${route('sales.summary')}?tab=summary`,
-                                },
-                                {
-                                    label: 'OK',
-                                    value: String(summary.ok),
-                                    suffix: '',
-                                    sub: '今月合計',
-                                    valClass: 'text-teal-300',
-                                    href: `${route('sales.records')}?status=ok`,
-                                },
-                                {
-                                    label: 'NG',
-                                    value: String(summary.ng),
-                                    suffix: '',
-                                    sub: '今月合計',
-                                    valClass: 'text-red-400',
-                                    href: `${route('sales.records')}?status=ng`,
-                                },
-                            ].map((k) => (
-                                <div
-                                    key={k.label}
-                                    role="button"
-                                    tabIndex={0}
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        go(k.href);
-                                    }}
-                                    onKeyDown={(e) => {
-                                        if (e.key !== 'Enter' && e.key !== ' ') return;
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        go(k.href);
-                                    }}
-                                    className="border border-wa-accent/20 bg-wa-ink px-5 py-5 transition hover:border-wa-accent/35"
-                                >
-                                    <div className="text-xs font-semibold uppercase tracking-wide text-wa-muted">
-                                        {k.label}
-                                    </div>
-                                    <div className={`wa-nums mt-2 text-2xl font-semibold tabular-nums ${k.valClass}`}>
-                                        <SlotNumber value={k.value} />
-                                        {k.suffix}
-                                    </div>
-                                    <div className="mt-2 text-xs text-wa-muted">{k.sub}</div>
-                                </div>
-                            ))}
-                        </div>
-                    </NeonCard>
-                </div>
-
-                <NeonCard
-                    elevate
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => go(route('lunch-breaks.index'))}
-                    onKeyDown={onCardKeyDown(route('lunch-breaks.index'))}
-                    className="cursor-pointer p-10 sm:p-12"
-                >
-                    <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="mx-auto max-w-6xl px-6 py-6 text-wa-body wa-body-track space-y-6">
+                {/* ── 1. 周知事項 ── */}
+                <NeonCard elevate={false}>
+                    <div className="flex items-center justify-between gap-4">
                         <div>
-                            <div className="text-xs font-semibold uppercase tracking-widest text-wa-muted">昼休憩</div>
-                            <div className="mt-3 text-lg font-semibold tracking-tight text-wa-body">本日の予定</div>
+                            <div className="text-xs font-bold tracking-widest text-wa-muted">
+                                NOTICES
+                            </div>
+                            <div className="mt-1 text-sm font-black tracking-tight text-wa-body">
+                                周知事項
+                            </div>
                         </div>
-                        {lunchBreaks?.meta?.date ? (
-                            <span className="text-xs font-medium text-wa-muted">{lunchBreaks.meta.date}</span>
-                        ) : null}
+                        <div className="flex items-center gap-3">
+                            <span className="text-[10px] text-wa-muted">
+                                {noticeRows.length > 0 ? `最新 ${noticeRows.length} 件` : ''}
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => go(route('notices.index'))}
+                                className="rounded-sm border border-wa-accent/25 bg-wa-ink px-3 py-1.5 text-xs font-black tracking-tight text-wa-body transition hover:border-wa-accent/40"
+                            >
+                                すべて見る
+                            </button>
+                        </div>
                     </div>
 
-                    <div className="mt-8 space-y-5">
+                    <div className="mt-4 space-y-3">
+                        {noticeRows.length === 0 ? (
+                            <div className="rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-6 text-center text-sm text-wa-muted">
+                                表示できるお知らせはありません
+                            </div>
+                        ) : (
+                            noticeRows.map((n) => (
+                                <NoticeFeedItem
+                                    key={n.id}
+                                    title={n.title}
+                                    body={n.body ?? undefined}
+                                    publishedAt={publishedLabel(n.published_at)}
+                                    isPinned={n.is_pinned}
+                                    onOpen={() => go(`${route('notices.index')}?open=${n.id}`)}
+                                />
+                            ))
+                        )}
+                    </div>
+                </NeonCard>
+
+                {/* ── 2. 昼休憩 ── */}
+                <NeonCard elevate={false}>
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                        <div>
+                            <div className="text-xs font-bold tracking-widest text-wa-muted">
+                                LUNCH BREAK
+                            </div>
+                            <div className="mt-1 text-sm font-black tracking-tight text-wa-body">
+                                昼休憩
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            {lunchBreaks?.meta?.date && (
+                                <span className="text-[10px] text-wa-muted">
+                                    {lunchBreaks.meta.date}
+                                </span>
+                            )}
+                            <button
+                                type="button"
+                                onClick={() => go(route('lunch-breaks.index'))}
+                                className="rounded-sm border border-wa-accent/25 bg-wa-ink px-3 py-1.5 text-xs font-black tracking-tight text-wa-body transition hover:border-wa-accent/40"
+                            >
+                                詳細を見る
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="mt-4 space-y-4">
                         <BreakRunner
                             active={runnerActive}
                             remainingMs={remainingMs}
@@ -367,7 +349,8 @@ export default function Index({
                                     : '休憩が始まるとランナーが走ります')
                             }
                         />
-                        <div className="border border-wa-accent/20 bg-wa-ink p-5">
+
+                        <div className="rounded-sm border border-wa-accent/20 bg-wa-ink p-4">
                             <div className="flex items-center justify-between gap-3">
                                 <div className="text-xs font-semibold uppercase tracking-widest text-wa-muted">
                                     60分プログレス
@@ -381,7 +364,7 @@ export default function Index({
                                     {runnerActive ? `残り ${fmt(remainingMs)}` : '未開始'}
                                 </div>
                             </div>
-                            <div className="mt-4 h-2 w-full bg-wa-subtle">
+                            <div className="mt-3 h-2 w-full bg-wa-subtle">
                                 <div
                                     className={
                                         'h-full transition-[width] duration-500 ease-out ' +
@@ -397,71 +380,195 @@ export default function Index({
                                 />
                             </div>
                         </div>
-                    </div>
 
-                    <div className="mt-10 overflow-x-auto">
-                        <table className="min-w-full border-separate border-spacing-0 text-sm">
-                            <thead>
-                                <tr className="text-left text-xs font-semibold uppercase tracking-wider text-wa-muted">
-                                    <th className="border-b border-wa-accent/20 px-4 py-3">時間</th>
-                                    <th className="border-b border-wa-accent/20 px-4 py-3">休憩者</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {lunchTableRows.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={2} className="border-b border-wa-accent/15 px-4 py-4 text-wa-muted">
-                                            本日の枠はありません。
-                                        </td>
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full border-separate border-spacing-0 text-sm">
+                                <thead>
+                                    <tr className="text-left text-xs font-semibold uppercase tracking-wider text-wa-muted">
+                                        <th className="border-b border-wa-accent/20 px-4 py-2">
+                                            時間
+                                        </th>
+                                        <th className="border-b border-wa-accent/20 px-4 py-2">
+                                            休憩者
+                                        </th>
                                     </tr>
-                                ) : (
-                                    lunchTableRows.map((r) => (
-                                        <tr key={r.time} className="transition-colors hover:bg-wa-ink/80">
-                                            <td className="border-b border-wa-accent/15 px-4 py-4 font-medium text-wa-body">
-                                                {r.time}
-                                            </td>
-                                            <td className="border-b border-wa-accent/15 px-4 py-4">
-                                                <span className="inline-flex rounded-sm border border-wa-accent/25 bg-wa-card px-3 py-1 text-xs font-semibold text-wa-muted">
-                                                    {r.name}
-                                                </span>
+                                </thead>
+                                <tbody>
+                                    {lunchTableRows.length === 0 ? (
+                                        <tr>
+                                            <td
+                                                colSpan={2}
+                                                className="border-b border-wa-accent/15 px-4 py-4 text-wa-muted"
+                                            >
+                                                本日の枠はありません
                                             </td>
                                         </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
+                                    ) : (
+                                        lunchTableRows.map((r) => (
+                                            <tr
+                                                key={r.time}
+                                                className="transition-colors hover:bg-wa-ink/80"
+                                            >
+                                                <td className="border-b border-wa-accent/15 px-4 py-3 font-medium text-wa-body">
+                                                    {r.time}
+                                                </td>
+                                                <td className="border-b border-wa-accent/15 px-4 py-3">
+                                                    <span className="inline-flex rounded-sm border border-wa-accent/25 bg-wa-card px-3 py-1 text-xs font-semibold text-wa-muted">
+                                                        {r.name}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </NeonCard>
 
-                <NeonCard elevate={false} className="p-10 sm:p-12">
-                    <div className="text-xs font-semibold uppercase tracking-widest text-wa-muted">ショートカット</div>
-                    <div className="mt-3 text-sm font-semibold text-wa-body">よく使う画面</div>
-                    <div className="mt-10 grid grid-cols-1 gap-9 sm:grid-cols-2 lg:grid-cols-4">
-                        <DashboardTileLink
-                            title="社内情報"
-                            description="周知事項・お知らせ"
-                            href={route('notices.index')}
-                            badge={{ label: 'NOTICE', variant: 'primary', pulse: true }}
-                        />
-                        <DashboardTileLink
-                            title="各商材について"
-                            description="商品一覧・トークの要点"
-                            href={route('products.index')}
-                            badge={{ label: 'DOC', variant: 'muted' }}
-                        />
-                        <DashboardTileLink
-                            title="タスク管理"
-                            description="依頼・進捗・期限"
-                            href={route('task-requests.index')}
-                            badge={{ label: 'TASK', variant: 'success' }}
-                        />
-                        <DashboardTileLink
-                            title="マイページ"
-                            description="打刻・昼休憩・設定"
-                            href={route('mypage.index')}
-                            badge={{ label: 'ME', variant: 'primary' }}
-                        />
+                {/* ── 3. KPI ── */}
+                <NeonCard elevate={false}>
+                    <div className="flex items-center justify-between gap-4">
+                        <div>
+                            <div className="text-xs font-bold tracking-widest text-wa-muted">KPI</div>
+                            <div className="mt-1 text-sm font-black tracking-tight text-wa-body">
+                                今月の実績
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => go(route('sales.summary'))}
+                            className="rounded-sm border border-wa-accent/25 bg-wa-ink px-3 py-1.5 text-xs font-black tracking-tight text-wa-body transition hover:border-wa-accent/40"
+                        >
+                            詳細を見る
+                        </button>
                     </div>
+
+                    <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                        {[
+                            {
+                                label: '契約率',
+                                value: String(summary.contract_rate),
+                                suffix: '%',
+                                sub: 'OK / (OK + NG)',
+                                valClass: 'text-wa-body',
+                                href: `${route('sales.summary')}?tab=summary`,
+                            },
+                            {
+                                label: 'OK',
+                                value: String(summary.ok),
+                                suffix: '',
+                                sub: '今月合計',
+                                valClass: 'text-teal-300',
+                                href: `${route('sales.records')}?status=ok`,
+                            },
+                            {
+                                label: 'NG',
+                                value: String(summary.ng),
+                                suffix: '',
+                                sub: '今月合計',
+                                valClass: 'text-red-400',
+                                href: `${route('sales.records')}?status=ng`,
+                            },
+                        ].map((k) => (
+                            <div
+                                key={k.label}
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => go(k.href)}
+                                onKeyDown={(e) => {
+                                    if (e.key !== 'Enter' && e.key !== ' ') return;
+                                    e.preventDefault();
+                                    go(k.href);
+                                }}
+                                className="rounded-sm border border-wa-accent/20 bg-wa-ink px-5 py-5 transition hover:border-wa-accent/35 cursor-pointer"
+                            >
+                                <div className="text-xs font-semibold uppercase tracking-wide text-wa-muted">
+                                    {k.label}
+                                </div>
+                                <div
+                                    className={`wa-nums mt-2 text-2xl font-semibold tabular-nums ${k.valClass}`}
+                                >
+                                    <SlotNumber value={k.value} />
+                                    {k.suffix}
+                                </div>
+                                <div className="mt-2 text-xs text-wa-muted">{k.sub}</div>
+                            </div>
+                        ))}
+                    </div>
+                </NeonCard>
+
+                {/* ── 4. タスク管理 ── */}
+                <NeonCard elevate={false}>
+                    <div className="flex items-center justify-between gap-4">
+                        <div>
+                            <div className="text-xs font-bold tracking-widest text-wa-muted">
+                                TASKS
+                            </div>
+                            <div className="mt-1 text-sm font-black tracking-tight text-wa-body">
+                                タスク管理
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <span className="text-[10px] text-wa-muted">
+                                {activeTasks.length > 0
+                                    ? `未完了 ${activeTasks.length} 件`
+                                    : ''}
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => go(route('task-requests.index'))}
+                                className="rounded-sm border border-wa-accent/25 bg-wa-ink px-3 py-1.5 text-xs font-black tracking-tight text-wa-body transition hover:border-wa-accent/40"
+                            >
+                                すべて見る
+                            </button>
+                        </div>
+                    </div>
+
+                    {activeTasks.length === 0 ? (
+                        <div className="mt-4 rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-6 text-center text-sm text-wa-muted">
+                            未対応のタスクはありません
+                        </div>
+                    ) : (
+                        <div className="mt-4 space-y-3">
+                            {activeTasks.map((t) => (
+                                <div
+                                    key={t.id}
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={() => go(route('task-requests.index'))}
+                                    onKeyDown={(e) => {
+                                        if (e.key !== 'Enter' && e.key !== ' ') return;
+                                        e.preventDefault();
+                                        go(route('task-requests.index'));
+                                    }}
+                                    className="group rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-4 transition hover:border-wa-accent/35 cursor-pointer"
+                                >
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex items-center gap-2">
+                                                <StatusBadge variant={priorityVariant(t.priority)}>
+                                                    {priorityLabel(t.priority)}
+                                                </StatusBadge>
+                                                <StatusBadge variant={statusVariant(t.status)}>
+                                                    {statusLabel(t.status)}
+                                                </StatusBadge>
+                                            </div>
+                                            <div className="mt-2 text-sm font-black tracking-tight text-wa-body">
+                                                {t.title}
+                                            </div>
+                                            <div className="mt-1 text-xs text-wa-muted">
+                                                依頼元: {t.requester} / 期限: {t.due_date}
+                                            </div>
+                                        </div>
+                                        <div className="shrink-0 text-[10px] text-wa-muted">
+                                            #{t.id}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </NeonCard>
             </div>
         </AuthenticatedLayout>
