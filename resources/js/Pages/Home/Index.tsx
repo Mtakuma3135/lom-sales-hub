@@ -8,8 +8,6 @@ import StatusBadge from '@/Components/StatusBadge';
 import { PageProps } from '@/types';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import SectionHeader from '@/Components/UI/SectionHeader';
-import PrimaryButton from '@/Components/PrimaryButton';
-import SecondaryButton from '@/Components/SecondaryButton';
 
 type NoticeRow = {
     id: number;
@@ -168,7 +166,6 @@ export default function Index({
 
     const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
     const totalMs = 60 * 60 * 1000;
-    const [timerState, setTimerState] = useState<{ startedAt: number; startTime: string } | null>(null);
     const [nowMs, setNowMs] = useState<number>(() => Date.now());
     const [lanesFromApi, setLanesFromApi] = useState<LunchLaneStatus[]>([]);
 
@@ -203,7 +200,6 @@ export default function Index({
     }, [fetchLunchStatus, today]);
 
     useEffect(() => {
-        setTimerState(null);
         const id = window.setInterval(() => setNowMs(Date.now()), 1000);
         return () => window.clearInterval(id);
     }, []);
@@ -226,42 +222,6 @@ export default function Index({
         () => taskRows.filter((t) => t.status === 'pending' || t.status === 'in_progress'),
         [taskRows],
     );
-
-    const csrf = () =>
-        (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? '';
-
-    const postJson = async (url: string, body: any) => {
-        const res = await fetch(url, {
-            method: 'POST',
-            headers: {
-                Accept: 'application/json',
-                'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRF-TOKEN': csrf(),
-            },
-            credentials: 'same-origin',
-            body: JSON.stringify(body),
-        });
-        return res.ok;
-    };
-
-    const startLane = async (lane: number) => {
-        await postJson(route('portal.api.lunch-breaks.start'), { date: today, lane });
-        void fetchLunchStatus();
-        window.dispatchEvent(new CustomEvent('lunch-schedule-updated', { detail: { date: today } }));
-    };
-
-    const stopLane = async (lane: number) => {
-        await postJson(route('portal.api.lunch-breaks.stop'), { date: today, lane });
-        void fetchLunchStatus();
-        window.dispatchEvent(new CustomEvent('lunch-schedule-updated', { detail: { date: today } }));
-    };
-
-    const resetLane = async (lane: number) => {
-        await postJson(route('portal.api.lunch-breaks.reset'), { date: today, lane });
-        void fetchLunchStatus();
-        window.dispatchEvent(new CustomEvent('lunch-schedule-updated', { detail: { date: today } }));
-    };
 
     return (
         <AuthenticatedLayout
@@ -337,29 +297,6 @@ export default function Index({
                                                 remainingMs={active ? rem! : totalMs}
                                                 totalMs={totalMs}
                                             />
-                                        </div>
-
-                                        <div className="mt-3 grid gap-2">
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <PrimaryButton
-                                                    onClick={() => startLane(lane)}
-                                                    className="w-full justify-center whitespace-nowrap px-3 py-2 text-[11px]"
-                                                >
-                                                    スタート
-                                                </PrimaryButton>
-                                                <SecondaryButton
-                                                    onClick={() => stopLane(lane)}
-                                                    className="w-full justify-center whitespace-nowrap px-3 py-2 text-[11px]"
-                                                >
-                                                    ストップ
-                                                </SecondaryButton>
-                                            </div>
-                                            <SecondaryButton
-                                                onClick={() => resetLane(lane)}
-                                                className="w-full justify-center whitespace-nowrap px-3 py-2 text-[11px]"
-                                            >
-                                                リセット
-                                            </SecondaryButton>
                                         </div>
                                     </div>
                                 );
