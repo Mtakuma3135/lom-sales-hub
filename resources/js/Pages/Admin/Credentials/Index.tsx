@@ -9,6 +9,7 @@ type CredentialRow = {
     password: string;
     is_password: boolean;
     updated_at: string;
+    is_mock?: boolean;
 };
 
 function parseListJson(json: unknown): CredentialRow[] {
@@ -78,6 +79,10 @@ export default function Index() {
     }, [load]);
 
     const beginEdit = (c: CredentialRow) => {
+        if (c.is_mock) {
+            setToast('サンプルは編集できません');
+            return;
+        }
         setEditingId(c.id);
         setDraftLogin(c.login_id ?? '');
         setDraftPassword(c.password ?? '');
@@ -255,6 +260,7 @@ export default function Index() {
                                                 <button
                                                     type="button"
                                                     onClick={() => beginEdit(c)}
+                                                    disabled={!!c.is_mock}
                                                     className="rounded-sm border border-wa-accent/45 bg-wa-accent px-3 py-1.5 text-xs font-medium text-wa-ink transition hover:bg-wa-accent/90"
                                                 >
                                                     編集

@@ -18,6 +18,8 @@ class CredentialResource extends JsonResource
     {
         $password = $this->is_password ? (string) $this->value : '';
 
+        $isMock = (bool) ($this->getAttribute('is_mock') ?? false);
+
         return [
             'id' => (int) $this->id,
             'service_name' => (string) $this->label,
@@ -25,6 +27,7 @@ class CredentialResource extends JsonResource
             'password' => $password,
             'is_password' => (bool) $this->is_password,
             'updated_at' => $this->updated_at?->format('Y-m-d H:i:s') ?? '',
+            'is_mock' => $isMock,
         ];
     }
 }
