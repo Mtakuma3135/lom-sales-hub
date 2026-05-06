@@ -268,7 +268,7 @@ export default function Index({
 
             <div className="mx-auto max-w-6xl px-6 py-6 text-wa-body wa-body-track space-y-6">
                 {/* ── 1. 周知事項 ── */}
-                <NeonCard elevate={false}>
+                <NeonCard elevate={false} className="p-8">
                     <div className="flex items-center justify-between gap-4">
                         <div>
                             <div className="text-xs font-bold tracking-widest text-wa-muted">
@@ -285,14 +285,14 @@ export default function Index({
                             <button
                                 type="button"
                                 onClick={() => go(route('notices.index'))}
-                                className="rounded-sm border border-wa-accent/25 bg-wa-ink px-3 py-1.5 text-xs font-black tracking-tight text-wa-body transition hover:border-wa-accent/40"
+                                className="rounded-sm border border-wa-accent/25 bg-wa-subtle px-3 py-1.5 text-xs font-black tracking-tight text-wa-body transition hover:border-wa-accent/40"
                             >
                                 すべて見る
                             </button>
                         </div>
                     </div>
 
-                    <div className="mt-4 space-y-3">
+                    <div className="mt-5 space-y-3">
                         {noticeRows.length === 0 ? (
                             <div className="rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-6 text-center text-sm text-wa-muted">
                                 表示できるお知らせはありません
@@ -313,7 +313,7 @@ export default function Index({
                 </NeonCard>
 
                 {/* ── 2. 昼休憩 ── */}
-                <NeonCard elevate={false}>
+                <NeonCard elevate={false} className="p-8">
                     <div className="flex flex-wrap items-center justify-between gap-4">
                         <div>
                             <div className="text-xs font-bold tracking-widest text-wa-muted">
@@ -332,14 +332,14 @@ export default function Index({
                             <button
                                 type="button"
                                 onClick={() => go(route('lunch-breaks.index'))}
-                                className="rounded-sm border border-wa-accent/25 bg-wa-ink px-3 py-1.5 text-xs font-black tracking-tight text-wa-body transition hover:border-wa-accent/40"
+                                className="rounded-sm border border-wa-accent/25 bg-wa-subtle px-3 py-1.5 text-xs font-black tracking-tight text-wa-body transition hover:border-wa-accent/40"
                             >
                                 詳細を見る
                             </button>
                         </div>
                     </div>
 
-                    <div className="mt-4 space-y-4">
+                    <div className="mt-5 space-y-4">
                         <BreakRunner
                             active={runnerActive}
                             remainingMs={remainingMs}
@@ -429,7 +429,7 @@ export default function Index({
                 </NeonCard>
 
                 {/* ── 3. KPI ── */}
-                <NeonCard elevate={false}>
+                <NeonCard elevate={false} className="p-8">
                     <div className="flex items-center justify-between gap-4">
                         <div>
                             <div className="text-xs font-bold tracking-widest text-wa-muted">KPI</div>
@@ -440,13 +440,13 @@ export default function Index({
                         <button
                             type="button"
                             onClick={() => go(route('sales.summary'))}
-                            className="rounded-sm border border-wa-accent/25 bg-wa-ink px-3 py-1.5 text-xs font-black tracking-tight text-wa-body transition hover:border-wa-accent/40"
+                            className="rounded-sm border border-wa-accent/25 bg-wa-subtle px-3 py-1.5 text-xs font-black tracking-tight text-wa-body transition hover:border-wa-accent/40"
                         >
                             詳細を見る
                         </button>
                     </div>
 
-                    <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+                    <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
                         {/* Team KPI */}
                         <div>
                             <div className="mb-2 text-[10px] font-bold uppercase tracking-widest text-wa-muted">
@@ -475,7 +475,7 @@ export default function Index({
                                 ].map((k) => (
                                     <div
                                         key={`team-${k.label}`}
-                                        className="rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-4"
+                                        className="rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-5"
                                     >
                                         <div className="text-[10px] font-semibold uppercase tracking-wide text-wa-muted">
                                             {k.label}
@@ -517,7 +517,7 @@ export default function Index({
                                 ].map((k) => (
                                     <div
                                         key={`personal-${k.label}`}
-                                        className="rounded-sm border border-teal-500/20 bg-wa-ink px-4 py-4"
+                                        className="rounded-sm border border-teal-500/20 bg-wa-ink px-4 py-5"
                                     >
                                         <div className="text-[10px] font-semibold uppercase tracking-wide text-wa-muted">
                                             {k.label}
@@ -534,7 +534,7 @@ export default function Index({
                 </NeonCard>
 
                 {/* ── 4. タスク管理 ── */}
-                <NeonCard elevate={false}>
+                <NeonCard elevate={false} className="p-8">
                     <div className="flex items-center justify-between gap-4">
                         <div>
                             <div className="text-xs font-bold tracking-widest text-wa-muted">
@@ -553,7 +553,7 @@ export default function Index({
                             <button
                                 type="button"
                                 onClick={() => go(route('task-requests.index'))}
-                                className="rounded-sm border border-wa-accent/25 bg-wa-ink px-3 py-1.5 text-xs font-black tracking-tight text-wa-body transition hover:border-wa-accent/40"
+                                className="rounded-sm border border-wa-accent/25 bg-wa-subtle px-3 py-1.5 text-xs font-black tracking-tight text-wa-body transition hover:border-wa-accent/40"
                             >
                                 すべて見る
                             </button>
@@ -561,11 +561,11 @@ export default function Index({
                     </div>
 
                     {activeTasks.length === 0 ? (
-                        <div className="mt-4 rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-6 text-center text-sm text-wa-muted">
+                        <div className="mt-5 rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-6 text-center text-sm text-wa-muted">
                             未対応のタスクはありません
                         </div>
                     ) : (
-                        <div className="mt-4 space-y-3">
+                        <div className="mt-5 space-y-3">
                             {activeTasks.map((t) => (
                                 <div
                                     key={t.id}
