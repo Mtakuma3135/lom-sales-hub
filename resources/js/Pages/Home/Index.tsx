@@ -9,16 +9,6 @@ import { PageProps } from '@/types';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import SectionHeader from '@/Components/UI/SectionHeader';
 
-type LunchLaneStatus = {
-    lane: number;
-    current: {
-        user: { id: number; name: string } | null;
-        started_at?: string | null;
-        duration_minutes?: number;
-    };
-    next?: { user: { id: number; name: string } | null };
-};
-
 type NoticeRow = {
     id: number;
     title: string;
@@ -36,6 +26,16 @@ type LunchSlot = {
     end_time: string;
     capacity: number;
     reservations: LunchReservation[];
+};
+
+type LunchLaneStatus = {
+    lane: number;
+    current: {
+        user: { id: number; name: string } | null;
+        started_at?: string | null;
+        duration_minutes?: number;
+    };
+    next?: { user: { id: number; name: string } | null };
 };
 
 type KpiPayload = {
@@ -60,7 +60,7 @@ function laneRemainingMs(row: LunchLaneStatus, nowMs: number, totalMs: number): 
     return Math.max(0, totalMs - (nowMs - t0));
 }
 
-function formatTime(t: string | undefined | null): string {
+function formatTime(t: string | undefined): string {
     if (!t) return '';
     return t.length >= 8 ? t.slice(0, 5) : t.length >= 5 ? t.slice(0, 5) : t;
 }
@@ -156,6 +156,7 @@ export default function Index({
 
     const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
     const totalMs = 60 * 60 * 1000;
+    const [timerState, setTimerState] = useState<{ startedAt: number; startTime: string } | null>(null);
     const [nowMs, setNowMs] = useState<number>(() => Date.now());
     const [lanesFromApi, setLanesFromApi] = useState<LunchLaneStatus[]>([]);
 
@@ -190,9 +191,72 @@ export default function Index({
     }, [fetchLunchStatus, today]);
 
     useEffect(() => {
-        const tick = window.setInterval(() => setNowMs(Date.now()), 1000);
-        return () => window.clearInterval(tick);
-    }, []);
+        if (!userId) return;
+        const read = () => {
+            const prefix = `lunchBreakTimer:${today}:`;
+            const suffix = `:${userId}`;
+            for (let i = 0; i < localStorage.length; i++) {
+                const k = localStorage.key(i);
+                if (!k) continue;
+                if (!k.startsWith(prefix) || !k.endsWith(suffix)) continue;
+                const startedAt = Number(localStorage.getItem(k) ?? '');
+                const startTime = k.slice(prefix.length, k.length - suffix.length);
+                if (!Number.isFinite(startedAt)) continue;
+                return { startedAt, startTime };
+            }
+            return null;
+        };
+
+        setTimerState(read());
+        setNowMs(Date.now());
+
+        const tick = window.setInterval(() => {
+            setNowMs(Date.now());
+            setTimerState(read());
+        }, 500);
+
+        const onStorage = (e: StorageEvent) => {
+            if (!e.key?.startsWith(`lunchBreakTimer:${today}:`)) return;
+            setTimerState(read());
+        };
+        window.addEventListener('storage', onStorage);
+
+        return () => {
+            window.clearInterval(tick);
+            window.removeEventListener('storage', onStorage);
+        };
+    }, [today, userId]);
+
+    const elapsedMs = timerState ? Math.max(0, nowMs - timerState.startedAt) : 0;
+    const remainingLocal = timerState ? Math.max(0, totalMs - elapsedMs) : totalMs;
+
+    const minApiRemaining = useMemo(() => {
+        const vals = lanesFromApi
+            .map((r) => laneRemainingMs(r, nowMs, totalMs))
+            .filter((n): n is number => n !== null && n > 0 && n < totalMs);
+        return vals.length ? Math.min(...vals) : null;
+    }, [lanesFromApi, nowMs, totalMs]);
+
+    const remainingMs = minApiRemaining !== null ? minApiRemaining : remainingLocal;
+    const hasApiActive = minApiRemaining !== null;
+    const hasLocalActive = timerState !== null && remainingLocal > 0 && remainingLocal < totalMs;
+    const runnerActive = hasApiActive || hasLocalActive;
+    const isWarning = runnerActive ? remainingMs <= 5 * 60 * 1000 && remainingMs > 0 : false;
+
+    const activeNamesLabel = useMemo(() => {
+        const names = lanesFromApi
+            .map((r) => r.current?.user?.name)
+            .filter((n): n is string => !!n && n.length > 0);
+        if (names.length === 0) return null;
+        return `休憩中: ${names.join('、')}`;
+    }, [lanesFromApi]);
+
+    const fmt = (ms: number) => {
+        const s = Math.floor(ms / 1000);
+        const mm = String(Math.floor(s / 60)).padStart(2, '0');
+        const ss = String(s % 60).padStart(2, '0');
+        return `${mm}:${ss}`;
+    };
 
     const publishedLabel = (raw: string | null | undefined) => {
         if (!raw) return undefined;
@@ -253,9 +317,9 @@ export default function Index({
                         action={{ label: '詳細を見る', onClick: () => go(route('lunch-breaks.index')), variant: 'secondary' }}
                     />
 
-                    <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
-                        <div className="space-y-3">
-                            {[1, 2, 3].map((lane) => {
+                    <div className="mt-5 space-y-4">
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+                            {[1, 2, 3, 4, 5].map((lane) => {
                                 const row = lanesFromApi.find((r) => r.lane === lane) ?? null;
                                 const rem = row ? laneRemainingMs(row, nowMs, totalMs) : null;
                                 const active = rem !== null && rem > 0 && rem < totalMs;
@@ -271,47 +335,6 @@ export default function Index({
                                     />
                                 );
                             })}
-                        </div>
-
-                        <div className="rounded-xl border border-wa-accent/15 bg-wa-ink p-4">
-                            <table className="w-full border-separate border-spacing-0 text-sm">
-                                <thead>
-                                    <tr className="text-left text-xs font-semibold uppercase tracking-wider text-wa-muted">
-                                        <th className="border-b border-wa-accent/15 px-3 py-2">時間帯</th>
-                                        <th className="border-b border-wa-accent/15 px-3 py-2">担当者</th>
-                                        <th className="border-b border-wa-accent/15 px-3 py-2">ステータス</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {lunchTableRows.length === 0 ? (
-                                        <tr>
-                                            <td colSpan={3} className="px-3 py-4 text-wa-muted">
-                                                本日の枠がありません
-                                            </td>
-                                        </tr>
-                                    ) : (
-                                        lunchTableRows.map((r, i) => {
-                                            const laneData = lanesFromApi.find((l) => l.current?.user?.name === r.name);
-                                            const isActive = laneData?.current?.started_at != null;
-                                            return (
-                                                <tr key={i} className="transition-colors hover:bg-wa-card/20">
-                                                    <td className="border-b border-wa-accent/10 px-3 py-2 font-medium text-wa-body">
-                                                        {r.time}
-                                                    </td>
-                                                    <td className="border-b border-wa-accent/10 px-3 py-2 text-wa-body">
-                                                        {r.name}
-                                                    </td>
-                                                    <td className="border-b border-wa-accent/10 px-3 py-2">
-                                                        <span className={`text-xs font-semibold ${isActive ? 'text-wa-accent' : 'text-wa-muted'}`}>
-                                                            {isActive ? '休憩中' : '未開始'}
-                                                        </span>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })
-                                    )}
-                                </tbody>
-                            </table>
                         </div>
                     </div>
                 </NeonCard>
