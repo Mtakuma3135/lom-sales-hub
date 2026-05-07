@@ -25,7 +25,7 @@ const navItems: {
     { label: 'ホーム', route: 'home' },
     { label: '案件・KPI', route: 'sales.summary', alsoMatch: ['sales.records'] },
     { label: 'タスク管理', route: 'task-requests.index' },
-    { label: '社内情報', route: 'notices.index' },
+    { label: '周知事項', route: 'notices.index' },
     { label: '各商材について', route: 'products.index', alsoMatch: ['products.show'] },
     { label: '昼休憩', route: 'lunch-breaks.index' },
     { label: 'マイページ', route: 'mypage.index' },

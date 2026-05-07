@@ -48,6 +48,13 @@
     @apply w-full rounded-sm border border-wa-accent/25 bg-wa-ink px-4 py-3 text-sm text-wa-body shadow-none placeholder:text-wa-muted focus:border-wa-accent/45 focus:outline-none focus:ring-1 focus:ring-wa-accent/30;
   }
 
+  /* 長いURL/ID/パスワードなどのはみ出し対策 */
+  .nordic-field {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    min-width: 0;
+  }
+
   /* --- JSON（ポータル全体ダーク面） --- */
   .json-pre-light {
     @apply mt-2 overflow-auto rounded-sm border border-wa-accent/20 bg-wa-ink p-3 text-xs leading-6 text-wa-body;
