@@ -16,6 +16,10 @@
   .wa-nums {
     font-variant-numeric: lining-nums tabular-nums;
   }
+  .wa-wrap-anywhere {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
 }
 
 @layer components {

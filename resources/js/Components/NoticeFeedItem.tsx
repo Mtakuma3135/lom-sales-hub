@@ -37,7 +37,11 @@ export default function NoticeFeedItem({
                         {isRead ? <StatusBadge variant="muted">既読</StatusBadge> : null}
                         <div className="truncate text-sm font-semibold text-wa-body">{title}</div>
                     </div>
-                    {body ? <div className="mt-2 line-clamp-2 text-sm text-wa-muted">{body}</div> : null}
+                    {body ? (
+                        <div className="wa-wrap-anywhere mt-2 whitespace-pre-wrap text-sm text-wa-muted">
+                            {body}
+                        </div>
+                    ) : null}
                     {publishedAt ? <div className="mt-2 text-xs text-wa-muted">公開: {publishedAt}</div> : null}
                 </div>
                 <div className="shrink-0 rounded-sm border border-wa-accent/30 bg-wa-card px-3 py-1 text-[11px] font-semibold text-wa-accent">

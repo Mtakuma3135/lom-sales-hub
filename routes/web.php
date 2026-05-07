@@ -70,6 +70,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/sales/records', [SalesRecordController::class, 'page'])->name('sales.records');
 
         Route::get('/notices', [NoticeController::class, 'index'])->name('notices.index');
+        Route::get('/notices/drafts', [NoticeController::class, 'drafts'])->name('notices.drafts');
         Route::get('/products', [ProductController::class, 'index'])->name('products.index');
         Route::get('/products/{id}', [ProductShowController::class, 'show'])->name('products.show');
         Route::get('/tasks', [TaskRequestController::class, 'index'])->name('task-requests.index');
