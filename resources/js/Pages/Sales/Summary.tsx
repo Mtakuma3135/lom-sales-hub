@@ -387,7 +387,7 @@ export default function Summary() {
                                 badge={{ label: 'DOC', variant: 'muted' }}
                             />
                             <DashboardTileLink
-                                title="社内情報"
+                                title="周知事項"
                                 description="周知・お知らせ"
                                 href={route('notices.index')}
                                 badge={{ label: 'INFO', variant: 'primary', pulse: true }}

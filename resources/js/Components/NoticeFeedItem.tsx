@@ -5,12 +5,14 @@ export default function NoticeFeedItem({
     body,
     publishedAt,
     isPinned,
+    isRead,
     onOpen,
 }: {
     title: string;
     body?: string;
     publishedAt?: string;
     isPinned?: boolean;
+    isRead?: boolean;
     onOpen: () => void;
 }) {
     return (
@@ -23,12 +25,16 @@ export default function NoticeFeedItem({
                 e.preventDefault();
                 onOpen();
             }}
-            className="group border border-wa-accent/20 bg-wa-ink px-4 py-4 transition-colors hover:border-wa-accent/35"
+            className={[
+                'group border border-wa-accent/20 bg-wa-ink px-4 py-4 transition-colors hover:border-wa-accent/35',
+                isRead ? 'opacity-80' : '',
+            ].join(' ')}
         >
             <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                     <div className="flex items-center gap-2">
                         {isPinned ? <StatusBadge variant="primary" pulse>PIN</StatusBadge> : null}
+                        {isRead ? <StatusBadge variant="muted">既読</StatusBadge> : null}
                         <div className="truncate text-sm font-semibold text-wa-body">{title}</div>
                     </div>
                     {body ? <div className="mt-2 line-clamp-2 text-sm text-wa-muted">{body}</div> : null}
