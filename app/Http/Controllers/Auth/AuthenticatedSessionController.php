@@ -53,7 +53,7 @@ class AuthenticatedSessionController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        // Welcome（トップ画面）へリダイレクト（'/'）
-        return redirect('/');
+        // ログイン画面へリダイレクト
+        return redirect()->route('login');
     }
 }
