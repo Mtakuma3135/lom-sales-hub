@@ -26,6 +26,7 @@ const btnGhost =
 export default function Index({ notices }: { notices?: NoticesProp }) {
     const { props } = usePage<PageProps>();
     const isAdmin = (props.auth?.user?.role ?? 'general') === 'admin';
+    const userId = props.auth?.user?.id ?? null;
 
     const list =
         notices?.data ??
@@ -61,7 +62,8 @@ export default function Index({ notices }: { notices?: NoticesProp }) {
         ];
 
     const [items, setItems] = useState<Notice[]>(list);
-    const [selectedId, setSelectedId] = useState<number | null>(null);
+    const [drawerId, setDrawerId] = useState<number | null>(null);
+    const [editingId, setEditingId] = useState<number | null>(null);
     const [selectedNotice, setSelectedNotice] = useState<Notice | null>(null);
     const [isDetailLoading, setIsDetailLoading] = useState<boolean>(false);
     const [isCreating, setIsCreating] = useState<boolean>(false);
@@ -73,6 +75,7 @@ export default function Index({ notices }: { notices?: NoticesProp }) {
     const [isSaving, setIsSaving] = useState<boolean>(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
+    const [readIds, setReadIds] = useState<Set<number>>(() => new Set());
 
     const api = useMemo(() => {
         return {
@@ -127,9 +130,35 @@ export default function Index({ notices }: { notices?: NoticesProp }) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    useEffect(() => {
+        if (!userId) return;
+        const prefix = `noticeRead:${userId}:`;
+        const next = new Set<number>();
+        for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
+            if (!k || !k.startsWith(prefix)) continue;
+            const id = Number(k.slice(prefix.length));
+            if (Number.isFinite(id) && id > 0) next.add(id);
+        }
+        setReadIds(next);
+    }, [userId]);
+
+    const markRead = (id: number) => {
+        if (!userId) return;
+        localStorage.setItem(`noticeRead:${userId}:${id}`, String(Date.now()));
+        setReadIds((prev) => {
+            const next = new Set(prev);
+            next.add(id);
+            return next;
+        });
+        setSuccessMessage('既読にしました。');
+        window.setTimeout(() => setSuccessMessage(null), 1200);
+    };
+
     const openCreate = () => {
         setIsCreating(true);
-        setSelectedId(null);
+        setEditingId(null);
+        setDrawerId(null);
         setSelectedNotice(null);
         setDraftTitle('');
         setDraftBody('');
@@ -141,8 +170,8 @@ export default function Index({ notices }: { notices?: NoticesProp }) {
 
     const openEdit = async (id: number) => {
         setIsCreating(false);
-        setSelectedId(id);
-        setSelectedNotice(null);
+        setEditingId(id);
+        setDrawerId(null);
         setErrorMessage(null);
         setSuccessMessage(null);
         try {
@@ -161,7 +190,8 @@ export default function Index({ notices }: { notices?: NoticesProp }) {
 
     const openDetail = async (id: number) => {
         setIsCreating(false);
-        setSelectedId(id);
+        setDrawerId(id);
+        setEditingId(null);
         setSelectedNotice(null);
         setIsDetailLoading(true);
         setErrorMessage(null);
@@ -171,6 +201,7 @@ export default function Index({ notices }: { notices?: NoticesProp }) {
             const json = (await res.json()) as any;
             const n = (json?.data ?? json) as Notice;
             setSelectedNotice(n);
+            markRead(id);
         } catch {
             setSelectedNotice(null);
             setErrorMessage('詳細の取得に失敗しました。');
@@ -232,10 +263,13 @@ export default function Index({ notices }: { notices?: NoticesProp }) {
                                 </div>
                             ) : null}
 
-                            {(isCreating || selectedId !== null) && isAdmin ? (
+                            {(isCreating || editingId !== null) && isAdmin ? (
                                 <div className="rounded-sm border border-wa-accent/20 bg-wa-ink p-4">
                                     <div className="text-xs font-bold tracking-widest text-wa-muted">
                                         {isCreating ? 'CREATE' : 'EDIT'}
+                                    </div>
+                                    <div className="mt-1 text-[11px] text-wa-muted">
+                                        {isCreating ? '新規作成フォーム' : '編集フォーム（編集→SAVEで反映）'}
                                     </div>
                                     <div className="mt-3 space-y-3">
                                         <input
@@ -273,7 +307,8 @@ export default function Index({ notices }: { notices?: NoticesProp }) {
                                                 type="button"
                                                 onClick={() => {
                                                     setIsCreating(false);
-                                                    setSelectedId(null);
+                                                    setEditingId(null);
+                                                    setDrawerId(null);
                                                     setSelectedNotice(null);
                                                     setDraftTitle('');
                                                     setDraftBody('');
@@ -305,8 +340,8 @@ export default function Index({ notices }: { notices?: NoticesProp }) {
                                                             const n = (json?.data ?? json) as Notice;
                                                             setItems((prev) => [n, ...prev]);
                                                             setSuccessMessage('作成しました。');
-                                                        } else if (selectedId !== null) {
-                                                            const res = await api.update(selectedId, {
+                                                        } else if (editingId !== null) {
+                                                            const res = await api.update(editingId, {
                                                                 title: draftTitle,
                                                                 body: draftBody,
                                                                 is_pinned: draftPinned,
@@ -351,6 +386,7 @@ export default function Index({ notices }: { notices?: NoticesProp }) {
                                         body={n.body}
                                         publishedAt={n.published_at}
                                         isPinned={n.is_pinned}
+                                        isRead={readIds.has(n.id)}
                                         onOpen={() => openDetail(n.id)}
                                     />
 
@@ -368,10 +404,19 @@ export default function Index({ notices }: { notices?: NoticesProp }) {
                                         </button>
                                         <button
                                             type="button"
-                                            onClick={(e) => e.stopPropagation()}
-                                            className="rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-2 text-xs font-black tracking-tight text-wa-muted transition hover:border-wa-accent/35 hover:text-wa-body"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                markRead(n.id);
+                                            }}
+                                            disabled={readIds.has(n.id)}
+                                            className={[
+                                                'rounded-sm border px-4 py-2 text-xs font-black tracking-tight transition',
+                                                readIds.has(n.id)
+                                                    ? 'border-teal-500/25 bg-teal-500/10 text-teal-300'
+                                                    : 'border-wa-accent/20 bg-wa-ink text-wa-muted hover:border-wa-accent/35 hover:text-wa-body',
+                                            ].join(' ')}
                                         >
-                                            既読
+                                            {readIds.has(n.id) ? '既読済' : '既読'}
                                         </button>
                                     </div>
                                 </div>
@@ -382,10 +427,10 @@ export default function Index({ notices }: { notices?: NoticesProp }) {
             </div>
 
             <DetailDrawer
-                open={selectedId !== null}
-                title={`NOTICE #${selectedId ?? ''}`}
+                open={drawerId !== null}
+                title={`NOTICE #${drawerId ?? ''}`}
                 onClose={() => {
-                    setSelectedId(null);
+                    setDrawerId(null);
                     setSelectedNotice(null);
                     setIsDetailLoading(false);
                 }}
@@ -410,7 +455,7 @@ export default function Index({ notices }: { notices?: NoticesProp }) {
                                 <ActionButton
                                     onClick={() => {
                                         const id = selectedNotice.id;
-                                        setSelectedId(null);
+                                        setDrawerId(null);
                                         setSelectedNotice(null);
                                         openEdit(id);
                                     }}
