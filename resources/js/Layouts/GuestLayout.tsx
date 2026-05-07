@@ -1,4 +1,3 @@
-import ApplicationLogo from '@/Components/ApplicationLogo';
 import { Link } from '@inertiajs/react';
 import { PropsWithChildren } from 'react';
 
@@ -46,11 +45,7 @@ export default function GuestLayout({ children }: PropsWithChildren) {
                     </div>
                 </div>
 
-                <div className="mt-5 text-center text-xs text-wa-muted">
-                    <Link href="/">
-                        <ApplicationLogo className="mx-auto h-8 w-8 fill-current text-wa-accent/40" />
-                    </Link>
-                </div>
+                {/* NOTE: Laravelロゴは非表示（要望） */}
             </div>
         </div>
     );
