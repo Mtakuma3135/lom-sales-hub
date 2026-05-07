@@ -25,4 +25,20 @@ class NoticeController extends Controller
             'notices' => $noticesResource,
         ]);
     }
+
+    public function drafts(NoticeService $noticeService): Response
+    {
+        $this->authorize('viewAny', Notice::class);
+
+        $notices = $noticeService->drafts();
+
+        $noticesResource = NoticeResource::collection($notices)
+            ->additional(['meta' => []])
+            ->response()
+            ->getData(true);
+
+        return Inertia::render('Notices/Drafts', [
+            'notices' => $noticesResource,
+        ]);
+    }
 }

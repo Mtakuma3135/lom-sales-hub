@@ -26,6 +26,25 @@ class NoticeService
     }
 
     /**
+     * 下書き一覧（管理者のみ）
+     *
+     * @return Collection<int, Notice>
+     */
+    public function drafts(): Collection
+    {
+        try {
+            return Notice::query()
+                ->whereNull('published_at')
+                ->orderByDesc('is_pinned')
+                ->orderByDesc('updated_at')
+                ->get();
+        } catch (\Throwable $e) {
+            Log::error('NoticeService.drafts failed', ['error' => $e->getMessage()]);
+            return collect();
+        }
+    }
+
+    /**
      * @return Collection<int, Notice>
      */
     public function indexFor(User $actor): Collection
@@ -44,6 +63,19 @@ class NoticeService
             Log::error('NoticeService.indexFor failed', ['error' => $e->getMessage()]);
             return collect();
         }
+    }
+
+    /**
+     * 下書き一覧（管理者のみ）
+     *
+     * @return Collection<int, Notice>
+     */
+    public function draftsFor(User $actor): Collection
+    {
+        if (($actor->role ?? 'general') !== 'admin') {
+            return collect();
+        }
+        return $this->drafts();
     }
 
     /**

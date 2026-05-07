@@ -19,7 +19,8 @@ class NoticeApiController extends Controller
             abort(401);
         }
 
-        $items = $noticeService->indexFor($actor);
+        $draftsOnly = (string) $request->input('drafts', '') === '1';
+        $items = $draftsOnly ? $noticeService->draftsFor($actor) : $noticeService->indexFor($actor);
         $q = trim((string) $request->input('q', ''));
         if ($q !== '') {
             $items = $items->filter(function (Notice $n) use ($q) {

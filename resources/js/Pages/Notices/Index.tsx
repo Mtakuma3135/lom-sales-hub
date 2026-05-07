@@ -1,5 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, usePage } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
 import { PageProps } from '@/types';
 import NeonCard from '@/Components/NeonCard';
@@ -23,7 +23,7 @@ type NoticesProp = {
 const btnGhost =
     'w-full rounded-sm border border-wa-accent/25 bg-wa-ink px-3 py-3 text-sm font-black tracking-tight text-wa-body transition hover:border-wa-accent/40';
 
-export default function Index({ notices }: { notices?: NoticesProp }) {
+export default function Index({ notices, initialDrafts }: { notices?: NoticesProp; initialDrafts?: boolean }) {
     const { props } = usePage<PageProps>();
     const isAdmin = (props.auth?.user?.role ?? 'general') === 'admin';
     const userId = props.auth?.user?.id ?? null;
@@ -63,7 +63,6 @@ export default function Index({ notices }: { notices?: NoticesProp }) {
 
     const [items, setItems] = useState<Notice[]>(list);
     const [drawerId, setDrawerId] = useState<number | null>(null);
-    const [editingId, setEditingId] = useState<number | null>(null);
     const [selectedNotice, setSelectedNotice] = useState<Notice | null>(null);
     const [isDetailLoading, setIsDetailLoading] = useState<boolean>(false);
     const [isCreating, setIsCreating] = useState<boolean>(false);
@@ -76,11 +75,16 @@ export default function Index({ notices }: { notices?: NoticesProp }) {
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const [readIds, setReadIds] = useState<Set<number>>(() => new Set());
+    const [draftsOnly, setDraftsOnly] = useState<boolean>(() => !!initialDrafts);
+    const [drawerEdit, setDrawerEdit] = useState<boolean>(false);
 
     const api = useMemo(() => {
         return {
-            index: (query: string) => {
-                const qs = query.trim() ? `?q=${encodeURIComponent(query.trim())}` : '';
+            index: (query: string, drafts: boolean) => {
+                const p = new URLSearchParams();
+                if (query.trim()) p.set('q', query.trim());
+                if (drafts) p.set('drafts', '1');
+                const qs = p.toString() ? `?${p.toString()}` : '';
                 return fetch(`${route('portal.api.notices.index')}${qs}`, { headers: { Accept: 'application/json' } });
             },
             show: (id: number) =>
@@ -107,7 +111,7 @@ export default function Index({ notices }: { notices?: NoticesProp }) {
 
     useEffect(() => {
         let mounted = true;
-        api.index('')
+        api.index('', draftsOnly)
             .then(async (res) => {
                 if (!res.ok) return;
                 const json = (await res.json()) as unknown;
@@ -118,7 +122,7 @@ export default function Index({ notices }: { notices?: NoticesProp }) {
         return () => {
             mounted = false;
         };
-    }, [api]);
+    }, [api, draftsOnly]);
 
     // Home などから `?open=<id>` で遷移したとき、自動で詳細を開く
     useEffect(() => {
@@ -157,9 +161,9 @@ export default function Index({ notices }: { notices?: NoticesProp }) {
 
     const openCreate = () => {
         setIsCreating(true);
-        setEditingId(null);
         setDrawerId(null);
         setSelectedNotice(null);
+        setDrawerEdit(false);
         setDraftTitle('');
         setDraftBody('');
         setDraftPinned(false);
@@ -169,38 +173,29 @@ export default function Index({ notices }: { notices?: NoticesProp }) {
     };
 
     const openEdit = async (id: number) => {
-        setIsCreating(false);
-        setEditingId(id);
-        setDrawerId(null);
-        setErrorMessage(null);
-        setSuccessMessage(null);
-        try {
-            const res = await api.show(id);
-            if (!res.ok) throw new Error();
-            const json = (await res.json()) as any;
-            const n = (json?.data ?? json) as Notice;
-            setDraftTitle(n?.title ?? '');
-            setDraftBody(n?.body ?? '');
-            setDraftPinned(!!n?.is_pinned);
-            setDraftPublishedAt((n?.published_at ?? '').replace('T', ' ').slice(0, 19));
-        } catch {
-            setErrorMessage('詳細の取得に失敗しました。');
-        }
+        // 編集は右パネル（DetailDrawer）内で行う
+        await openDetail(id);
+        if (!isAdmin) return;
+        setDrawerEdit(true);
     };
 
     const openDetail = async (id: number) => {
         setIsCreating(false);
         setDrawerId(id);
-        setEditingId(null);
         setSelectedNotice(null);
         setIsDetailLoading(true);
         setErrorMessage(null);
+        setDrawerEdit(false);
         try {
             const res = await api.show(id);
             if (!res.ok) throw new Error();
             const json = (await res.json()) as any;
             const n = (json?.data ?? json) as Notice;
             setSelectedNotice(n);
+            setDraftTitle(n?.title ?? '');
+            setDraftBody(n?.body ?? '');
+            setDraftPinned(!!n?.is_pinned);
+            setDraftPublishedAt((n?.published_at ?? '').replace('T', ' ').slice(0, 19));
             markRead(id);
         } catch {
             setSelectedNotice(null);
@@ -230,7 +225,7 @@ export default function Index({ notices }: { notices?: NoticesProp }) {
                                 onClick={async () => {
                                     setErrorMessage(null);
                                     try {
-                                        const res = await api.index(q);
+                                        const res = await api.index(q, draftsOnly);
                                         if (!res.ok) throw new Error();
                                         const json = (await res.json()) as unknown;
                                         setItems(Array.isArray(json) ? (json as Notice[]) : []);
@@ -248,8 +243,12 @@ export default function Index({ notices }: { notices?: NoticesProp }) {
                             <ActionButton className="w-full" disabled={!isAdmin} onClick={openCreate}>
                                 新規作成（管理者）
                             </ActionButton>
-                            <button type="button" className={btnGhost}>
-                                下書き
+                            <button
+                                type="button"
+                                className={btnGhost}
+                                onClick={() => router.visit(draftsOnly ? route('notices.index') : route('notices.drafts'))}
+                            >
+                                {draftsOnly ? '一覧へ戻る' : '下書き'}
                             </button>
 
                             {errorMessage ? (
@@ -263,13 +262,13 @@ export default function Index({ notices }: { notices?: NoticesProp }) {
                                 </div>
                             ) : null}
 
-                            {(isCreating || editingId !== null) && isAdmin ? (
+                            {isCreating && isAdmin ? (
                                 <div className="rounded-sm border border-wa-accent/20 bg-wa-ink p-4">
                                     <div className="text-xs font-bold tracking-widest text-wa-muted">
-                                        {isCreating ? 'CREATE' : 'EDIT'}
+                                        CREATE
                                     </div>
                                     <div className="mt-1 text-[11px] text-wa-muted">
-                                        {isCreating ? '新規作成フォーム' : '編集フォーム（編集→SAVEで反映）'}
+                                        新規作成フォーム
                                     </div>
                                     <div className="mt-3 space-y-3">
                                         <input
@@ -307,7 +306,6 @@ export default function Index({ notices }: { notices?: NoticesProp }) {
                                                 type="button"
                                                 onClick={() => {
                                                     setIsCreating(false);
-                                                    setEditingId(null);
                                                     setDrawerId(null);
                                                     setSelectedNotice(null);
                                                     setDraftTitle('');
@@ -328,31 +326,18 @@ export default function Index({ notices }: { notices?: NoticesProp }) {
                                                     setErrorMessage(null);
                                                     setSuccessMessage(null);
                                                     try {
-                                                        if (isCreating) {
-                                                            const res = await api.store({
-                                                                title: draftTitle,
-                                                                body: draftBody,
-                                                                is_pinned: draftPinned,
-                                                                published_at: draftPublishedAt ? draftPublishedAt : null,
-                                                            });
-                                                            if (!res.ok) throw new Error();
-                                                            const json = (await res.json()) as any;
-                                                            const n = (json?.data ?? json) as Notice;
-                                                            setItems((prev) => [n, ...prev]);
-                                                            setSuccessMessage('作成しました。');
-                                                        } else if (editingId !== null) {
-                                                            const res = await api.update(editingId, {
-                                                                title: draftTitle,
-                                                                body: draftBody,
-                                                                is_pinned: draftPinned,
-                                                                published_at: draftPublishedAt ? draftPublishedAt : null,
-                                                            });
-                                                            if (!res.ok) throw new Error();
-                                                            const json = (await res.json()) as any;
-                                                            const n = (json?.data ?? json) as Notice;
-                                                            setItems((prev) => prev.map((x) => (x.id === n.id ? n : x)));
-                                                            setSuccessMessage('更新しました。');
-                                                        }
+                                                        const res = await api.store({
+                                                            title: draftTitle,
+                                                            body: draftBody,
+                                                            is_pinned: draftPinned,
+                                                            published_at: draftPublishedAt ? draftPublishedAt : null,
+                                                        });
+                                                        if (!res.ok) throw new Error();
+                                                        const json = (await res.json()) as any;
+                                                        const n = (json?.data ?? json) as Notice;
+                                                        setItems((prev) => [n, ...prev]);
+                                                        setSuccessMessage('作成しました。');
+                                                        setIsCreating(false);
                                                     } catch {
                                                         setErrorMessage('保存に失敗しました。');
                                                     } finally {
@@ -395,7 +380,7 @@ export default function Index({ notices }: { notices?: NoticesProp }) {
                                             type="button"
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                if (isAdmin) openEdit(n.id);
+                                                if (isAdmin) void openEdit(n.id);
                                                 else openDetail(n.id);
                                             }}
                                             className="rounded-sm border border-wa-accent/25 bg-wa-ink px-4 py-2 text-xs font-black tracking-tight text-wa-body transition hover:border-wa-accent/40 hover:bg-wa-card"
@@ -452,22 +437,93 @@ export default function Index({ notices }: { notices?: NoticesProp }) {
                                 <div className="mt-2 text-xs text-wa-muted">公開: {selectedNotice.published_at}</div>
                             </div>
                             {isAdmin ? (
-                                <ActionButton
-                                    onClick={() => {
-                                        const id = selectedNotice.id;
-                                        setDrawerId(null);
-                                        setSelectedNotice(null);
-                                        openEdit(id);
-                                    }}
-                                >
-                                    編集へ
-                                </ActionButton>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setDrawerEdit((v) => !v)}
+                                        className="rounded-sm border border-wa-accent/25 bg-wa-ink px-4 py-2 text-xs font-black tracking-tight text-wa-body transition hover:border-wa-accent/40 hover:bg-wa-card"
+                                    >
+                                        {drawerEdit ? '編集を閉じる' : '編集'}
+                                    </button>
+                                    {drawerEdit ? (
+                                        <ActionButton
+                                            disabled={isSaving}
+                                            onClick={async () => {
+                                                if (!drawerId) return;
+                                                setIsSaving(true);
+                                                setErrorMessage(null);
+                                                setSuccessMessage(null);
+                                                try {
+                                                    const res = await api.update(drawerId, {
+                                                        title: draftTitle,
+                                                        body: draftBody,
+                                                        is_pinned: draftPinned,
+                                                        published_at: draftPublishedAt ? draftPublishedAt : null,
+                                                    });
+                                                    if (!res.ok) throw new Error();
+                                                    const json = (await res.json()) as any;
+                                                    const n = (json?.data ?? json) as Notice;
+                                                    setItems((prev) => prev.map((x) => (x.id === n.id ? n : x)));
+                                                    setSelectedNotice(n);
+                                                    setSuccessMessage('更新しました。');
+                                                    setDrawerEdit(false);
+                                                } catch {
+                                                    setErrorMessage('保存に失敗しました。');
+                                                } finally {
+                                                    setIsSaving(false);
+                                                }
+                                            }}
+                                        >
+                                            {isSaving ? 'SAVING…' : 'SAVE'}
+                                        </ActionButton>
+                                    ) : null}
+                                </div>
                             ) : null}
                         </div>
 
+                        {drawerEdit && isAdmin ? (
+                            <div className="rounded-sm border border-wa-accent/20 bg-wa-ink p-4">
+                                <div className="text-[11px] font-bold tracking-widest text-wa-muted">EDIT</div>
+                                <div className="mt-3 space-y-3">
+                                    <input
+                                        value={draftTitle}
+                                        onChange={(e) => setDraftTitle(e.target.value)}
+                                        className="nordic-field"
+                                        placeholder="タイトル（最大100）"
+                                    />
+                                    <textarea
+                                        value={draftBody}
+                                        onChange={(e) => setDraftBody(e.target.value)}
+                                        className="nordic-field min-h-[160px]"
+                                        rows={8}
+                                        placeholder="本文（最大10000）"
+                                    />
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                        <label className="flex items-center gap-2 text-xs font-semibold text-wa-body">
+                                            <input
+                                                type="checkbox"
+                                                checked={draftPinned}
+                                                onChange={(e) => setDraftPinned(e.target.checked)}
+                                                className="rounded-sm border-wa-accent/35 text-wa-accent"
+                                            />
+                                            PIN
+                                        </label>
+                                        <input
+                                            value={draftPublishedAt}
+                                            onChange={(e) => setDraftPublishedAt(e.target.value)}
+                                            placeholder="published_at (YYYY-MM-DD HH:mm:ss) ※空で下書き"
+                                            className="nordic-field w-full py-2 text-xs sm:w-72"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        ) : null}
+
                         <div className="rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-3">
                             <div className="text-[11px] font-bold tracking-widest text-wa-muted">BODY</div>
-                            <div className="mt-2 whitespace-pre-wrap text-sm text-wa-body">{selectedNotice.body}</div>
+                            <div className="wa-wrap-anywhere mt-2 whitespace-pre-wrap text-sm text-wa-body">
+                                {selectedNotice.body}
+                            </div>
                         </div>
                     </div>
                 ) : (
