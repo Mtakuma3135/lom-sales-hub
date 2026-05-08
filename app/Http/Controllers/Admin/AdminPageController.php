@@ -5,16 +5,17 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Credential;
 use App\Models\CsvUpload;
+use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class AdminPageController extends Controller
 {
-    public function csv(): Response
+    public function csv(): RedirectResponse
     {
         $this->authorize('viewAny', CsvUpload::class);
 
-        return Inertia::render('Admin/Csv/Upload');
+        return redirect()->route('sales.summary', ['tab' => 'csv']);
     }
 
     public function credentials(): Response
@@ -24,4 +25,3 @@ class AdminPageController extends Controller
         return Inertia::render('Admin/Credentials/Index');
     }
 }
-

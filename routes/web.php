@@ -1,29 +1,29 @@
 <?php
 
-use App\Http\Controllers\Admin\UserController as AdminUserController;
-use App\Http\Controllers\Admin\CsvController as AdminCsvController;
-use App\Http\Controllers\Admin\CredentialController as AdminCredentialController;
-use App\Http\Controllers\Admin\NoticeController as AdminNoticeController;
-use App\Http\Controllers\Admin\ProductController as AdminProductController;
 use App\Http\Controllers\Admin\AdminPageController;
+use App\Http\Controllers\Admin\AuditLogController as AdminAuditLogController;
+use App\Http\Controllers\Admin\CredentialController as AdminCredentialController;
+use App\Http\Controllers\Admin\CsvController as AdminCsvController;
+use App\Http\Controllers\Admin\DepartmentController as AdminDepartmentController;
 use App\Http\Controllers\Admin\DiscordNotificationLogController as AdminDiscordNotificationLogController;
 use App\Http\Controllers\Admin\DiscordNotificationLogPageController;
-use App\Http\Controllers\Admin\AuditLogController as AdminAuditLogController;
-use App\Http\Controllers\Admin\DepartmentController as AdminDepartmentController;
+use App\Http\Controllers\Admin\NoticeController as AdminNoticeController;
+use App\Http\Controllers\Admin\ProductController as AdminProductController;
+use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\DailyTaskApiController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\KotMockController;
 use App\Http\Controllers\LunchBreakController;
 use App\Http\Controllers\MypageController;
-use App\Http\Controllers\NoticeController;
 use App\Http\Controllers\NoticeApiController;
-use App\Http\Controllers\ProductController;
+use App\Http\Controllers\NoticeController;
 use App\Http\Controllers\ProductApiController;
+use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductShowController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SalesController;
 use App\Http\Controllers\SalesRecordController;
 use App\Http\Controllers\TaskRequestController;
-use App\Http\Controllers\KotMockController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -47,7 +47,7 @@ Route::middleware('auth')->group(function () {
     Route::redirect('/notices', '/portal/notices');
     Route::redirect('/products', '/portal/products');
     Route::redirect('/mypage', '/portal/mypage');
-    Route::redirect('/admin/csv/upload', '/portal/csv');
+    Route::redirect('/admin/csv/upload', '/portal/sales?tab=csv');
     Route::redirect('/admin/credentials', '/portal/credentials');
 
     Route::prefix('portal')->group(function () {
@@ -87,7 +87,7 @@ Route::middleware('auth')->group(function () {
         // KOT mock endpoint (internal)
         Route::post('/mock/kot/punch', [KotMockController::class, 'punch'])->name('portal.mock.kot.punch');
 
-        // 設計書URL: /portal/csv, /portal/credentials（管理者のみ）
+        // 設計書URL: /portal/csv → KPI の CSV タブへリダイレクト、/portal/credentials（管理者のみ）
         Route::get('/csv', [AdminPageController::class, 'csv'])->name('admin.csv.upload');
         Route::post('/csv', fn () => back())->name('admin.csv.upload.store');
         Route::get('/credentials', [AdminPageController::class, 'credentials'])->name('admin.credentials.index');
@@ -131,7 +131,7 @@ Route::middleware('auth')->group(function () {
             Route::resource('audit-logs', AdminAuditLogController::class)->only(['index', 'show']);
 
             // 旧URL互換（/portal/admin/* → /portal/*）
-            Route::redirect('/csv', '/portal/csv');
+            Route::redirect('/csv', '/portal/sales?tab=csv');
             Route::redirect('/credentials', '/portal/credentials');
         });
     });

@@ -1,4 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import CsvUploadPanel from '@/Components/Sales/CsvUploadPanel';
 import DetailDrawer from '@/Components/DetailDrawer';
 import StatusBadge from '@/Components/StatusBadge';
 import InformationTrigger from '@/Components/UI/InformationTrigger';
@@ -28,6 +29,14 @@ type SalesPayload = {
 };
 
 type KpiTriplet = { ok: number; ng: number; contract_rate: number };
+
+const emptyPayload: SalesPayload = {
+    data: {
+        summary: { ok: 0, ng: 0, contract_rate: 0 },
+        ranking: [],
+        trend: [],
+    },
+};
 
 const defaultPayload: SalesPayload = {
     data: {
@@ -171,23 +180,33 @@ function WaCard({ className = '', children }: { className?: string; children: Re
     );
 }
 
+type SalesKpiTab = 'summary' | 'ranking' | 'trend' | 'csv';
+
 export default function Summary() {
     const { props } = usePage<{ sales?: SalesPayload; personalKpi?: KpiTriplet }>();
-    const payload = (props.sales ?? defaultPayload) as SalesPayload;
+    const isDev = import.meta.env.DEV;
 
-    const hasServerPayload = props.sales !== undefined;
-    const personalKpi =
-        props.personalKpi ?? (hasServerPayload ? { ok: 0, ng: 0, contract_rate: 0 } : defaultPersonalKpi);
+    const payload = (props.sales ?? (isDev ? defaultPayload : emptyPayload)) as SalesPayload;
+    const personalKpi = (props.personalKpi ?? (isDev ? defaultPersonalKpi : emptyPayload.data.summary)) as KpiTriplet;
 
     const actorName =
         (props as { auth?: { user?: { name?: string | null } } }).auth?.user?.name?.trim() ?? '';
 
-    const [tab, setTab] = useState<'summary' | 'ranking' | 'trend'>(() => {
+    const canCsv = Boolean((props as { auth?: { can?: { admin_csv?: boolean } } }).auth?.can?.admin_csv);
+
+    const [tab, setTab] = useState<SalesKpiTab>(() => {
         const params = new URLSearchParams(window.location.search);
         const t = params.get('tab');
         if (t === 'ranking' || t === 'trend' || t === 'summary') return t;
+        if (t === 'csv') return 'csv';
         return 'summary';
     });
+
+    useEffect(() => {
+        if (tab === 'csv' && !canCsv) {
+            setTab('summary');
+        }
+    }, [tab, canCsv]);
     const [drawerRank, setDrawerRank] = useState<RankRow | null>(null);
 
     const kpi = payload.data.summary;
@@ -223,19 +242,21 @@ export default function Summary() {
                 <h2 className="wa-body-track text-sm font-semibold text-wa-body">案件・KPI</h2>
             }
         >
-            <Head title="案件・KPI（サマリー）" />
+            <Head title={tab === 'csv' ? '案件・KPI（CSV取り込み）' : '案件・KPI（サマリー）'} />
             <div className="mx-auto max-w-6xl wa-body-track space-y-10 sm:space-y-12">
                 <div className="flex flex-wrap items-center justify-between gap-6">
                     <div className="flex items-center gap-4">
                         <div className="text-xs font-semibold uppercase tracking-widest text-wa-muted">
                             ダッシュボード
                         </div>
-                        <StatusBadge
-                            variant="muted"
-                            className="!rounded-lg !border-wa-accent/25 !bg-wa-ink !text-wa-muted !ring-0"
-                        >
-                            MOCK
-                        </StatusBadge>
+                        {isDev && props.sales === undefined ? (
+                            <StatusBadge
+                                variant="muted"
+                                className="!rounded-lg !border-wa-accent/25 !bg-wa-ink !text-wa-muted !ring-0"
+                            >
+                                DEV SAMPLE
+                            </StatusBadge>
+                        ) : null}
                     </div>
                     <Link
                         href={route('sales.records')}
@@ -371,11 +392,14 @@ export default function Summary() {
 
                     <div className="border-t border-wa-accent/10 px-6 pb-10 pt-8 sm:px-10">
                         <div className="flex flex-wrap gap-3">
-                            {[
-                                { key: 'summary' as const, label: 'サマリー' },
-                                { key: 'ranking' as const, label: 'ランキング' },
-                                { key: 'trend' as const, label: 'トレンド' },
-                            ].map((t) => (
+                            {(
+                                [
+                                    { key: 'summary' as const, label: 'サマリー' },
+                                    { key: 'ranking' as const, label: 'ランキング' },
+                                    { key: 'trend' as const, label: 'トレンド' },
+                                    ...(canCsv ? [{ key: 'csv' as const, label: 'CSV取り込み' }] : []),
+                                ] as const
+                            ).map((t) => (
                                 <button
                                     key={t.key}
                                     type="button"
@@ -478,6 +502,8 @@ export default function Summary() {
                                     })}
                                 </div>
                             ) : null}
+
+                            {tab === 'csv' && canCsv ? <CsvUploadPanel /> : null}
                         </div>
                     </div>
                 </WaCard>

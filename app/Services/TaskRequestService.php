@@ -2,85 +2,31 @@
 
 namespace App\Services;
 
+use App\Jobs\SendDiscordNotification;
+use App\Models\DiscordNotificationLog;
+use App\Models\TaskRequest;
+use App\Models\User;
+use App\Notifications\Discord\DiscordPayloadFactory;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Session;
-use App\Models\DiscordNotificationLog;
-use App\Models\User;
-use App\Jobs\SendDiscordNotification;
-use App\Notifications\Discord\DiscordPayloadFactory;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class TaskRequestService
 {
-    private const SESSION_KEY = 'task_requests.items';
-
     /**
      * @return Collection<int, array{id:int,title:string,requester:string,priority:string,status:string,due_date:string,created_at:string}>
      */
     public function index(): Collection
     {
         try {
-            $items = Session::get(self::SESSION_KEY);
-            if (is_array($items)) {
-                return collect($items)->values();
-            }
+            $items = TaskRequest::query()
+                ->orderByDesc('id')
+                ->get();
 
-            $seed = collect([
-                [
-                    'id' => 101,
-                    'title' => 'トークスクリプトの更新依頼（本人確認）',
-                    'requester' => '品質管理',
-                    'priority' => 'urgent',
-                    'status' => 'pending',
-                    'due_date' => '2026-04-30',
-                    'created_at' => '2026-04-22 11:10',
-                    'body' => '録音サンプル共有済み。修正期限は金曜まで。',
-                    'to_user_id' => 1,
-                    'from_user_id' => 2,
-                ],
-                [
-                    'id' => 102,
-                    'title' => '商材資料の差し替え（Driveリンク更新）',
-                    'requester' => '商品企画',
-                    'priority' => 'important',
-                    'status' => 'in_progress',
-                    'due_date' => '2026-04-27',
-                    'created_at' => '2026-04-21 16:40',
-                    'body' => '新PDFは共有フォルダにあります。',
-                    'to_user_id' => 2,
-                    'from_user_id' => 1,
-                ],
-                [
-                    'id' => 103,
-                    'title' => 'KPI画面に「前月比」表示を追加',
-                    'requester' => 'マネージャー',
-                    'priority' => 'normal',
-                    'status' => 'completed',
-                    'due_date' => '2026-04-25',
-                    'created_at' => '2026-04-18 09:05',
-                    'body' => 'モックで進めて問題ありません。',
-                    'to_user_id' => 1,
-                    'from_user_id' => 3,
-                ],
-                [
-                    'id' => 104,
-                    'title' => '周知事項のPIN運用ルール策定',
-                    'requester' => '総務',
-                    'priority' => 'important',
-                    'status' => 'pending',
-                    'due_date' => '2026-04-24',
-                    'created_at' => '2026-04-17 13:20',
-                    'body' => '草案は別紙参照。',
-                    'to_user_id' => 3,
-                    'from_user_id' => 1,
-                ],
-            ])->values();
-
-            Session::put(self::SESSION_KEY, $seed->all());
-
-            return $seed;
+            return $items->map(fn (TaskRequest $t) => $this->toRow($t))->values();
         } catch (\Throwable $e) {
             Log::error('TaskRequestService.index failed', ['error' => $e->getMessage()]);
+
             return collect();
         }
     }
@@ -127,24 +73,11 @@ class TaskRequestService
     public function updateStatus(User $actor, int $id, string $status): Collection
     {
         try {
-            $items = $this->index();
+            $t = TaskRequest::query()->findOrFail($id);
+            $t->status = $status;
+            $t->save();
 
-            $target = $items->first(fn (array $t) => (int) $t['id'] === (int) $id);
-            if (! is_array($target)) {
-                abort(404);
-            }
-
-            $updated = $items->map(function (array $t) use ($id, $status) {
-                if ((int) $t['id'] !== (int) $id) {
-                    return $t;
-                }
-                $t['status'] = $status;
-                return $t;
-            })->values();
-
-            Session::put(self::SESSION_KEY, $updated->all());
-
-            return $updated;
+            return $this->indexFor($actor);
         } catch (\Throwable $e) {
             Log::error('TaskRequestService.updateStatus failed', [
                 'id' => $id,
@@ -171,31 +104,22 @@ class TaskRequestService
                 abort(403);
             }
 
-            $items = $this->index()->values();
-            $nextId = (int) max(1, (int) ($items->max('id') ?? 0) + 1);
+            $notifyOk = $this->notifyDiscordTaskRequest($actor, $to, $title);
 
-            $row = [
-                'id' => $nextId,
+            $t = TaskRequest::query()->create([
                 'title' => $title,
-                'requester' => $actor->name ?? '—',
+                'requester' => (string) ($actor->name ?? '—'),
                 'priority' => $priority,
                 'status' => 'pending',
-                'due_date' => now()->addDays(7)->format('Y-m-d'),
-                'created_at' => now()->format('Y-m-d H:i:s'),
+                'due_date' => now()->addDays(7)->toDateString(),
                 'body' => $body,
                 'to_user_id' => (int) $to->id,
                 'from_user_id' => (int) $actor->id,
-                'chat_sent' => false,
-            ];
+                'chat_sent' => $notifyOk,
+            ]);
 
-            $notifyOk = $this->notifyDiscordTaskRequest($actor, $to, $title);
-            $row['chat_sent'] = $notifyOk;
-
-            $updated = $items->prepend($row)->values();
-            Session::put(self::SESSION_KEY, $updated->all());
-
-            return $row;
-        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+            return $this->toRow($t);
+        } catch (HttpException $e) {
             throw $e;
         } catch (\Throwable $e) {
             Log::error('TaskRequestService.store failed', [
@@ -238,5 +162,24 @@ class TaskRequestService
             return false;
         }
     }
-}
 
+    /**
+     * @return array{id:int,title:string,requester:string,priority:string,status:string,due_date:string,created_at:string,body:string,to_user_id:int,from_user_id:int,chat_sent:bool}
+     */
+    private function toRow(TaskRequest $t): array
+    {
+        return [
+            'id' => (int) $t->id,
+            'title' => (string) $t->title,
+            'requester' => (string) ($t->requester ?? ''),
+            'priority' => (string) ($t->priority ?? 'normal'),
+            'status' => (string) ($t->status ?? 'pending'),
+            'due_date' => $t->due_date ? (string) $t->due_date : '',
+            'created_at' => $t->created_at?->format('Y-m-d H:i:s') ?? '',
+            'body' => (string) ($t->body ?? ''),
+            'to_user_id' => (int) ($t->to_user_id ?? 0),
+            'from_user_id' => (int) ($t->from_user_id ?? 0),
+            'chat_sent' => (bool) ($t->chat_sent ?? false),
+        ];
+    }
+}

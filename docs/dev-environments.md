@@ -15,6 +15,17 @@
 ./vendor/bin/sail artisan optimize:clear
 ```
 
+DB初期化（seed込み）:
+
+```bash
+./vendor/bin/sail artisan migrate:fresh --seed
+```
+
+ログイン（seed作成）:
+
+- admin: `admin@example.com` / `password`
+- staff（例）: `user20001@example.com` / `password`
+
 確認:
 
 ```bash

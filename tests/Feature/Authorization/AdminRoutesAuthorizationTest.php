@@ -18,7 +18,6 @@ test('admin can access admin pages', function () {
     ]);
 
     $this->actingAs($admin)->get('/portal/admin/users')->assertOk();
-    $this->actingAs($admin)->get('/portal/csv')->assertOk();
+    $this->actingAs($admin)->get('/portal/csv')->assertRedirect(route('sales.summary', ['tab' => 'csv']));
     $this->actingAs($admin)->get('/portal/credentials')->assertOk();
 });
-

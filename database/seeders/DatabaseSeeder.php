@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Credential;
 use App\Models\CsvUpload;
+use App\Models\Department;
 use App\Models\Notice;
 use App\Models\Product;
 use App\Models\SalesRecord;
@@ -22,6 +23,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call(DepartmentSeeder::class);
+        $this->call(DummyUsersSeeder::class);
 
         // User::factory(10)->create();
 
@@ -33,9 +35,12 @@ class DatabaseSeeder extends Seeder
                 'password' => Hash::make('password'),
                 'role' => 'admin',
                 'is_active' => true,
-                'department_id' => \App\Models\Department::query()->where('code', 'ops')->value('id'),
+                'department_id' => Department::query()->where('code', 'ops')->value('id'),
             ],
         );
+
+        $this->call(TaskRequestSeeder::class);
+        $this->call(DailyTaskSeeder::class);
 
         Product::query()->updateOrCreate(
             ['name' => '光回線プランA'],
@@ -116,8 +121,26 @@ class DatabaseSeeder extends Seeder
                 'staff_name' => $staffName,
                 'status' => $status,
                 'date' => $date,
-                'department_id' => \App\Models\Department::query()->where('code', 'sales-1')->value('id'),
+                'department_id' => Department::query()->where('code', 'sales-1')->value('id'),
             ]);
+        }
+
+        // チャート/ランキングが成立する程度に期間データを増やす
+        $names = ['田中 一郎', '佐藤 美咲', '鈴木 健太', '山田 浩二', '高橋 次郎'];
+        $start = now()->subDays(27)->startOfDay();
+        for ($d = 0; $d < 28; $d++) {
+            $date = $start->copy()->addDays($d)->toDateString();
+            foreach ($names as $name) {
+                $seed = crc32($name.$date);
+                $status = ($seed % 5) === 0 ? 'ng' : 'ok';
+
+                SalesRecord::query()->firstOrCreate([
+                    'staff_name' => $name,
+                    'status' => $status,
+                    'date' => $date,
+                    'department_id' => Department::query()->where('code', 'sales-1')->value('id'),
+                ]);
+            }
         }
 
         CsvUpload::query()->updateOrCreate(

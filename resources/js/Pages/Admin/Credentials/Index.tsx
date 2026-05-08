@@ -11,7 +11,6 @@ type CredentialRow = {
     password: string;
     is_password: boolean;
     updated_at: string;
-    is_mock?: boolean;
 };
 
 function parseListJson(json: unknown): CredentialRow[] {
@@ -111,10 +110,6 @@ export default function Index() {
     }, [load]);
 
     const beginEdit = (c: CredentialRow) => {
-        if (c.is_mock) {
-            setToast('サンプルは編集できません');
-            return;
-        }
         setEditingId(c.id);
         setDraftLogin(c.login_id ?? '');
         setDraftPassword(c.password ?? '');
@@ -213,12 +208,7 @@ export default function Index() {
                                                 <span className="block truncate">{c.service_name}</span>
                                             </div>
                                             <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-                                                {c.is_mock ? (
-                                                    <span className="rounded-full border border-wa-accent/20 bg-wa-ink px-2 py-0.5 text-[10px] font-semibold text-wa-muted">
-                                                        SAMPLE
-                                                    </span>
-                                                ) : null}
-                                                {!isEditing && !c.is_mock ? (
+                                                {!isEditing ? (
                                                     <button
                                                         type="button"
                                                         onClick={() => beginEdit(c)}

@@ -10,7 +10,6 @@ type User = {
 
 type Can = {
     admin_users?: boolean;
-    admin_csv?: boolean;
     admin_credentials?: boolean;
     admin_discord_notifications?: boolean;
     admin_audit_logs?: boolean;
@@ -29,7 +28,6 @@ const navItems: {
     { label: '各商材について', route: 'products.index', alsoMatch: ['products.show'] },
     { label: '昼休憩', route: 'lunch-breaks.index' },
     { label: 'マイページ', route: 'mypage.index' },
-    { label: 'CSV取込', route: 'admin.csv.upload', canKey: 'admin_csv' },
     { label: 'IDパス管理', route: 'admin.credentials.index', canKey: 'admin_credentials' },
     { label: 'ユーザー管理', route: 'admin.users.index', canKey: 'admin_users' },
     { label: 'Discordログ', route: 'admin.discord-notifications.index', canKey: 'admin_discord_notifications' },

@@ -42,15 +42,23 @@ const btnGhost =
     'rounded-xl border border-wa-accent/20 bg-wa-ink px-3 py-3 text-sm font-black tracking-tight text-wa-body transition hover:border-wa-accent/35';
 
 export default function Index({ mypage }: { mypage?: MypagePayload }) {
-    const profile =
-        mypage?.data.profile ??
-        ({ name: 'ゲストユーザー', employee_code: null, role: 'general' } as const);
+    const isDev = import.meta.env.DEV;
+    const hasPayload = mypage?.data !== undefined;
 
-    const integrations =
-        mypage?.data.integrations ?? [
-            { key: 'king_of_time', label: 'KING OF TIME', status: 'connected' },
-            { key: 'discord', label: 'Discord（通知）', status: 'not_connected' },
-        ];
+    const profile = hasPayload
+        ? mypage.data.profile
+        : isDev
+            ? ({ name: 'ゲストユーザー', employee_code: null, role: 'general' } as const)
+            : ({ name: '', employee_code: null, role: 'general' } as const);
+
+    const integrations = hasPayload
+        ? mypage.data.integrations
+        : isDev
+            ? [
+                { key: 'king_of_time', label: 'KING OF TIME', status: 'connected' },
+                { key: 'discord', label: 'Discord（通知）', status: 'not_connected' },
+            ]
+            : [];
 
     const attendance = mypage?.data.attendance ?? null;
     const credentials = parseCredentials(mypage?.data.credentials);
@@ -83,13 +91,18 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
         >
             <Head title="マイページ" />
             <div className="mx-auto max-w-6xl text-wa-body wa-body-track">
+                {!hasPayload && !isDev ? (
+                    <div className="mb-6 rounded-xl border border-amber-500/30 bg-amber-950/25 px-5 py-4 text-sm text-amber-200">
+                        データを取得できませんでした。再読み込みしても改善しない場合は管理者に連絡してください。
+                    </div>
+                ) : null}
                 {/* ── Top: Profile + Attendance ── */}
                 <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-3">
                     <NeonCard className="flex h-full min-h-0 flex-col">
                         <SectionHeader eyebrow="PROFILE" title="ユーザー" />
                         <div className="mt-4 space-y-2">
                             <div className="text-2xl font-black tracking-tighter text-wa-body">
-                                {profile.name}
+                                {profile.name || '—'}
                             </div>
                             <div className="text-sm font-semibold text-wa-muted">
                                 社員コード: {profile.employee_code ?? '-'}

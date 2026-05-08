@@ -4,9 +4,10 @@ namespace App\Services;
 
 use App\Models\Credential;
 use App\Models\User;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
-use Illuminate\Support\Carbon;
 
 class MypageService
 {
@@ -54,6 +55,7 @@ class MypageService
             ];
         } catch (\Throwable $e) {
             Log::error('MypageService.index failed', ['error' => $e->getMessage()]);
+
             return [
                 'profile' => [
                     'name' => 'ゲストユーザー',
@@ -105,6 +107,7 @@ class MypageService
             return $row;
         } catch (\Throwable $e) {
             Log::error('MypageService.attendance failed', ['error' => $e->getMessage()]);
+
             return [
                 'has_error' => false,
                 'error_dates' => [],
@@ -114,54 +117,20 @@ class MypageService
     }
 
     /**
-     * @return \Illuminate\Support\Collection<int, Credential>
+     * @return Collection<int, Credential>
      */
-    private function credentials(): \Illuminate\Support\Collection
+    private function credentials(): Collection
     {
         try {
-            $items = Credential::query()
+            return Credential::query()
                 ->where('visible_on_credentials_page', true)
                 ->orderBy('id')
                 ->get();
-            return $this->withSampleCredentialRows($items, 10);
         } catch (\Throwable $e) {
             Log::error('MypageService.credentials failed', ['error' => $e->getMessage()]);
+
             return collect();
         }
-    }
-
-    /**
-     * @param  \Illuminate\Support\Collection<int, Credential>  $items
-     * @return \Illuminate\Support\Collection<int, Credential>
-     */
-    private function withSampleCredentialRows(\Illuminate\Support\Collection $items, int $minCount): \Illuminate\Support\Collection
-    {
-        if ((string) config('app.env') === 'production') {
-            return $items;
-        }
-        if ($items->count() >= $minCount) {
-            return $items;
-        }
-
-        $need = $minCount - $items->count();
-        $now = now();
-
-        $samples = collect();
-        for ($i = 1; $i <= $need; $i++) {
-            $id = 900000 + $i;
-            $c = new Credential();
-            $c->id = $id;
-            $c->label = "サンプルサービス {$i}";
-            $c->login_id = "sample{$i}@example.com";
-            $c->value = "Passw0rd!{$i}";
-            $c->is_password = true;
-            $c->visible_on_credentials_page = true;
-            $c->setAttribute('is_mock', true);
-            $c->updated_at = $now;
-            $samples->push($c);
-        }
-
-        return $items->concat($samples)->values();
     }
 
     private function isKotBlackout(\DateTimeInterface $now): bool
@@ -188,4 +157,3 @@ class MypageService
         return [$d1, $d2];
     }
 }
-
