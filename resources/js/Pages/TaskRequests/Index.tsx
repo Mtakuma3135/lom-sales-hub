@@ -1,6 +1,8 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router, usePage } from '@inertiajs/react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { PageProps } from '@/types';
+import { showAppToast } from '@/lib/toast';
 import NeonCard from '@/Components/NeonCard';
 import ActionButton from '@/Components/ActionButton';
 import StatusBadge from '@/Components/StatusBadge';
@@ -14,6 +16,8 @@ type Task = {
     status: 'pending' | 'in_progress' | 'completed' | 'rejected' | string;
     due_date: string;
     created_at: string;
+    to_user_id?: number | null;
+    body?: string;
 };
 
 type DailyTask = {
@@ -30,12 +34,18 @@ type DailyTemplate = {
 type TasksProp = { data: Task[] };
 type UserOption = { id: number; name: string; role: string };
 
-const statusVariant = (status: string): 'primary' | 'success' | 'danger' | 'muted' => {
+const statusVariant = (status: string): 'primary' | 'success' | 'danger' | 'muted' | 'warning' => {
     switch (status) {
-        case 'pending': case 'in_progress': return 'primary';
-        case 'completed': return 'success';
-        case 'rejected': return 'danger';
-        default: return 'muted';
+        case 'pending':
+            return 'warning';
+        case 'in_progress':
+            return 'primary';
+        case 'completed':
+            return 'success';
+        case 'rejected':
+            return 'danger';
+        default:
+            return 'muted';
     }
 };
 
@@ -87,8 +97,12 @@ export default function Index({
     dailyTasks?: DailyTask[];
     dailyTemplates?: DailyTemplate[];
 }) {
-    const { props } = usePage<{ userOptions?: UserOption[] }>();
+    const { props } = usePage<
+        PageProps & { userOptions?: UserOption[]; errors?: Record<string, string> }
+    >();
     const userOptions = props.userOptions ?? [];
+    const pageErrors = props.errors ?? {};
+    const userId = props.auth?.user?.id ?? null;
 
     // ── Section tab ──
     const [section, setSection] = useState<'requests' | 'daily'>('requests');
@@ -98,6 +112,9 @@ export default function Index({
     // ══════════════════════════════════════════
     const list = tasks?.data ?? [];
     const [items, setItems] = useState<Task[]>(list);
+    useEffect(() => {
+        setItems(tasks?.data ?? []);
+    }, [tasks]);
     const [reqTab, setReqTab] = useState<'active' | 'done'>('active');
     const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
     const selectedTask = useMemo(() => items.find((t) => t.id === selectedTaskId) ?? null, [items, selectedTaskId]);
@@ -108,20 +125,26 @@ export default function Index({
     const onChangeStatus = (id: number, next: Task['status']) => {
         setItems((prev) => prev.map((t) => (t.id === id ? { ...t, status: next } : t)));
         if (next === 'completed') setReqTab('done');
-        router.patch(route('task-requests.update', id), { status: next }, { preserveScroll: true });
+        router.patch(route('task-requests.update', id), { status: next }, {
+            preserveScroll: true,
+            onSuccess: () => showAppToast('ステータスを更新しました'),
+            onError: () => showAppToast('更新に失敗しました'),
+        });
     };
 
     const [formTitle, setFormTitle] = useState('');
     const [formToUserId, setFormToUserId] = useState('');
     const [formPriority, setFormPriority] = useState<'urgent' | 'important' | 'normal'>('normal');
     const [formBody, setFormBody] = useState('');
+    const [creating, setCreating] = useState(false);
 
     // ══════════════════════════════════════════
     // ② 責タスク
     // ══════════════════════════════════════════
     const [dailyItems, setDailyItems] = useState<DailyTask[]>(dailyTasksProp ?? []);
     const [templates, setTemplates] = useState<DailyTemplate[]>(dailyTemplatesProp ?? []);
-    const [editMode, setEditMode] = useState(false);
+    const [tplDrawerOpen, setTplDrawerOpen] = useState(false);
+    const [templateAdding, setTemplateAdding] = useState(false);
     const [newTaskTitle, setNewTaskTitle] = useState('');
 
     const dailyCompleted = useMemo(() => dailyItems.filter((d) => d.status === 'completed').length, [dailyItems]);
@@ -140,27 +163,52 @@ export default function Index({
 
     const onAddTemplate = async () => {
         if (!newTaskTitle.trim()) return;
-        const res = await fetch(route('portal.api.daily-tasks.templates.store'), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-            credentials: 'same-origin',
-            body: JSON.stringify({ title: newTaskTitle.trim() }),
-        });
-        if (!res.ok) return;
-        const json = (await res.json()) as { data: DailyTemplate };
-        setTemplates((prev) => [...prev, json.data]);
-        setDailyItems((prev) => [...prev, { id: json.data.id, title: json.data.title, status: 'pending' }]);
-        setNewTaskTitle('');
+        setTemplateAdding(true);
+        try {
+            const res = await fetch(route('portal.api.daily-tasks.templates.store'), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN':
+                        (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? '',
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({ title: newTaskTitle.trim() }),
+            });
+            if (!res.ok) {
+                showAppToast('追加に失敗しました');
+                return;
+            }
+            const json = (await res.json()) as { data: DailyTemplate };
+            setTemplates((prev) => [...prev, json.data]);
+            setDailyItems((prev) => [...prev, { id: json.data.id, title: json.data.title, status: 'pending' }]);
+            setNewTaskTitle('');
+            showAppToast('タスクを追加しました');
+        } finally {
+            setTemplateAdding(false);
+        }
     };
 
     const onRemoveTemplate = async (id: number) => {
         setTemplates((prev) => prev.filter((t) => t.id !== id));
         setDailyItems((prev) => prev.filter((d) => d.id !== id));
-        await fetch(route('portal.api.daily-tasks.templates.destroy', { id }), {
-            method: 'DELETE',
-            headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-            credentials: 'same-origin',
-        });
+        try {
+            const res = await fetch(route('portal.api.daily-tasks.templates.destroy', { id }), {
+                method: 'DELETE',
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN':
+                        (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? '',
+                },
+                credentials: 'same-origin',
+            });
+            showAppToast(res.ok ? '削除しました' : '削除に失敗しました');
+        } catch {
+            showAppToast('削除に失敗しました');
+        }
     };
 
     return (
@@ -185,31 +233,47 @@ export default function Index({
                             <div className="mt-2 text-sm font-black tracking-tight text-wa-body">依頼を作成</div>
                             <div className="mt-5 space-y-3">
                                 <input type="text" placeholder="依頼タイトル" value={formTitle} onChange={(e) => setFormTitle(e.target.value)} className="nordic-field" />
+                                {pageErrors.title ? <p className="text-xs font-semibold text-red-400">{pageErrors.title}</p> : null}
                                 <select value={formToUserId} onChange={(e) => setFormToUserId(e.target.value)} className="nordic-field">
                                     <option value="">宛先（ユーザー）を選択</option>
                                     {userOptions.map((u) => (
                                         <option key={u.id} value={String(u.id)}>{u.name} ({u.role})</option>
                                     ))}
                                 </select>
+                                {pageErrors.to_user_id ? <p className="text-xs font-semibold text-red-400">{pageErrors.to_user_id}</p> : null}
                                 <select value={formPriority} onChange={(e) => setFormPriority(e.target.value as any)} className="nordic-field">
                                     <option value="urgent">優先度：至急</option>
                                     <option value="important">優先度：重要</option>
                                     <option value="normal">優先度：順次</option>
                                 </select>
+                                {pageErrors.priority ? <p className="text-xs font-semibold text-red-400">{pageErrors.priority}</p> : null}
                                 <textarea rows={4} placeholder="内容" value={formBody} onChange={(e) => setFormBody(e.target.value)} className="nordic-field min-h-[120px]" />
+                                {pageErrors.body ? <p className="text-xs font-semibold text-red-400">{pageErrors.body}</p> : null}
                                 <ActionButton
                                     className="w-full"
+                                    disabled={creating}
                                     onClick={() => {
                                         router.post(route('task-requests.store'), {
-                                            title: formTitle, to_user_id: formToUserId ? Number(formToUserId) : null,
-                                            priority: formPriority, body: formBody,
+                                            title: formTitle,
+                                            to_user_id: formToUserId ? Number(formToUserId) : '',
+                                            priority: formPriority,
+                                            body: formBody,
                                         }, {
-                                            onSuccess: () => { setFormTitle(''); setFormToUserId(''); setFormPriority('normal'); setFormBody(''); },
+                                            onStart: () => setCreating(true),
+                                            onFinish: () => setCreating(false),
+                                            onSuccess: () => {
+                                                setFormTitle('');
+                                                setFormToUserId('');
+                                                setFormPriority('normal');
+                                                setFormBody('');
+                                                showAppToast('依頼を作成しました');
+                                            },
+                                            onError: () => showAppToast('入力内容を確認してください'),
                                             preserveScroll: true,
                                         });
                                     }}
                                 >
-                                    依頼を作成
+                                    {creating ? '送信中…' : '依頼を作成'}
                                 </ActionButton>
                             </div>
                         </NeonCard>
@@ -232,37 +296,40 @@ export default function Index({
                                         {reqTab === 'done' ? '完了した依頼はありません' : '未対応の依頼はありません'}
                                     </div>
                                 ) : (
-                                    (reqTab === 'done' ? doneItems : activeItems).map((t) => (
+                                    (reqTab === 'done' ? doneItems : activeItems).map((t) => {
+                                        const mine =
+                                            userId != null &&
+                                            t.to_user_id != null &&
+                                            Number(t.to_user_id) === Number(userId);
+                                        return (
                                         <div
                                             key={t.id}
                                             onClick={() => setSelectedTaskId(t.id)}
-                                            className="cursor-pointer rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-4 transition hover:border-wa-accent/30"
+                                            className={
+                                                'cursor-pointer rounded-xl border px-4 py-4 transition hover:border-wa-accent/30 ' +
+                                                (mine
+                                                    ? 'border-teal-500/35 bg-teal-500/[0.07] ring-1 ring-teal-500/25'
+                                                    : 'border-wa-accent/15 bg-wa-ink')
+                                            }
                                         >
                                             <div className="flex items-start justify-between gap-3">
-                                                <div className="min-w-0 flex-1">
-                                                    <div className="flex items-center gap-2">
+                                                <div className="min-w-0 flex-1 overflow-hidden">
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        {mine ? (
+                                                            <StatusBadge variant="primary" pulse>あなた宛</StatusBadge>
+                                                        ) : null}
                                                         <StatusBadge variant={priorityVariant(t.priority)}>{priorityLabel(t.priority)}</StatusBadge>
                                                         <StatusBadge variant={statusVariant(t.status)}>{statusLabel(t.status)}</StatusBadge>
                                                     </div>
-                                                    <div className="mt-2 text-sm font-black tracking-tight text-wa-body">{t.title}</div>
+                                                    <div className="wa-wrap-anywhere mt-2 text-sm font-black tracking-tight text-wa-body">{t.title}</div>
                                                     <div className="mt-1 text-xs text-wa-muted">依頼元: {t.requester} / 期限: {t.due_date}</div>
+                                                    <div className="mt-2 text-[11px] text-wa-accent">タップして詳細・ステータス変更</div>
                                                 </div>
-                                                <div className="flex shrink-0 flex-col items-end gap-2">
-                                                    <span className="text-[10px] text-wa-muted">#{t.id}</span>
-                                                    <select
-                                                        value={t.status}
-                                                        onChange={(e) => onChangeStatus(t.id, e.target.value as Task['status'])}
-                                                        onClick={(e) => e.stopPropagation()}
-                                                        className="nordic-field max-w-[120px] py-1.5 text-[11px] font-black tracking-tight"
-                                                    >
-                                                        <option value="pending">未対応</option>
-                                                        <option value="in_progress">対応中</option>
-                                                        <option value="completed">完了</option>
-                                                    </select>
-                                                </div>
+                                                <span className="shrink-0 text-[10px] text-wa-muted">#{t.id}</span>
                                             </div>
                                         </div>
-                                    ))
+                                        );
+                                    })
                                 )}
                             </div>
                         </NeonCard>
@@ -294,31 +361,26 @@ export default function Index({
                             </div>
                         </NeonCard>
 
-                        {/* Task checklist + Edit panel */}
-                        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                            <NeonCard className="lg:col-span-2 p-8" elevate={false}>
-                                <div className="flex items-center justify-between gap-4">
+                        {/* Task checklist */}
+                        <NeonCard className="p-8" elevate={false}>
+                                <div className="flex flex-wrap items-center justify-between gap-4">
                                     <div>
                                         <div className="text-xs font-bold tracking-widest text-wa-muted">CHECKLIST</div>
                                         <div className="mt-1 text-sm font-black tracking-tight text-wa-body">今日のタスク</div>
                                     </div>
                                     <button
                                         type="button"
-                                        onClick={() => setEditMode(!editMode)}
-                                        className={`rounded-xl border px-3 py-1.5 text-xs font-black tracking-tight transition ${
-                                            editMode
-                                                ? 'border-wa-accent/45 bg-wa-accent text-wa-ink'
-                                                : 'border-wa-accent/25 bg-wa-subtle text-wa-body hover:border-wa-accent/40'
-                                        }`}
+                                        onClick={() => setTplDrawerOpen(true)}
+                                        className="rounded-xl border border-wa-accent/25 bg-wa-subtle px-3 py-1.5 text-xs font-black tracking-tight text-wa-body transition hover:border-wa-accent/40"
                                     >
-                                        {editMode ? '完了' : '編集'}
+                                        テンプレートを管理
                                     </button>
                                 </div>
 
                                 <div className="mt-5 space-y-2">
                                     {dailyItems.length === 0 ? (
                                         <div className="rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-6 text-center text-sm text-wa-muted">
-                                            タスクが登録されていません。「編集」から追加してください。
+                                            タスクが登録されていません。「テンプレートを管理」から追加してください。
                                         </div>
                                     ) : (
                                         dailyItems.map((d) => (
@@ -336,7 +398,7 @@ export default function Index({
                                                     type="button"
                                                     onClick={() => {
                                                         const next = d.status === 'completed' ? 'pending' : 'completed';
-                                                        onDailyStatusChange(d.id, next);
+                                                        void onDailyStatusChange(d.id, next);
                                                     }}
                                                     className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-lg border transition ${
                                                         d.status === 'completed'
@@ -347,84 +409,26 @@ export default function Index({
                                                     {d.status === 'completed' ? '✓' : ''}
                                                 </button>
 
-                                                <div className={`flex-1 text-sm font-semibold ${d.status === 'completed' ? 'text-wa-muted line-through' : 'text-wa-body'}`}>
+                                                <div className={`min-w-0 flex-1 text-sm font-semibold ${d.status === 'completed' ? 'text-wa-muted line-through' : 'text-wa-body'}`}>
                                                     {d.title}
                                                 </div>
 
-                                                {!editMode && d.status !== 'completed' && (
+                                                {d.status !== 'completed' && (
                                                     <select
                                                         value={d.status}
-                                                        onChange={(e) => onDailyStatusChange(d.id, e.target.value)}
-                                                        className="nordic-field max-w-[110px] py-1 text-[11px] font-black"
+                                                        onChange={(e) => void onDailyStatusChange(d.id, e.target.value)}
+                                                        className="nordic-field max-w-[110px] shrink-0 py-1 text-[11px] font-black"
                                                     >
                                                         <option value="pending">未対応</option>
                                                         <option value="in_progress">対応中</option>
                                                         <option value="completed">完了</option>
                                                     </select>
                                                 )}
-
-                                                {editMode && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => onRemoveTemplate(d.id)}
-                                                        className="rounded-lg border border-red-500/25 bg-wa-ink px-2 py-1 text-[11px] font-bold text-red-400 transition hover:border-red-500/40"
-                                                    >
-                                                        削除
-                                                    </button>
-                                                )}
                                             </div>
                                         ))
                                     )}
                                 </div>
                             </NeonCard>
-
-                            <NeonCard className="p-8">
-                                <div className="text-xs font-bold tracking-widest text-wa-muted">EDIT</div>
-                                <div className="mt-2 text-sm font-black tracking-tight text-wa-body">タスク項目の管理</div>
-                                <div className="mt-2 text-xs text-wa-muted">
-                                    ここで追加したタスクは毎日リセットされます
-                                </div>
-
-                                <div className="mt-5 space-y-3">
-                                    <div className="flex gap-2">
-                                        <input
-                                            type="text"
-                                            placeholder="新しいタスク名"
-                                            value={newTaskTitle}
-                                            onChange={(e) => setNewTaskTitle(e.target.value)}
-                                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); onAddTemplate(); } }}
-                                            className="nordic-field flex-1"
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={onAddTemplate}
-                                            disabled={!newTaskTitle.trim()}
-                                            className="shrink-0 rounded-xl border border-wa-accent/40 bg-wa-accent px-4 py-3 text-xs font-black text-wa-ink transition hover:bg-wa-accent/90 disabled:opacity-40"
-                                        >
-                                            追加
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div className="mt-5 border-t border-wa-accent/15 pt-4">
-                                    <div className="text-[10px] font-bold uppercase tracking-widest text-wa-muted">登録済み ({templates.length})</div>
-                                    <div className="mt-3 space-y-2">
-                                        {templates.map((t) => (
-                                            <div key={t.id} className="flex items-center justify-between gap-2 rounded-xl border border-wa-accent/15 bg-wa-ink px-3 py-2">
-                                                <span className="text-sm text-wa-body">{t.title}</span>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => onRemoveTemplate(t.id)}
-                                                    className="text-[10px] font-bold text-wa-muted transition hover:text-red-400"
-                                                >
-                                                    ×
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </NeonCard>
-                        </div>
                     </div>
                 )}
             </div>
@@ -451,6 +455,12 @@ export default function Index({
                             </div>
                         </div>
                         <div className="rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-3">
+                            <div className="text-[11px] font-bold tracking-widest text-wa-muted">BODY</div>
+                            <div className="wa-wrap-anywhere mt-2 max-h-48 overflow-y-auto whitespace-pre-wrap text-sm text-wa-body">
+                                {selectedTask.body?.trim() ? selectedTask.body : '（本文なし）'}
+                            </div>
+                        </div>
+                        <div className="rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-3">
                             <div className="text-[11px] font-bold tracking-widest text-wa-muted">UPDATE STATUS</div>
                             <div className="mt-3 flex flex-wrap items-center gap-3">
                                 <select
@@ -469,6 +479,60 @@ export default function Index({
                 ) : (
                     <div className="rounded-xl border border-wa-accent/15 bg-wa-card px-4 py-6 text-sm text-wa-muted">データがありません</div>
                 )}
+            </DetailDrawer>
+
+            <DetailDrawer open={tplDrawerOpen} title="責タスクのテンプレート" onClose={() => setTplDrawerOpen(false)}>
+                <div className="space-y-5">
+                    <p className="text-xs text-wa-muted">
+                        追加した項目は毎日のチェックリストに反映されます（進捗は日次でリセットされます）。
+                    </p>
+                    <div className="flex gap-2">
+                        <input
+                            type="text"
+                            placeholder="新しいタスク名"
+                            value={newTaskTitle}
+                            onChange={(e) => setNewTaskTitle(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    void onAddTemplate();
+                                }
+                            }}
+                            className="nordic-field min-w-0 flex-1"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => void onAddTemplate()}
+                            disabled={!newTaskTitle.trim() || templateAdding}
+                            className="shrink-0 rounded-xl border border-wa-accent/40 bg-wa-accent px-4 py-3 text-xs font-black text-wa-ink transition hover:bg-wa-accent/90 disabled:opacity-40"
+                        >
+                            {templateAdding ? '追加中…' : '追加'}
+                        </button>
+                    </div>
+                    <div className="border-t border-wa-accent/15 pt-4">
+                        <div className="text-[10px] font-bold uppercase tracking-widest text-wa-muted">登録済み ({templates.length})</div>
+                        <div className="mt-3 max-h-[min(360px,50vh)] space-y-2 overflow-y-auto pr-1">
+                            {templates.length === 0 ? (
+                                <div className="rounded-xl border border-wa-accent/15 bg-wa-ink px-3 py-6 text-center text-sm text-wa-muted">
+                                    まだありません
+                                </div>
+                            ) : (
+                                templates.map((t) => (
+                                    <div key={t.id} className="flex items-center justify-between gap-2 rounded-xl border border-wa-accent/15 bg-wa-ink px-3 py-2">
+                                        <span className="min-w-0 flex-1 truncate text-sm text-wa-body">{t.title}</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => void onRemoveTemplate(t.id)}
+                                            className="shrink-0 rounded-lg border border-red-500/25 px-2 py-1 text-[10px] font-bold text-red-400 transition hover:border-red-500/45"
+                                        >
+                                            削除
+                                        </button>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                </div>
             </DetailDrawer>
         </AuthenticatedLayout>
     );

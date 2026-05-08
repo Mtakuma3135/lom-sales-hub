@@ -196,6 +196,7 @@ class LunchBreakController extends Controller
             ],
             'meta' => [
                 'date' => $request->lunchDate(),
+                'server_time' => now()->toISOString(),
             ],
         ]);
     }
@@ -211,7 +212,7 @@ class LunchBreakController extends Controller
 
         $success = $lunchBreakService->stopLaneTimer($actor, $request->lunchDate(), $request->lane());
 
-        return response()->json(['data' => ['success' => $success], 'meta' => ['date' => $request->lunchDate()]], $success ? 200 : 500);
+        return response()->json(['data' => ['success' => $success], 'meta' => ['date' => $request->lunchDate(), 'server_time' => now()->toISOString()]], $success ? 200 : 500);
     }
 
     public function reset(LunchBreakLaneTimerRequest $request, LunchBreakService $lunchBreakService)
@@ -225,7 +226,7 @@ class LunchBreakController extends Controller
 
         $success = $lunchBreakService->resetLaneTimer($actor, $request->lunchDate(), $request->lane());
 
-        return response()->json(['data' => ['success' => $success], 'meta' => ['date' => $request->lunchDate()]], $success ? 200 : 500);
+        return response()->json(['data' => ['success' => $success], 'meta' => ['date' => $request->lunchDate(), 'server_time' => now()->toISOString()]], $success ? 200 : 500);
     }
 }
 

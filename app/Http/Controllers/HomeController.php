@@ -48,6 +48,10 @@ class HomeController extends Controller
             'kpi' => $kpiResource,
             'personalKpi' => $payload['personalKpi'],
             'tasks' => $tasksResource,
+            'serverMeta' => [
+                'server_time' => now()->toIso8601String(),
+                'date' => now()->toDateString(),
+            ],
         ]);
     }
 }

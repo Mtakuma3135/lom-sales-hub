@@ -51,6 +51,7 @@ type TaskRow = {
     status: 'pending' | 'in_progress' | 'completed' | 'rejected' | string;
     due_date: string;
     created_at: string;
+    to_user_id?: number | null;
 };
 
 function laneRemainingMs(row: LunchLaneStatus, nowMs: number, totalMs: number): number | null {
@@ -116,9 +117,10 @@ const statusLabel = (s: string): string => {
     }
 };
 
-const statusVariant = (s: string): 'primary' | 'success' | 'danger' | 'muted' => {
+const statusVariant = (s: string): 'primary' | 'success' | 'danger' | 'muted' | 'warning' => {
     switch (s) {
-        case 'pending': case 'in_progress': return 'primary';
+        case 'pending': return 'warning';
+        case 'in_progress': return 'primary';
         case 'completed': return 'success';
         case 'rejected': return 'danger';
         default: return 'muted';
@@ -142,13 +144,15 @@ export default function Index({
     kpi,
     tasks,
     personalKpi,
+    serverMeta,
 }: {
     title?: string;
     notices: { data: NoticeRow[]; meta?: Record<string, unknown> };
-    lunchBreaks: { data: LunchSlot[]; meta?: { date?: string } };
+    lunchBreaks: { data: LunchSlot[]; meta?: { date?: string; server_time?: string } };
     kpi: { data: KpiPayload; meta?: Record<string, unknown> };
     tasks?: { data: TaskRow[] } | TaskRow[];
     personalKpi?: { ok: number; ng: number; contract_rate: number };
+    serverMeta?: { server_time?: string; date?: string };
 }) {
     const pageTitle = title ?? 'ホーム';
     const { props } = usePage<PageProps>();
@@ -157,6 +161,19 @@ export default function Index({
     const go = (href: string) => router.visit(href, { preserveScroll: true });
 
     const noticeRows = notices?.data ?? [];
+    const noticeRowsSorted = useMemo(() => {
+        const rows = [...noticeRows];
+        rows.sort((a, b) => {
+            if (a.is_pinned !== b.is_pinned) {
+                return a.is_pinned ? -1 : 1;
+            }
+            const ta = parseIsoMs(a.published_at ?? null) ?? 0;
+            const tb = parseIsoMs(b.published_at ?? null) ?? 0;
+            return tb - ta;
+        });
+        return rows;
+    }, [noticeRows]);
+    const noticeDisplay = noticeRowsSorted;
     const lunchSlots = lunchBreaks?.data ?? [];
     const summary = kpi?.data?.summary ?? { ok: 0, ng: 0, contract_rate: 0 };
     const personal = personalKpi ?? { ok: 0, ng: 0, contract_rate: 0 };
@@ -175,7 +192,10 @@ export default function Index({
         });
     }, [lunchSlots]);
 
-    const dateYmd = useMemo(() => lunchBreaks?.meta?.date ?? localYmd(), [lunchBreaks?.meta?.date]);
+    const dateYmd = useMemo(
+        () => lunchBreaks?.meta?.date ?? serverMeta?.date ?? localYmd(),
+        [lunchBreaks?.meta?.date, serverMeta?.date],
+    );
     const totalMs = 60 * 60 * 1000;
     const [serverOffsetMs, setServerOffsetMs] = useState<number>(0);
     const [nowMs, setNowMs] = useState<number>(() => Date.now());
@@ -204,6 +224,13 @@ export default function Index({
     }, [dateYmd]);
 
     useEffect(() => {
+        const st = parseIsoMs(serverMeta?.server_time);
+        if (st !== null) {
+            setServerOffsetMs(st - Date.now());
+        }
+    }, [serverMeta?.server_time]);
+
+    useEffect(() => {
         void fetchLunchStatus();
         const id = window.setInterval(() => void fetchLunchStatus(), 5000);
         return () => window.clearInterval(id);
@@ -216,7 +243,11 @@ export default function Index({
             void fetchLunchStatus();
         };
         window.addEventListener('lunch-schedule-updated', onUpdated as EventListener);
-        return () => window.removeEventListener('lunch-schedule-updated', onUpdated as EventListener);
+        window.addEventListener('lunch-break-timer-updated', onUpdated as EventListener);
+        return () => {
+            window.removeEventListener('lunch-schedule-updated', onUpdated as EventListener);
+            window.removeEventListener('lunch-break-timer-updated', onUpdated as EventListener);
+        };
     }, [fetchLunchStatus, dateYmd]);
 
     useEffect(() => {
@@ -257,17 +288,17 @@ export default function Index({
                     <SectionHeader
                         eyebrow="NOTICES"
                         title="周知事項"
-                        meta={noticeRows.length > 0 ? `最新 ${noticeRows.length} 件` : ''}
+                        meta={noticeDisplay.length > 0 ? `${noticeDisplay.length} 件（新しい順）` : ''}
                         action={{ label: 'すべて見る', onClick: () => go(route('notices.index')), variant: 'secondary' }}
                     />
 
-                    <div className="mt-5 space-y-3">
-                        {noticeRows.length === 0 ? (
+                    <div className="mt-5 max-h-[min(420px,55vh)] space-y-3 overflow-y-auto overflow-x-hidden pr-1">
+                        {noticeDisplay.length === 0 ? (
                             <div className="rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-6 text-center text-sm text-wa-muted">
                                 表示できるお知らせはありません
                             </div>
                         ) : (
-                            noticeRows.map((n) => (
+                            noticeDisplay.map((n) => (
                                 <NoticeFeedItem
                                     key={n.id}
                                     title={n.title}
@@ -333,88 +364,82 @@ export default function Index({
                         action={{ label: '詳細を見る', onClick: () => go(route('sales.summary')), variant: 'secondary' }}
                     />
 
-                    <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
-                        {/* Team KPI */}
-                        <div>
-                            <div className="mb-2 text-[10px] font-bold uppercase tracking-widest text-wa-muted">
-                                チーム全体
+                    <div className="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-2">
+                        {/* Team KPI — contract rate hero */}
+                        <div className="rounded-2xl border border-wa-accent/25 bg-gradient-to-br from-wa-ink via-wa-card to-wa-ink p-6 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)]">
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                                <div className="text-[10px] font-bold uppercase tracking-widest text-wa-muted">
+                                    チーム全体
+                                </div>
+                                <span className="rounded-full border border-teal-500/30 bg-teal-500/10 px-2.5 py-1 text-[11px] font-semibold tabular-nums text-teal-200">
+                                    ▲ 先月比 +1.2pt（モック）
+                                </span>
                             </div>
-                            <div className="grid grid-cols-3 gap-3">
-                                {[
-                                    {
-                                        label: '契約率',
-                                        value: String(summary.contract_rate),
-                                        suffix: '%',
-                                        valClass: 'text-wa-body',
-                                    },
-                                    {
-                                        label: 'OK',
-                                        value: String(summary.ok),
-                                        suffix: '',
-                                        valClass: 'text-teal-300',
-                                    },
-                                    {
-                                        label: 'NG',
-                                        value: String(summary.ng),
-                                        suffix: '',
-                                        valClass: 'text-red-400',
-                                    },
-                                ].map((k) => (
-                                    <div
-                                        key={`team-${k.label}`}
-                                        className="rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-5"
-                                    >
-                                        <div className="text-[10px] font-semibold uppercase tracking-wide text-wa-muted">
-                                            {k.label}
-                                        </div>
-                                        <div className={`wa-nums mt-1.5 text-xl font-semibold tabular-nums ${k.valClass}`}>
-                                            <SlotNumber value={k.value} />
-                                            {k.suffix}
-                                        </div>
+                            <div className="mt-4 flex flex-wrap items-end gap-3">
+                                <div className="wa-nums text-5xl font-black tabular-nums tracking-tight text-wa-body sm:text-6xl">
+                                    <SlotNumber value={String(summary.contract_rate)} />
+                                    <span className="text-2xl font-bold text-wa-muted">%</span>
+                                </div>
+                                <div className="pb-1 text-xs text-wa-muted">契約率（今月）</div>
+                            </div>
+                            <div className="mt-4 h-3 w-full overflow-hidden rounded-full bg-wa-ink ring-1 ring-wa-accent/15">
+                                <div
+                                    className="h-full rounded-full bg-gradient-to-r from-teal-400 via-wa-accent to-sky-400 transition-[width] duration-700 ease-out"
+                                    style={{ width: `${Math.min(100, Math.max(0, summary.contract_rate))}%` }}
+                                />
+                            </div>
+                            <div className="mt-5 flex flex-wrap gap-3">
+                                <div className="rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-3">
+                                    <div className="text-[10px] font-semibold uppercase tracking-wide text-wa-muted">OK</div>
+                                    <div className="wa-nums mt-1 text-lg font-semibold tabular-nums text-teal-300">
+                                        <SlotNumber value={String(summary.ok)} />
                                     </div>
-                                ))}
+                                </div>
+                                <div className="rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-3">
+                                    <div className="text-[10px] font-semibold uppercase tracking-wide text-wa-muted">NG</div>
+                                    <div className="wa-nums mt-1 text-lg font-semibold tabular-nums text-red-400">
+                                        <SlotNumber value={String(summary.ng)} />
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
                         {/* Personal KPI */}
-                        <div>
-                            <div className="mb-2 text-[10px] font-bold uppercase tracking-widest text-wa-muted">
-                                個人成績
+                        <div className="rounded-2xl border border-wa-accent/15 bg-wa-ink/80 p-6">
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                                <div className="text-[10px] font-bold uppercase tracking-widest text-wa-muted">
+                                    個人成績
+                                </div>
+                                <span className="rounded-full border border-wa-accent/20 bg-wa-card px-2.5 py-1 text-[11px] font-semibold tabular-nums text-wa-muted">
+                                    → 安定（モック）
+                                </span>
                             </div>
-                            <div className="grid grid-cols-3 gap-3">
-                                {[
-                                    {
-                                        label: '契約率',
-                                        value: String(personal.contract_rate),
-                                        suffix: '%',
-                                        valClass: 'text-wa-body',
-                                    },
-                                    {
-                                        label: 'OK',
-                                        value: String(personal.ok),
-                                        suffix: '',
-                                        valClass: 'text-teal-300',
-                                    },
-                                    {
-                                        label: 'NG',
-                                        value: String(personal.ng),
-                                        suffix: '',
-                                        valClass: 'text-red-400',
-                                    },
-                                ].map((k) => (
-                                    <div
-                                        key={`personal-${k.label}`}
-                                        className="rounded-xl border border-teal-500/18 bg-wa-ink px-4 py-5"
-                                    >
-                                        <div className="text-[10px] font-semibold uppercase tracking-wide text-wa-muted">
-                                            {k.label}
-                                        </div>
-                                        <div className={`wa-nums mt-1.5 text-xl font-semibold tabular-nums ${k.valClass}`}>
-                                            <SlotNumber value={k.value} />
-                                            {k.suffix}
-                                        </div>
+                            <div className="mt-4 flex flex-wrap items-end gap-3">
+                                <div className="wa-nums text-4xl font-black tabular-nums tracking-tight text-wa-body sm:text-5xl">
+                                    <SlotNumber value={String(personal.contract_rate)} />
+                                    <span className="text-xl font-bold text-wa-muted">%</span>
+                                </div>
+                                <div className="pb-1 text-xs text-wa-muted">契約率（今月）</div>
+                            </div>
+                            <div className="mt-4 h-2.5 w-full overflow-hidden rounded-full bg-wa-card ring-1 ring-wa-accent/10">
+                                <div
+                                    className="h-full rounded-full bg-wa-accent/80 transition-[width] duration-700 ease-out"
+                                    style={{ width: `${Math.min(100, Math.max(0, personal.contract_rate))}%` }}
+                                />
+                            </div>
+                            <div className="mt-5 flex flex-wrap gap-3">
+                                <div className="rounded-xl border border-wa-accent/10 bg-wa-card px-4 py-3">
+                                    <div className="text-[10px] font-semibold uppercase tracking-wide text-wa-muted">OK</div>
+                                    <div className="wa-nums mt-1 text-lg font-semibold tabular-nums text-teal-300">
+                                        <SlotNumber value={String(personal.ok)} />
                                     </div>
-                                ))}
+                                </div>
+                                <div className="rounded-xl border border-wa-accent/10 bg-wa-card px-4 py-3">
+                                    <div className="text-[10px] font-semibold uppercase tracking-wide text-wa-muted">NG</div>
+                                    <div className="wa-nums mt-1 text-lg font-semibold tabular-nums text-red-400">
+                                        <SlotNumber value={String(personal.ng)} />
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -434,7 +459,7 @@ export default function Index({
                             未対応のタスクはありません
                         </div>
                     ) : (
-                        <div className="mt-5 space-y-3">
+                        <div className="mt-5 max-h-[min(380px,50vh)] space-y-3 overflow-y-auto overflow-x-hidden pr-1">
                             {activeTasks.map((t) => (
                                 <div
                                     key={t.id}

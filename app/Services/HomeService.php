@@ -28,16 +28,14 @@ class HomeService
     {
         $date = now()->toDateString();
 
-        $notices = $this->noticeService->indexFor($actor)->take(3)->values();
+        $notices = $this->noticeService->indexFor($actor)->values();
 
         $slots = $this->lunchBreakService->index($date);
 
         $kpi = $this->salesService->summary();
         $personalKpi = $this->salesService->personalSummary($actor);
 
-        $tasks = $this->taskRequestService->indexFor($actor)
-            ->filter(fn (array $t) => ($t['status'] ?? '') !== 'completed')
-            ->values();
+        $tasks = $this->taskRequestService->indexActiveForHome($actor);
 
         return [
             'notices' => $notices,

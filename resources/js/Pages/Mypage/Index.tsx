@@ -84,8 +84,8 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
             <Head title="マイページ" />
             <div className="mx-auto max-w-6xl text-wa-body wa-body-track">
                 {/* ── Top: Profile + Attendance ── */}
-                <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                    <NeonCard>
+                <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-3">
+                    <NeonCard className="flex h-full min-h-0 flex-col">
                         <SectionHeader eyebrow="PROFILE" title="ユーザー" />
                         <div className="mt-4 space-y-2">
                             <div className="text-2xl font-black tracking-tighter text-wa-body">
@@ -133,8 +133,8 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
                         </div>
                     </NeonCard>
 
-                    <div className="lg:col-span-2">
-                        <NeonCard elevate={false}>
+                    <div className="flex min-h-0 lg:col-span-2">
+                        <NeonCard elevate={false} className="flex min-h-[320px] w-full flex-col flex-1">
                             <SectionHeader eyebrow="ATTENDANCE" title="勤怠エラー" />
 
                             {attendance ? (

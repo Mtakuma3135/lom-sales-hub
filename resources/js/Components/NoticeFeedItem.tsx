@@ -31,11 +31,11 @@ export default function NoticeFeedItem({
             ].join(' ')}
         >
             <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                    <div className="flex items-center gap-2">
+                <div className="min-w-0 flex-1 overflow-hidden">
+                    <div className="flex flex-wrap items-center gap-2">
                         {isPinned ? <StatusBadge variant="primary" pulse>PIN</StatusBadge> : null}
                         {isRead ? <StatusBadge variant="muted">既読</StatusBadge> : null}
-                        <div className="truncate text-sm font-semibold text-wa-body">{title}</div>
+                        <div className="min-w-0 wa-wrap-anywhere text-sm font-semibold leading-snug text-wa-body">{title}</div>
                     </div>
                     {body ? (
                         <div className="wa-wrap-anywhere mt-2 whitespace-pre-wrap text-sm text-wa-muted">

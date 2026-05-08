@@ -111,25 +111,31 @@ export default function Records() {
                                 <option value="ok">OK</option>
                                 <option value="ng">NG</option>
                             </select>
-                            <div className="grid grid-cols-2 gap-3">
-                                <input
-                                    type="date"
-                                    value={dateFrom}
-                                    onChange={(e) => {
-                                        setPage(1);
-                                        setDateFrom(e.target.value);
-                                    }}
-                                    className="nordic-field"
-                                />
-                                <input
-                                    type="date"
-                                    value={dateTo}
-                                    onChange={(e) => {
-                                        setPage(1);
-                                        setDateTo(e.target.value);
-                                    }}
-                                    className="nordic-field"
-                                />
+                            <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
+                                <div className="min-w-0 flex-1 space-y-1">
+                                    <div className="text-[10px] font-bold uppercase tracking-wider text-wa-muted">開始</div>
+                                    <input
+                                        type="date"
+                                        value={dateFrom}
+                                        onChange={(e) => {
+                                            setPage(1);
+                                            setDateFrom(e.target.value);
+                                        }}
+                                        className="nordic-field box-border min-h-11 min-w-0 w-full py-2.5 text-sm"
+                                    />
+                                </div>
+                                <div className="min-w-0 flex-1 space-y-1">
+                                    <div className="text-[10px] font-bold uppercase tracking-wider text-wa-muted">終了</div>
+                                    <input
+                                        type="date"
+                                        value={dateTo}
+                                        onChange={(e) => {
+                                            setPage(1);
+                                            setDateTo(e.target.value);
+                                        }}
+                                        className="nordic-field box-border min-h-11 min-w-0 w-full py-2.5 text-sm"
+                                    />
+                                </div>
                             </div>
                             <button
                                 type="button"

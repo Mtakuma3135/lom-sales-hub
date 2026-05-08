@@ -13,7 +13,7 @@ type Notice = {
     title: string;
     body: string;
     is_pinned: boolean;
-    published_at: string;
+    published_at: string | null;
 };
 
 type NoticesProp = {
@@ -22,6 +22,16 @@ type NoticesProp = {
 
 const btnGhost =
     'w-full rounded-sm border border-wa-accent/25 bg-wa-ink px-3 py-3 text-sm font-black tracking-tight text-wa-body transition hover:border-wa-accent/40';
+
+function csrf(): string {
+    return (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? '';
+}
+
+function formatNaiveNow(): string {
+    const d = new Date();
+    const p = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
 
 export default function Index({ notices, initialDrafts }: { notices?: NoticesProp; initialDrafts?: boolean }) {
     const { props } = usePage<PageProps>();
@@ -97,14 +107,34 @@ export default function Index({ notices, initialDrafts }: { notices?: NoticesPro
             }) =>
                 fetch(route('portal.api.notices.store'), {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Accept: 'application/json',
+                        'X-CSRF-TOKEN': csrf(),
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
                     body: JSON.stringify(payload),
                 }),
             update: (id: number, payload: { title?: string; body?: string; is_pinned?: boolean; published_at?: string | null }) =>
                 fetch(route('portal.api.notices.update', { id }), {
                     method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Accept: 'application/json',
+                        'X-CSRF-TOKEN': csrf(),
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
                     body: JSON.stringify(payload),
+                }),
+            destroy: (id: number) =>
+                fetch(route('portal.api.notices.destroy', { id }), {
+                    method: 'DELETE',
+                    headers: {
+                        Accept: 'application/json',
+                        'X-CSRF-TOKEN': csrf(),
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    credentials: 'same-origin',
                 }),
         };
     }, []);
@@ -297,11 +327,11 @@ export default function Index({ notices, initialDrafts }: { notices?: NoticesPro
                                             <input
                                                 value={draftPublishedAt}
                                                 onChange={(e) => setDraftPublishedAt(e.target.value)}
-                                                placeholder="published_at (YYYY-MM-DD HH:mm:ss)"
-                                                className="nordic-field w-48 py-2 text-xs"
+                                                placeholder="公開日時（YYYY-MM-DD HH:mm:ss）※空なら「公開として保存」で現在時刻"
+                                                className="nordic-field min-w-0 flex-1 py-2 text-xs sm:max-w-xs"
                                             />
                                         </div>
-                                        <div className="flex items-center justify-end gap-2">
+                                        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
                                             <button
                                                 type="button"
                                                 onClick={() => {
@@ -319,7 +349,8 @@ export default function Index({ notices, initialDrafts }: { notices?: NoticesPro
                                             >
                                                 CLOSE
                                             </button>
-                                            <ActionButton
+                                            <button
+                                                type="button"
                                                 disabled={isSaving}
                                                 onClick={async () => {
                                                     setIsSaving(true);
@@ -330,13 +361,44 @@ export default function Index({ notices, initialDrafts }: { notices?: NoticesPro
                                                             title: draftTitle,
                                                             body: draftBody,
                                                             is_pinned: draftPinned,
-                                                            published_at: draftPublishedAt ? draftPublishedAt : null,
+                                                            published_at: null,
                                                         });
                                                         if (!res.ok) throw new Error();
                                                         const json = (await res.json()) as any;
                                                         const n = (json?.data ?? json) as Notice;
                                                         setItems((prev) => [n, ...prev]);
-                                                        setSuccessMessage('作成しました。');
+                                                        setSuccessMessage('下書きを保存しました。');
+                                                        setIsCreating(false);
+                                                    } catch {
+                                                        setErrorMessage('保存に失敗しました。');
+                                                    } finally {
+                                                        setIsSaving(false);
+                                                    }
+                                                }}
+                                                className={btnGhost + ' sm:w-auto'}
+                                            >
+                                                {isSaving ? '保存中…' : '下書き保存'}
+                                            </button>
+                                            <ActionButton
+                                                disabled={isSaving}
+                                                className="sm:!w-auto"
+                                                onClick={async () => {
+                                                    setIsSaving(true);
+                                                    setErrorMessage(null);
+                                                    setSuccessMessage(null);
+                                                    try {
+                                                        const pub = draftPublishedAt.trim() || formatNaiveNow();
+                                                        const res = await api.store({
+                                                            title: draftTitle,
+                                                            body: draftBody,
+                                                            is_pinned: draftPinned,
+                                                            published_at: pub,
+                                                        });
+                                                        if (!res.ok) throw new Error();
+                                                        const json = (await res.json()) as any;
+                                                        const n = (json?.data ?? json) as Notice;
+                                                        setItems((prev) => [n, ...prev]);
+                                                        setSuccessMessage('公開しました。');
                                                         setIsCreating(false);
                                                     } catch {
                                                         setErrorMessage('保存に失敗しました。');
@@ -345,7 +407,7 @@ export default function Index({ notices, initialDrafts }: { notices?: NoticesPro
                                                     }
                                                 }}
                                             >
-                                                {isSaving ? 'SAVING…' : 'SAVE'}
+                                                {isSaving ? 'SAVING…' : '公開として保存'}
                                             </ActionButton>
                                         </div>
                                     </div>
@@ -360,7 +422,7 @@ export default function Index({ notices, initialDrafts }: { notices?: NoticesPro
                                 <div className="text-xs font-bold tracking-widest text-wa-muted">FEED</div>
                                 <div className="mt-1 text-lg font-black tracking-tight text-wa-body">お知らせ</div>
                             </div>
-                            <div className="text-xs font-semibold text-wa-accent">{list.length} 件</div>
+                            <div className="text-xs font-semibold text-wa-accent">{items.length} 件</div>
                         </div>
 
                         <div className="mt-4 space-y-3">
@@ -369,7 +431,7 @@ export default function Index({ notices, initialDrafts }: { notices?: NoticesPro
                                     <NoticeFeedItem
                                         title={n.title}
                                         body={n.body}
-                                        publishedAt={n.published_at}
+                                        publishedAt={n.published_at ?? undefined}
                                         isPinned={n.is_pinned}
                                         isRead={readIds.has(n.id)}
                                         onOpen={() => openDetail(n.id)}
@@ -434,7 +496,9 @@ export default function Index({ notices, initialDrafts }: { notices?: NoticesPro
                                         {selectedNotice.title}
                                     </div>
                                 </div>
-                                <div className="mt-2 text-xs text-wa-muted">公開: {selectedNotice.published_at}</div>
+                                <div className="mt-2 text-xs text-wa-muted">
+                                    {selectedNotice.published_at ? `公開: ${selectedNotice.published_at}` : '下書き（未公開）'}
+                                </div>
                             </div>
                             {isAdmin ? (
                                 <div className="flex items-center gap-2">
@@ -446,36 +510,71 @@ export default function Index({ notices, initialDrafts }: { notices?: NoticesPro
                                         {drawerEdit ? '編集を閉じる' : '編集'}
                                     </button>
                                     {drawerEdit ? (
-                                        <ActionButton
-                                            disabled={isSaving}
-                                            onClick={async () => {
-                                                if (!drawerId) return;
-                                                setIsSaving(true);
-                                                setErrorMessage(null);
-                                                setSuccessMessage(null);
-                                                try {
-                                                    const res = await api.update(drawerId, {
-                                                        title: draftTitle,
-                                                        body: draftBody,
-                                                        is_pinned: draftPinned,
-                                                        published_at: draftPublishedAt ? draftPublishedAt : null,
-                                                    });
-                                                    if (!res.ok) throw new Error();
-                                                    const json = (await res.json()) as any;
-                                                    const n = (json?.data ?? json) as Notice;
-                                                    setItems((prev) => prev.map((x) => (x.id === n.id ? n : x)));
-                                                    setSelectedNotice(n);
-                                                    setSuccessMessage('更新しました。');
-                                                    setDrawerEdit(false);
-                                                } catch {
-                                                    setErrorMessage('保存に失敗しました。');
-                                                } finally {
-                                                    setIsSaving(false);
-                                                }
-                                            }}
-                                        >
-                                            {isSaving ? 'SAVING…' : 'SAVE'}
-                                        </ActionButton>
+                                        <>
+                                            <button
+                                                type="button"
+                                                disabled={isSaving}
+                                                onClick={async () => {
+                                                    if (!drawerId) return;
+                                                    setIsSaving(true);
+                                                    setErrorMessage(null);
+                                                    setSuccessMessage(null);
+                                                    try {
+                                                        const res = await api.update(drawerId, {
+                                                            title: draftTitle,
+                                                            body: draftBody,
+                                                            is_pinned: draftPinned,
+                                                            published_at: null,
+                                                        });
+                                                        if (!res.ok) throw new Error();
+                                                        const json = (await res.json()) as any;
+                                                        const n = (json?.data ?? json) as Notice;
+                                                        setItems((prev) => prev.map((x) => (x.id === n.id ? n : x)));
+                                                        setSelectedNotice(n);
+                                                        setSuccessMessage('下書きにしました。');
+                                                        setDrawerEdit(false);
+                                                    } catch {
+                                                        setErrorMessage('保存に失敗しました。');
+                                                    } finally {
+                                                        setIsSaving(false);
+                                                    }
+                                                }}
+                                                className="rounded-sm border border-wa-accent/25 bg-wa-card px-4 py-2 text-xs font-black tracking-tight text-wa-body transition hover:border-wa-accent/40"
+                                            >
+                                                {isSaving ? '保存中…' : '下書き保存'}
+                                            </button>
+                                            <ActionButton
+                                                disabled={isSaving}
+                                                onClick={async () => {
+                                                    if (!drawerId) return;
+                                                    setIsSaving(true);
+                                                    setErrorMessage(null);
+                                                    setSuccessMessage(null);
+                                                    try {
+                                                        const pub = draftPublishedAt.trim() || formatNaiveNow();
+                                                        const res = await api.update(drawerId, {
+                                                            title: draftTitle,
+                                                            body: draftBody,
+                                                            is_pinned: draftPinned,
+                                                            published_at: pub,
+                                                        });
+                                                        if (!res.ok) throw new Error();
+                                                        const json = (await res.json()) as any;
+                                                        const n = (json?.data ?? json) as Notice;
+                                                        setItems((prev) => prev.map((x) => (x.id === n.id ? n : x)));
+                                                        setSelectedNotice(n);
+                                                        setSuccessMessage('公開設定を更新しました。');
+                                                        setDrawerEdit(false);
+                                                    } catch {
+                                                        setErrorMessage('保存に失敗しました。');
+                                                    } finally {
+                                                        setIsSaving(false);
+                                                    }
+                                                }}
+                                            >
+                                                {isSaving ? 'SAVING…' : '公開として保存'}
+                                            </ActionButton>
+                                        </>
                                     ) : null}
                                 </div>
                             ) : null}
@@ -525,6 +624,37 @@ export default function Index({ notices, initialDrafts }: { notices?: NoticesPro
                                 {selectedNotice.body}
                             </div>
                         </div>
+
+                        {isAdmin && drawerId !== null ? (
+                            <div className="rounded-sm border border-red-500/30 bg-red-950/25 px-4 py-4">
+                                <div className="text-[11px] font-bold uppercase tracking-widest text-red-200">Danger zone</div>
+                                <button
+                                    type="button"
+                                    disabled={isSaving}
+                                    onClick={async () => {
+                                        if (!window.confirm('このお知らせを削除しますか？取り消せません。')) return;
+                                        setIsSaving(true);
+                                        setErrorMessage(null);
+                                        try {
+                                            const res = await api.destroy(drawerId);
+                                            if (!res.ok && res.status !== 204) throw new Error();
+                                            setItems((prev) => prev.filter((x) => x.id !== drawerId));
+                                            setDrawerId(null);
+                                            setSelectedNotice(null);
+                                            setSuccessMessage('削除しました。');
+                                            window.setTimeout(() => setSuccessMessage(null), 1600);
+                                        } catch {
+                                            setErrorMessage('削除に失敗しました。');
+                                        } finally {
+                                            setIsSaving(false);
+                                        }
+                                    }}
+                                    className="mt-3 w-full rounded-sm border border-red-500/45 bg-wa-ink px-4 py-3 text-xs font-black tracking-widest text-red-200 transition hover:border-red-400 hover:bg-red-950/40 disabled:opacity-40"
+                                >
+                                    {isSaving ? '処理中…' : 'このお知らせを削除'}
+                                </button>
+                            </div>
+                        ) : null}
                     </div>
                 ) : (
                     <div className="rounded-sm border border-wa-accent/20 bg-wa-card px-4 py-6 text-sm text-wa-muted">

@@ -1,13 +1,17 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router, usePage } from '@inertiajs/react';
 import { PageProps } from '@/types';
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import NordicCard from '@/Components/UI/NordicCard';
 import BreakRunner from '@/Components/BreakRunner';
 import SectionHeader from '@/Components/UI/SectionHeader';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import { showAppToast } from '@/lib/toast';
+
+function csrfToken(): string {
+    return (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? '';
+}
 
 type Cell = {
     lane: number;
@@ -116,6 +120,14 @@ export default function Index({
         return () => window.clearInterval(t);
     }, [serverOffsetMs]);
 
+    useEffect(() => {
+        if (!serverNow) return;
+        const ms = new Date(serverNow).getTime();
+        if (Number.isFinite(ms)) {
+            setServerOffsetMs(ms - Date.now());
+        }
+    }, [serverNow]);
+
     const fetchStatus = useCallback(async () => {
         try {
             const url = `${route('portal.api.lunch-breaks.status')}?date=${encodeURIComponent(date)}`;
@@ -214,6 +226,7 @@ export default function Index({
                 onSuccess: () => {
                     showAppToast('保存しました');
                     window.dispatchEvent(new CustomEvent('lunch-schedule-updated', { detail: { date } }));
+                    window.dispatchEvent(new CustomEvent('lunch-break-timer-updated', { detail: { date } }));
                 },
                 onError: () => {
                     showAppToast('保存に失敗しました');
@@ -235,17 +248,14 @@ export default function Index({
     const laneLabels = ['休憩枠 1', '休憩枠 2', '休憩枠 3', '休憩枠 4', '休憩枠 5'];
     const laneAccent: Record<number, 'emerald' | 'sky' | 'amber'> = { 1: 'emerald', 2: 'sky', 3: 'amber', 4: 'emerald', 5: 'sky' };
 
-    const csrf = () =>
-        (document.querySelector('meta[name=\"csrf-token\"]') as HTMLMetaElement)?.content ?? '';
-
-    const postJson = async (url: string, body: any) => {
+    const postJson = async (url: string, body: unknown) => {
         const res = await fetch(url, {
             method: 'POST',
             headers: {
                 Accept: 'application/json',
                 'Content-Type': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRF-TOKEN': csrf(),
+                'X-CSRF-TOKEN': csrfToken(),
             },
             credentials: 'same-origin',
             body: JSON.stringify(body),
@@ -253,22 +263,30 @@ export default function Index({
         return res.ok;
     };
 
-    const startLane = async (lane: number) => {
-        await postJson(route('portal.api.lunch-breaks.start'), { date, lane });
-        void fetchStatus();
+    const dispatchLunchHomeRefresh = () => {
         window.dispatchEvent(new CustomEvent('lunch-schedule-updated', { detail: { date } }));
+        window.dispatchEvent(new CustomEvent('lunch-break-timer-updated', { detail: { date } }));
+    };
+
+    const startLane = async (lane: number) => {
+        const ok = await postJson(route('portal.api.lunch-breaks.start'), { date, lane });
+        void fetchStatus();
+        dispatchLunchHomeRefresh();
+        showAppToast(ok ? `休憩${lane} を開始しました` : '開始に失敗しました');
     };
 
     const stopLane = async (lane: number) => {
-        await postJson(route('portal.api.lunch-breaks.stop'), { date, lane });
+        const ok = await postJson(route('portal.api.lunch-breaks.stop'), { date, lane });
         void fetchStatus();
-        window.dispatchEvent(new CustomEvent('lunch-schedule-updated', { detail: { date } }));
+        dispatchLunchHomeRefresh();
+        showAppToast(ok ? `休憩${lane} を停止しました` : '停止に失敗しました');
     };
 
     const resetLane = async (lane: number) => {
-        await postJson(route('portal.api.lunch-breaks.reset'), { date, lane });
+        const ok = await postJson(route('portal.api.lunch-breaks.reset'), { date, lane });
         void fetchStatus();
-        window.dispatchEvent(new CustomEvent('lunch-schedule-updated', { detail: { date } }));
+        dispatchLunchHomeRefresh();
+        showAppToast(ok ? `休憩${lane} をリセットしました` : 'リセットに失敗しました');
     };
 
     const remainingFor = (row: ActiveRow): number | null => {

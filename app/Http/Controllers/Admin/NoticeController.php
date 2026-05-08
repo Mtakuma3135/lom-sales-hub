@@ -10,6 +10,7 @@ use App\Models\Notice;
 use App\Services\NoticeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 
 class NoticeController extends Controller
 {
@@ -20,9 +21,10 @@ class NoticeController extends Controller
         $items = $noticeService->index();
         $q = trim((string) $request->input('q', ''));
         if ($q !== '') {
-            $items = $items->filter(function (array $n) use ($q) {
-                $title = (string) ($n['title'] ?? '');
-                $body = (string) ($n['body'] ?? '');
+            $items = $items->filter(function (Notice $n) use ($q): bool {
+                $title = (string) ($n->title ?? '');
+                $body = (string) ($n->body ?? '');
+
                 return mb_stripos($title.$body, $q) !== false;
             })->values();
         }
@@ -62,6 +64,15 @@ class NoticeController extends Controller
         $row = $noticeService->update($id, $request->attrs());
 
         return response()->json(new NoticeResource($row));
+    }
+
+    public function destroy(Request $request, NoticeService $noticeService, int $id): Response
+    {
+        $notice = $noticeService->find($id);
+        $this->authorize('delete', $notice);
+        $noticeService->destroy($id);
+
+        return response()->noContent();
     }
 }
 

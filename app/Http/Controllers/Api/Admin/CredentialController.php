@@ -33,7 +33,10 @@ class CredentialController extends Controller
         );
 
         return CredentialResource::make($result['credential'])
-            ->additional(['gas_synced' => $result['gas_synced']])
+            ->additional([
+                'gas_synced' => $result['gas_synced'] ?? null,
+                'gas_queued' => (bool) ($result['gas_queued'] ?? false),
+            ])
             ->response();
     }
 }

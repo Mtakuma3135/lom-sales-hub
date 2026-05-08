@@ -18,8 +18,6 @@ class CredentialService
     public function index(): Collection
     {
         try {
-            $this->tryImportFromGas();
-
             $items = Credential::query()
                 ->where('visible_on_credentials_page', true)
                 ->orderBy('id')
@@ -70,7 +68,19 @@ class CredentialService
     }
 
     /**
-     * @return array{credential: Credential, gas_synced: bool}
+     * 管理画面などから明示的に GAS 取り込み（一覧では呼ばない）
+     */
+    public function importFromGas(): void
+    {
+        try {
+            $this->tryImportFromGas();
+        } catch (\Throwable $e) {
+            Log::warning('CredentialService.importFromGas failed', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * @return array{credential: Credential, gas_synced: ?bool, gas_queued: bool}
      */
     public function update(int $id, string $loginId, string $passwordPlain, string $updatedAt): array
     {
@@ -86,11 +96,19 @@ class CredentialService
             $credential->save();
             $credential->refresh();
 
-            $gasSynced = $this->pushCredentialRowToGas($credential);
+            $pushId = (int) $credential->id;
+            dispatch(function () use ($pushId): void {
+                $row = Credential::query()->find($pushId);
+                if ($row === null) {
+                    return;
+                }
+                app(self::class)->pushCredentialRowToGas($row);
+            })->afterResponse();
 
             return [
                 'credential' => $credential,
-                'gas_synced' => $gasSynced,
+                'gas_synced' => null,
+                'gas_queued' => true,
             ];
         } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
             throw $e;
@@ -139,7 +157,7 @@ class CredentialService
         }
     }
 
-    private function pushCredentialRowToGas(Credential $credential): bool
+    public function pushCredentialRowToGas(Credential $credential): bool
     {
         $base = trim((string) config('services.gas.credentials_url', ''));
         if ($base === '') {

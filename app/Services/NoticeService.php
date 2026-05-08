@@ -106,7 +106,7 @@ class NoticeService
                 'title' => $title,
                 'body' => $body,
                 'is_pinned' => $isPinned,
-                'published_at' => $publishedAt ?: now(),
+                'published_at' => $publishedAt,
             ]);
 
             return $notice;
@@ -144,6 +144,16 @@ class NoticeService
             return $notice->fresh();
         } catch (\Throwable $e) {
             Log::error('NoticeService.update failed', ['id' => $id, 'error' => $e->getMessage()]);
+            throw new \RuntimeException('Server error.', 500);
+        }
+    }
+
+    public function destroy(int $id): void
+    {
+        try {
+            Notice::query()->where('id', $id)->delete();
+        } catch (\Throwable $e) {
+            Log::error('NoticeService.destroy failed', ['id' => $id, 'error' => $e->getMessage()]);
             throw new \RuntimeException('Server error.', 500);
         }
     }

@@ -38,6 +38,45 @@ class ProductService
             return $q->get();
         } catch (\Throwable $e) {
             Log::error('ProductService.indexFor failed', ['error' => $e->getMessage()]);
+
+            return collect();
+        }
+    }
+
+    /**
+     * @return Collection<int, Product>
+     */
+    public function indexFilteredFor(User $actor, ?string $search, ?string $category, bool $activeOnly): Collection
+    {
+        try {
+            $q = Product::query()->orderByDesc('updated_at');
+            $isAdmin = ($actor->role ?? 'general') === 'admin';
+
+            if (! $isAdmin) {
+                $q->where('is_active', true);
+            } elseif ($activeOnly) {
+                $q->where('is_active', true);
+            }
+
+            $t = $search !== null ? trim($search) : '';
+            if ($t !== '') {
+                $safe = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $t);
+                $like = '%'.$safe.'%';
+                $q->where(function ($qq) use ($like): void {
+                    $qq->where('name', 'like', $like)
+                        ->orWhere('category', 'like', $like);
+                });
+            }
+
+            $c = $category !== null ? trim($category) : '';
+            if ($c !== '' && $c !== 'すべて' && $c !== '__all__') {
+                $q->where('category', $c);
+            }
+
+            return $q->get();
+        } catch (\Throwable $e) {
+            Log::error('ProductService.indexFilteredFor failed', ['error' => $e->getMessage()]);
+
             return collect();
         }
     }
@@ -61,13 +100,25 @@ class ProductService
     }
 
     /**
-     * @param  array{talk_script?:string,manual_url?:string}  $attrs
+     * @param  array{talk_script?:string,manual_url?:string,name?:string,category?:string,price?:int,is_active?:bool}  $attrs
      * @return Product
      */
     public function update(int $id, array $attrs): Product
     {
         try {
             $product = Product::query()->findOrFail($id);
+            if (array_key_exists('name', $attrs)) {
+                $product->name = (string) ($attrs['name'] ?? '');
+            }
+            if (array_key_exists('category', $attrs)) {
+                $product->category = (string) ($attrs['category'] ?? '');
+            }
+            if (array_key_exists('price', $attrs)) {
+                $product->price = (int) ($attrs['price'] ?? 0);
+            }
+            if (array_key_exists('is_active', $attrs)) {
+                $product->is_active = (bool) ($attrs['is_active'] ?? false);
+            }
             if (array_key_exists('talk_script', $attrs)) {
                 $product->talk_script = (string) ($attrs['talk_script'] ?? '');
             }

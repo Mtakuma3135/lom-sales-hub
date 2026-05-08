@@ -16,11 +16,15 @@ class ProductUpdateRequest extends FormRequest
         return [
             'talk_script' => ['nullable', 'string', 'max:10000'],
             'manual_url' => ['nullable', 'string', 'max:500'],
+            'name' => ['sometimes', 'string', 'max:200'],
+            'category' => ['sometimes', 'string', 'max:100'],
+            'price' => ['sometimes', 'integer', 'min:0', 'max:100000000'],
+            'is_active' => ['sometimes', 'boolean'],
         ];
     }
 
     /**
-     * @return array{talk_script?:string,manual_url?:string}
+     * @return array<string, mixed>
      */
     public function attrs(): array
     {
@@ -31,7 +35,19 @@ class ProductUpdateRequest extends FormRequest
         if ($this->has('manual_url')) {
             $attrs['manual_url'] = (string) $this->input('manual_url');
         }
+        if ($this->has('name')) {
+            $attrs['name'] = (string) $this->input('name');
+        }
+        if ($this->has('category')) {
+            $attrs['category'] = (string) $this->input('category');
+        }
+        if ($this->has('price')) {
+            $attrs['price'] = (int) $this->input('price');
+        }
+        if ($this->has('is_active')) {
+            $attrs['is_active'] = (bool) $this->boolean('is_active');
+        }
+
         return $attrs;
     }
 }
-

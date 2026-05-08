@@ -34,6 +34,7 @@ class TaskRequestService
                     'status' => 'pending',
                     'due_date' => '2026-04-30',
                     'created_at' => '2026-04-22 11:10',
+                    'body' => '録音サンプル共有済み。修正期限は金曜まで。',
                     'to_user_id' => 1,
                     'from_user_id' => 2,
                 ],
@@ -45,6 +46,7 @@ class TaskRequestService
                     'status' => 'in_progress',
                     'due_date' => '2026-04-27',
                     'created_at' => '2026-04-21 16:40',
+                    'body' => '新PDFは共有フォルダにあります。',
                     'to_user_id' => 2,
                     'from_user_id' => 1,
                 ],
@@ -56,6 +58,7 @@ class TaskRequestService
                     'status' => 'completed',
                     'due_date' => '2026-04-25',
                     'created_at' => '2026-04-18 09:05',
+                    'body' => 'モックで進めて問題ありません。',
                     'to_user_id' => 1,
                     'from_user_id' => 3,
                 ],
@@ -67,6 +70,7 @@ class TaskRequestService
                     'status' => 'pending',
                     'due_date' => '2026-04-24',
                     'created_at' => '2026-04-17 13:20',
+                    'body' => '草案は別紙参照。',
                     'to_user_id' => 3,
                     'from_user_id' => 1,
                 ],
@@ -82,8 +86,7 @@ class TaskRequestService
     }
 
     /**
-     * 一般ユーザーは「自分に関係するもの」だけ（to/from が自分）。
-     * completed も含めて返す（フロントエンドのタブで表示切り替え）。
+     * 一覧（本人が関係するもの＋管理者は全体）。完了も含む。
      *
      * @return Collection<int, array<string, mixed>>
      */
@@ -92,7 +95,7 @@ class TaskRequestService
         $items = $this->index()->values();
 
         if (($actor->role ?? 'general') === 'admin') {
-            return $items;
+            return $items->values();
         }
 
         $actorId = (int) $actor->id;
@@ -101,6 +104,22 @@ class TaskRequestService
             ->filter(function (array $t) use ($actorId): bool {
                 return (int) ($t['to_user_id'] ?? -1) === $actorId
                     || (int) ($t['from_user_id'] ?? -1) === $actorId;
+            })
+            ->values();
+    }
+
+    /**
+     * ホームのタスクウィジェット用（未完了のみ）
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    public function indexActiveForHome(User $actor): Collection
+    {
+        return $this->indexFor($actor)
+            ->filter(function (array $t): bool {
+                $s = (string) ($t['status'] ?? '');
+
+                return $s === 'pending' || $s === 'in_progress';
             })
             ->values();
     }

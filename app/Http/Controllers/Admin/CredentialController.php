@@ -20,6 +20,17 @@ class CredentialController extends Controller
         return CredentialResource::collection($items)->response();
     }
 
+    public function syncFromGas(CredentialService $credentialService): JsonResponse
+    {
+        $this->authorize('viewAny', Credential::class);
+
+        dispatch(function () use ($credentialService): void {
+            $credentialService->importFromGas();
+        })->afterResponse();
+
+        return response()->json(['data' => ['queued' => true]]);
+    }
+
     public function update(CredentialUpdateRequest $request, CredentialService $credentialService, int $id): JsonResponse
     {
         $credential = new Credential(['id' => $id]);
@@ -33,7 +44,10 @@ class CredentialController extends Controller
         );
 
         return CredentialResource::make($result['credential'])
-            ->additional(['gas_synced' => $result['gas_synced']])
+            ->additional([
+                'gas_synced' => $result['gas_synced'] ?? null,
+                'gas_queued' => (bool) ($result['gas_queued'] ?? false),
+            ])
             ->response();
     }
 }

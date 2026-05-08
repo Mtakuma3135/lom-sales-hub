@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\DiscordNotificationLogController as AdminDiscordN
 use App\Http\Controllers\Admin\DiscordNotificationLogPageController;
 use App\Http\Controllers\Admin\AuditLogController as AdminAuditLogController;
 use App\Http\Controllers\Admin\DepartmentController as AdminDepartmentController;
+use App\Http\Controllers\DailyTaskApiController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\LunchBreakController;
 use App\Http\Controllers\MypageController;
@@ -77,9 +78,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/tasks', [TaskRequestController::class, 'store'])->name('task-requests.store');
         Route::patch('/tasks/{id}', [TaskRequestController::class, 'update'])->name('task-requests.update');
 
-        Route::patch('/api/daily-tasks/{id}/status', [TaskRequestController::class, 'dailyUpdateStatus'])->name('portal.api.daily-tasks.status');
-        Route::post('/api/daily-tasks/templates', [TaskRequestController::class, 'dailyAddTemplate'])->name('portal.api.daily-tasks.templates.store');
-        Route::delete('/api/daily-tasks/templates/{id}', [TaskRequestController::class, 'dailyRemoveTemplate'])->name('portal.api.daily-tasks.templates.destroy');
+        Route::patch('/api/daily-tasks/{id}/status', [DailyTaskApiController::class, 'updateStatus'])->name('portal.api.daily-tasks.status');
+        Route::post('/api/daily-tasks/templates', [DailyTaskApiController::class, 'storeTemplate'])->name('portal.api.daily-tasks.templates.store');
+        Route::delete('/api/daily-tasks/templates/{id}', [DailyTaskApiController::class, 'destroyTemplate'])->name('portal.api.daily-tasks.templates.destroy');
         Route::get('/mypage', [MypageController::class, 'index'])->name('mypage.index');
         Route::patch('/mypage/password', [MypageController::class, 'updatePassword'])->name('mypage.password.update');
 
@@ -97,6 +98,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/api/csv/upload', [AdminCsvController::class, 'upload'])->name('portal.api.csv.upload');
 
         Route::get('/api/credentials', [AdminCredentialController::class, 'index'])->name('portal.api.credentials.index');
+        Route::post('/api/credentials/sync-from-gas', [AdminCredentialController::class, 'syncFromGas'])->name('portal.api.credentials.sync-from-gas');
         Route::patch('/api/credentials/{id}', [AdminCredentialController::class, 'update'])->name('portal.api.credentials.update');
 
         Route::get('/api/discord-notifications', [AdminDiscordNotificationLogController::class, 'index'])->name('portal.api.discord-notifications.index');
@@ -116,6 +118,7 @@ Route::middleware('auth')->group(function () {
 
         Route::post('/api/notices', [AdminNoticeController::class, 'store'])->name('portal.api.notices.store');
         Route::patch('/api/notices/{id}', [AdminNoticeController::class, 'update'])->name('portal.api.notices.update');
+        Route::delete('/api/notices/{id}', [AdminNoticeController::class, 'destroy'])->name('portal.api.notices.destroy');
 
         Route::patch('/api/products/{id}', [AdminProductController::class, 'update'])->name('portal.api.products.update');
 

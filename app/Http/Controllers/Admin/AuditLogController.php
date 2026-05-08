@@ -17,7 +17,7 @@ class AuditLogController extends Controller
         $logs = AuditLog::query()
             ->with('user')
             ->latest()
-            ->paginate(20)
+            ->paginate(10)
             ->withQueryString();
 
         return Inertia::render('Admin/AuditLogs/Index', [

@@ -22,6 +22,10 @@ export default function Show({ id }: { id: number }) {
     const isAdmin = (props.auth?.user?.role ?? 'general') === 'admin';
 
     const [item, setItem] = useState<Product | null>(null);
+    const [draftName, setDraftName] = useState('');
+    const [draftCategory, setDraftCategory] = useState('');
+    const [draftPrice, setDraftPrice] = useState('');
+    const [draftActive, setDraftActive] = useState(true);
     const [draftScript, setDraftScript] = useState<string>('');
     const [draftManualUrl, setDraftManualUrl] = useState<string>('');
     const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -32,7 +36,7 @@ export default function Show({ id }: { id: number }) {
     const api = useMemo(() => {
         return {
             show: () => fetch(route('portal.api.products.show', { id }), { headers: { Accept: 'application/json' } }),
-            update: (payload: { talk_script: string; manual_url: string }) =>
+            update: (payload: Record<string, unknown>) =>
                 fetch(route('portal.api.products.update', { id }), {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
@@ -52,6 +56,10 @@ export default function Show({ id }: { id: number }) {
                 const p = (json?.data ?? json) as Product;
                 if (!mounted) return;
                 setItem(p);
+                setDraftName(p?.name ?? '');
+                setDraftCategory(p?.category ?? '');
+                setDraftPrice(String(p?.price ?? 0));
+                setDraftActive(!!p?.is_active);
                 setDraftScript(p?.talk_script ?? '');
                 setDraftManualUrl(p?.manual_url ?? '');
             })
@@ -99,26 +107,67 @@ export default function Show({ id }: { id: number }) {
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                     <NeonCard>
                         <div className="text-xs font-bold tracking-widest text-wa-muted">META</div>
-                        <div className="mt-4 space-y-2 text-sm text-wa-muted">
-                            <div>
-                                <span className="text-wa-body/80">カテゴリ</span>：{item?.category ?? '—'}
+                        {isAdmin ? (
+                            <div className="mt-4 space-y-3 text-sm">
+                                <div>
+                                    <div className="text-[10px] font-semibold uppercase tracking-wider text-wa-muted">NAME</div>
+                                    <input
+                                        value={draftName}
+                                        onChange={(e) => setDraftName(e.target.value)}
+                                        className="nordic-field mt-1 w-full"
+                                    />
+                                </div>
+                                <div>
+                                    <div className="text-[10px] font-semibold uppercase tracking-wider text-wa-muted">CATEGORY</div>
+                                    <input
+                                        value={draftCategory}
+                                        onChange={(e) => setDraftCategory(e.target.value)}
+                                        className="nordic-field mt-1 w-full"
+                                    />
+                                </div>
+                                <div>
+                                    <div className="text-[10px] font-semibold uppercase tracking-wider text-wa-muted">PRICE（円）</div>
+                                    <input
+                                        type="number"
+                                        min={0}
+                                        value={draftPrice}
+                                        onChange={(e) => setDraftPrice(e.target.value)}
+                                        className="nordic-field mt-1 w-full tabular-nums"
+                                    />
+                                </div>
+                                <label className="flex items-center gap-2 text-sm font-semibold text-wa-body">
+                                    <input
+                                        type="checkbox"
+                                        checked={draftActive}
+                                        onChange={(e) => setDraftActive(e.target.checked)}
+                                        className="h-4 w-4 rounded-sm border-wa-accent/35 text-wa-accent"
+                                    />
+                                    有効（販売中）
+                                </label>
+                                <div className="text-xs text-wa-muted">更新: {item?.updated_at ?? '—'}</div>
                             </div>
-                            <div>
-                                <span className="text-wa-body/80">料金</span>：
-                                {item ? (item.price === 0 ? '無料' : `¥${item.price.toLocaleString()}`) : '—'}
+                        ) : (
+                            <div className="mt-4 space-y-2 text-sm text-wa-muted">
+                                <div>
+                                    <span className="text-wa-body/80">カテゴリ</span>：{item?.category ?? '—'}
+                                </div>
+                                <div>
+                                    <span className="text-wa-body/80">料金</span>：
+                                    {item ? (item.price === 0 ? '無料' : `¥${item.price.toLocaleString()}`) : '—'}
+                                </div>
+                                <div>
+                                    <span className="text-wa-body/80">状態</span>：
+                                    <span className="ml-2">
+                                        <StatusBadge variant={item?.is_active ? 'success' : 'muted'}>
+                                            {item?.is_active ? '有効' : '停止'}
+                                        </StatusBadge>
+                                    </span>
+                                </div>
+                                <div>
+                                    <span className="text-wa-body/80">更新</span>：{item?.updated_at ?? '—'}
+                                </div>
                             </div>
-                            <div>
-                                <span className="text-wa-body/80">状態</span>：
-                                <span className="ml-2">
-                                    <StatusBadge variant={item?.is_active ? 'success' : 'muted'}>
-                                        {item?.is_active ? '有効' : '停止'}
-                                    </StatusBadge>
-                                </span>
-                            </div>
-                            <div>
-                                <span className="text-wa-body/80">更新</span>：{item?.updated_at ?? '—'}
-                            </div>
-                        </div>
+                        )}
                     </NeonCard>
 
                     <div className="space-y-6 lg:col-span-2">
@@ -160,14 +209,26 @@ export default function Show({ id }: { id: number }) {
                                         setErrorMessage(null);
                                         setSuccessMessage(null);
                                         try {
-                                            const res = await api.update({
+                                            const priceNum = Math.max(0, Number.parseInt(String(draftPrice).replace(/[^0-9]/g, ''), 10) || 0);
+                                            const payload: Record<string, unknown> = {
                                                 talk_script: draftScript,
                                                 manual_url: draftManualUrl,
-                                            });
+                                            };
+                                            if (isAdmin) {
+                                                payload.name = draftName;
+                                                payload.category = draftCategory;
+                                                payload.price = priceNum;
+                                                payload.is_active = draftActive;
+                                            }
+                                            const res = await api.update(payload);
                                             if (!res.ok) throw new Error();
                                             const json = (await res.json()) as any;
                                             const p = (json?.data ?? json) as Product;
                                             setItem(p);
+                                            setDraftName(p?.name ?? '');
+                                            setDraftCategory(p?.category ?? '');
+                                            setDraftPrice(String(p?.price ?? 0));
+                                            setDraftActive(!!p?.is_active);
                                             setSuccessMessage('保存しました。');
                                         } catch {
                                             setErrorMessage('保存に失敗しました。');
