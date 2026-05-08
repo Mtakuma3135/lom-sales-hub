@@ -1,6 +1,7 @@
 import { Link, usePage } from '@inertiajs/react';
 import { PropsWithChildren, ReactNode } from 'react';
 import { PageProps } from '@/types';
+import LomHubMark from '@/Components/LomHubMark';
 
 type User = {
     name: string;
@@ -83,7 +84,9 @@ export default function AuthenticatedLayout({
                                     </div>
                                     <div className="mt-1 text-xs font-medium text-wa-muted">Sales Operating System</div>
                                 </div>
-                                <div className="h-9 w-9 rounded-xl border border-wa-accent/25 bg-wa-subtle" />
+                                <div className="grid h-9 w-9 place-items-center rounded-xl border border-wa-accent/25 bg-wa-subtle text-wa-accent">
+                                    <LomHubMark className="h-5 w-5" />
+                                </div>
                             </div>
 
                             <div className="mt-5 flex items-center justify-between gap-2">

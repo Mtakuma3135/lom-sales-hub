@@ -33,6 +33,8 @@ class SalesRecordController extends Controller
             'status' => $request->string('status')->toString(),
             'date_from' => $request->string('date_from')->toString(),
             'date_to' => $request->string('date_to')->toString(),
+            'sort' => $request->string('sort')->toString(),
+            'dir' => $request->string('dir')->toString(),
             // 一般ユーザーは部門スコープを強制（指示書準拠）
             'department_id' => ($actor->role ?? 'general') !== 'admin' ? $actor->department_id : null,
         ], $actor);

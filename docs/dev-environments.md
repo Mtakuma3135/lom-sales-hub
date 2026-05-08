@@ -32,6 +32,12 @@ DB初期化（seed込み）:
 ./vendor/bin/sail artisan route:list
 ./vendor/bin/sail test
 ```
+
+### KOT（打刻）の確認
+
+- ポータルUIの打刻ボタンは **web-session** の `POST /portal/api/mypage/kot/punch` を叩きます。
+- 処理結果は **監査ログ**（`/portal/admin/audit-logs`）に記録されます（integration=`kot`）。
+- `KOT_API_TOKEN` 未設定の local 開発では、監査ログの `meta.mode=mock` が付与される想定です（実通信とは区別）。
 ### MAMP（`http://localhost:8888`）
 
 - **URL**: `http://localhost:8888`

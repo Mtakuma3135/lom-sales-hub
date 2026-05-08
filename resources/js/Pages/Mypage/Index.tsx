@@ -14,10 +14,27 @@ type CredentialRow = {
     is_mock?: boolean;
 };
 
+type AttendancePayload = {
+    state: 'not_connected' | 'not_fetched' | 'ok' | 'has_error' | 'error';
+    has_error: boolean;
+    error_dates: string[];
+    cached_at: string | null;
+    message?: string;
+};
+
 type MypagePayload = {
     data: {
         profile: { name: string; employee_code: string | null; role: string };
-        attendance?: { has_error: boolean; error_dates: string[]; cached_at: string } | null;
+        attendance?: AttendancePayload | null;
+        kot_status?: {
+            connected: boolean;
+            last_event_type: string | null;
+            last_status: string | null;
+            last_status_code: number | null;
+            last_at: string | null;
+            last_message: string | null;
+            mode: string | null;
+        } | null;
         integrations: { key: string; label: string; status: string }[];
         quick_links: { label: string; href: string }[];
         credentials: CredentialRow[] | { data: CredentialRow[] };
@@ -55,12 +72,13 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
         ? mypage.data.integrations
         : isDev
             ? [
-                { key: 'king_of_time', label: 'KING OF TIME', status: 'connected' },
+                { key: 'king_of_time', label: 'KING OF TIME', status: 'not_connected' },
                 { key: 'discord', label: 'Discord（通知）', status: 'not_connected' },
             ]
             : [];
 
     const attendance = mypage?.data.attendance ?? null;
+    const kotStatus = mypage?.data.kot_status ?? null;
     const credentials = parseCredentials(mypage?.data.credentials);
 
     const [pwOpen, setPwOpen] = useState(false);
@@ -151,13 +169,13 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
                             <SectionHeader eyebrow="ATTENDANCE" title="勤怠エラー" />
 
                             {attendance ? (
-                                attendance.has_error ? (
+                                attendance.state === 'has_error' && attendance.has_error ? (
                                     <div className="mt-4 rounded-xl border border-red-500/30 bg-red-950/35 p-4">
                                         <div className="text-sm font-black tracking-tight text-red-200">
                                             エラーあり
                                         </div>
                                         <div className="mt-2 text-xs text-red-300">
-                                            cached_at: {attendance.cached_at}
+                                            cached_at: {attendance.cached_at ?? '—'}
                                         </div>
                                         <div className="mt-3 flex flex-wrap gap-2">
                                             {attendance.error_dates.map((d) => (
@@ -170,14 +188,35 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
                                             ))}
                                         </div>
                                     </div>
-                                ) : (
+                                ) : attendance.state === 'ok' ? (
                                     <div className="mt-4 rounded-xl border border-teal-500/30 bg-wa-ink p-4">
                                         <div className="text-sm font-black tracking-tight text-teal-200">
                                             エラーなし
                                         </div>
                                         <div className="mt-2 text-xs text-teal-300">
-                                            cached_at: {attendance.cached_at}
+                                            cached_at: {attendance.cached_at ?? '—'}
                                         </div>
+                                    </div>
+                                ) : attendance.state === 'not_connected' ? (
+                                    <div className="mt-4 rounded-xl border border-amber-500/25 bg-amber-950/20 p-4 text-sm text-amber-100">
+                                        <div className="font-black tracking-tight text-amber-200">
+                                            KOT 未連携（サーバー設定）
+                                        </div>
+                                        <p className="mt-2 text-xs leading-relaxed text-amber-200/90">
+                                            API URL またはトークンが未設定のため、勤怠サマリーは取得できません。
+                                        </p>
+                                    </div>
+                                ) : attendance.state === 'not_fetched' ? (
+                                    <div className="mt-4 rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-4 text-sm text-wa-muted">
+                                        勤怠データはまだ取得されていません（未取得）
+                                    </div>
+                                ) : attendance.state === 'error' ? (
+                                    <div className="mt-4 rounded-xl border border-red-500/30 bg-red-950/25 p-4 text-sm text-red-200">
+                                        {attendance.message ?? '勤怠情報を表示できませんでした。'}
+                                    </div>
+                                ) : (
+                                    <div className="mt-4 rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-4 text-sm text-wa-muted">
+                                        —
                                     </div>
                                 )
                             ) : (
@@ -185,6 +224,43 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
                                     （未取得）
                                 </div>
                             )}
+
+                            <div className="mt-4 rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-4 text-sm text-wa-muted">
+                                <div className="flex flex-wrap items-center justify-between gap-3">
+                                    <div className="text-xs font-bold uppercase tracking-widest text-wa-muted">
+                                        KOT 連携
+                                    </div>
+                                    <div
+                                        className={
+                                            'rounded-full border px-2.5 py-1 text-[10px] font-bold ' +
+                                            (kotStatus?.connected
+                                                ? 'border-teal-500/35 text-teal-300'
+                                                : 'border-wa-accent/20 text-wa-muted')
+                                        }
+                                    >
+                                        {kotStatus?.connected ? 'CONNECTED' : 'NOT CONNECTED'}
+                                    </div>
+                                </div>
+                                {kotStatus?.last_at ? (
+                                    <div className="mt-2 space-y-1 text-xs">
+                                        <div className="font-mono text-wa-muted">
+                                            last: {kotStatus.last_at}
+                                            {kotStatus.mode === 'mock' || kotStatus.last_status === 'skipped'
+                                                ? ' (local mock / 未送信)'
+                                                : ''}
+                                        </div>
+                                        <div className="text-wa-body">
+                                            {kotStatus.last_event_type ?? '—'} / {kotStatus.last_status ?? '—'}
+                                            {kotStatus.last_status_code !== null ? ` (${kotStatus.last_status_code})` : ''}
+                                        </div>
+                                        {kotStatus.last_message ? (
+                                            <div className="line-clamp-2 text-wa-muted">{kotStatus.last_message}</div>
+                                        ) : null}
+                                    </div>
+                                ) : (
+                                    <div className="mt-2 text-xs text-wa-muted">監査ログがまだありません</div>
+                                )}
+                            </div>
 
                             <div className="mt-4 flex items-center justify-between gap-3">
                                 <button
@@ -195,7 +271,7 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
                                         setKotMessage(null);
                                         setKotPending(false);
                                         try {
-                                            const res = await fetch(route('portal.mock.kot.punch'), {
+                                            const res = await fetch(route('portal.api.mypage.kot.punch'), {
                                                 method: 'POST',
                                                 headers: {
                                                     Accept: 'application/json',

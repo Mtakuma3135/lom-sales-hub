@@ -1,5 +1,6 @@
 import { Link } from '@inertiajs/react';
 import { PropsWithChildren } from 'react';
+import LomHubMark from '@/Components/LomHubMark';
 
 export default function GuestLayout({ children }: PropsWithChildren) {
     return (
@@ -7,23 +8,8 @@ export default function GuestLayout({ children }: PropsWithChildren) {
             <div className="w-full max-w-md">
                 <div className="rounded-sm border border-wa-accent/20 bg-wa-card px-8 py-12">
                     <div className="flex flex-col items-center">
-                        <div className="grid h-12 w-12 place-items-center rounded-sm border border-wa-accent/30 bg-wa-ink text-wa-accent">
-                            <svg
-                                className="h-6 w-6"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                xmlns="http://www.w3.org/2000/svg"
-                            >
-                                <path
-                                    d="M10 8l4 4-4 4"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                />
-                                <path d="M4 12h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                                <path d="M20 21V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                            </svg>
+                        <div className="grid h-12 w-12 place-items-center rounded-[10px] border border-wa-accent/30 bg-wa-ink text-wa-accent">
+                            <LomHubMark className="h-7 w-7" />
                         </div>
 
                         <div className="mt-5 text-center">

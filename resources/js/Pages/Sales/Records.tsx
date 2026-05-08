@@ -2,6 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
 import NeonCard from '@/Components/NeonCard';
+import { nextDir, type SortDir, SortableTh } from '@/Components/SortableTh';
 
 type RecordItem = {
     id: number;
@@ -22,6 +23,8 @@ export default function Records() {
         const v = Number(initialParams.get('page') ?? 1);
         return Number.isFinite(v) && v >= 1 ? v : 1;
     });
+    const [sort, setSort] = useState<string>(() => initialParams.get('sort') ?? 'date');
+    const [dir, setDir] = useState<SortDir>(() => ((initialParams.get('dir') ?? 'desc') === 'asc' ? 'asc' : 'desc'));
     const [items, setItems] = useState<RecordItem[]>([]);
     const [total, setTotal] = useState<number>(0);
     const [lastPage, setLastPage] = useState<number>(1);
@@ -35,8 +38,10 @@ export default function Records() {
         if (status) p.set('status', status);
         if (dateFrom) p.set('date_from', dateFrom);
         if (dateTo) p.set('date_to', dateTo);
+        if (sort) p.set('sort', sort);
+        if (dir) p.set('dir', dir);
         return p.toString();
-    }, [page, keyword, status, dateFrom, dateTo]);
+    }, [page, keyword, status, dateFrom, dateTo, sort, dir]);
 
     useEffect(() => {
         let mounted = true;
@@ -68,6 +73,16 @@ export default function Records() {
 
     const pageBtn =
         'rounded-sm border border-wa-accent/25 bg-wa-ink px-3 py-2 text-xs font-black tracking-widest text-wa-body transition hover:border-wa-accent/40 disabled:opacity-40';
+
+    const toggleSort = (key: string) => {
+        setPage(1);
+        if (sort !== key) {
+            setSort(key);
+            setDir('asc');
+            return;
+        }
+        setDir((d) => nextDir(d));
+    };
 
     return (
         <AuthenticatedLayout header={<h2 className="text-sm font-black tracking-tight text-wa-body">SALES / RECORDS</h2>}>
@@ -184,10 +199,34 @@ export default function Records() {
                             <table className="w-full text-left text-sm">
                                 <thead className="bg-wa-ink text-xs font-bold tracking-widest text-wa-muted">
                                     <tr>
-                                        <th className="px-4 py-3">ID</th>
-                                        <th className="px-4 py-3">担当者</th>
-                                        <th className="px-4 py-3">STATUS</th>
-                                        <th className="px-4 py-3">DATE</th>
+                                        <SortableTh
+                                            label="ID"
+                                            active={sort === 'id'}
+                                            dir={dir}
+                                            onToggle={() => toggleSort('id')}
+                                            className="px-4 py-3"
+                                        />
+                                        <SortableTh
+                                            label="担当者"
+                                            active={sort === 'staff_name'}
+                                            dir={dir}
+                                            onToggle={() => toggleSort('staff_name')}
+                                            className="px-4 py-3"
+                                        />
+                                        <SortableTh
+                                            label="STATUS"
+                                            active={sort === 'status'}
+                                            dir={dir}
+                                            onToggle={() => toggleSort('status')}
+                                            className="px-4 py-3"
+                                        />
+                                        <SortableTh
+                                            label="DATE"
+                                            active={sort === 'date'}
+                                            dir={dir}
+                                            onToggle={() => toggleSort('date')}
+                                            className="px-4 py-3"
+                                        />
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-wa-accent/15 bg-wa-card/50">

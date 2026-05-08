@@ -25,6 +25,11 @@ trait AuditLoggable
         array $meta = [],
     ): void {
         try {
+            $mode = null;
+            if (isset($meta['mode']) && is_string($meta['mode']) && $meta['mode'] !== '') {
+                $mode = mb_substr($meta['mode'], 0, 30);
+            }
+
             AuditLog::query()->create([
                 'integration' => $integration,
                 'event_type' => $eventType,
@@ -37,6 +42,7 @@ trait AuditLoggable
                 'related_type' => $relatedType,
                 'related_id' => $relatedId,
                 'meta' => $meta,
+                'mode' => $mode,
             ]);
         } catch (\Throwable) {
             // audit logging must never block core flow

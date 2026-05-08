@@ -17,6 +17,7 @@ class MypageResource extends JsonResource
         return [
             'profile' => $this->resource['profile'],
             'attendance' => $this->resource['attendance'] ?? null,
+            'kot_status' => $this->resource['kot_status'] ?? null,
             'integrations' => $this->resource['integrations'],
             'quick_links' => $this->resource['quick_links'],
             'credentials' => CredentialResource::collection($credentials),

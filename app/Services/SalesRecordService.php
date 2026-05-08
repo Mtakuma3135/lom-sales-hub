@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Log;
 class SalesRecordService
 {
     /**
-     * @param  array{page?:int,keyword?:string,status?:string,date_from?:string,date_to?:string}  $query
+     * @param  array{page?:int,keyword?:string,status?:string,date_from?:string,date_to?:string,sort?:string,dir?:string}  $query
      * @return array{data:array<int,array{id:int,staff_name:string,status:string,date:string}>,current_page:int,last_page:int,total:int}
      */
     public function records(array $query, User $actor): array
@@ -22,6 +22,9 @@ class SalesRecordService
             $dateFrom = trim((string) ($query['date_from'] ?? ''));
             $dateTo = trim((string) ($query['date_to'] ?? ''));
             $departmentId = $query['department_id'] ?? null;
+            $sort = trim((string) ($query['sort'] ?? ''));
+            $dirRaw = strtolower(trim((string) ($query['dir'] ?? 'desc')));
+            $dir = $dirRaw === 'asc' ? 'asc' : 'desc';
 
             $q = SalesRecord::query();
 
@@ -64,8 +67,17 @@ class SalesRecordService
             $lastPage = (int) max(1, (int) ceil($total / $perPage));
             $page = min($page, $lastPage);
 
+            $sortKey = $sort !== '' ? $sort : 'date';
+            $allowed = [
+                'id' => 'id',
+                'staff_name' => 'staff_name',
+                'status' => 'status',
+                'date' => 'date',
+            ];
+            $sortCol = $allowed[$sortKey] ?? 'date';
+
             $data = $q
-                ->orderByDesc('date')
+                ->orderBy($sortCol, $dir)
                 ->orderByDesc('id')
                 ->forPage($page, $perPage)
                 ->get(['id', 'staff_name', 'status', 'date'])

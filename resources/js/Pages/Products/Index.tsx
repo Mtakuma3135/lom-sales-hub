@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import NeonCard from '@/Components/NeonCard';
 import ActionButton from '@/Components/ActionButton';
 import StatusBadge from '@/Components/StatusBadge';
+import { nextDir, type SortDir, SortableTh } from '@/Components/SortableTh';
 
 type Product = {
     id: number;
@@ -22,6 +23,8 @@ type Filters = {
     q: string;
     category: string;
     active_only: boolean;
+    sort?: string;
+    dir?: SortDir | string;
 };
 
 export default function Index({
@@ -48,24 +51,30 @@ export default function Index({
     const [q, setQ] = useState(initialFilters.q);
     const [category, setCategory] = useState(initialFilters.category);
     const [activeOnly, setActiveOnly] = useState(initialFilters.active_only);
+    const [sort, setSort] = useState<string>(() => initialFilters.sort ?? 'updated_at');
+    const [dir, setDir] = useState<SortDir>(() => ((initialFilters.dir ?? 'desc') === 'asc' ? 'asc' : 'desc'));
     const [searching, setSearching] = useState(false);
 
     useEffect(() => {
         setQ(initialFilters.q);
         setCategory(initialFilters.category);
         setActiveOnly(initialFilters.active_only);
+        setSort(initialFilters.sort ?? 'updated_at');
+        setDir(((initialFilters.dir ?? 'desc') === 'asc' ? 'asc' : 'desc') as SortDir);
     }, [initialFilters]);
 
     const cats = categoryOptions ?? [];
 
-    const applySearch = () => {
+    const runSearch = (params: { q: string; category: string; activeOnly: boolean; sort: string; dir: SortDir }) => {
         setSearching(true);
         router.get(
             route('products.index'),
             {
-                q: q.trim() || undefined,
-                category: category.trim() || undefined,
-                active_only: activeOnly ? '1' : '0',
+                q: params.q.trim() || undefined,
+                category: params.category.trim() || undefined,
+                active_only: params.activeOnly ? '1' : '0',
+                sort: params.sort || undefined,
+                dir: params.dir,
             },
             {
                 preserveState: true,
@@ -74,6 +83,17 @@ export default function Index({
                 onFinish: () => setSearching(false),
             },
         );
+    };
+
+    const applySearch = () => runSearch({ q, category, activeOnly, sort, dir });
+
+    const toggleSort = (key: string) => {
+        const nextSort = sort !== key ? key : sort;
+        const nextDirVal: SortDir = sort !== key ? 'asc' : nextDir(dir);
+
+        setSort(nextSort);
+        setDir(nextDirVal);
+        runSearch({ q, category, activeOnly, sort: nextSort, dir: nextDirVal });
     };
 
     return (
@@ -179,21 +199,41 @@ export default function Index({
                             <table className="w-full table-fixed border-collapse text-sm">
                                 <thead>
                                     <tr className="text-left text-xs text-wa-muted">
-                                        <th className="w-[32%] border-b border-wa-accent/20 py-2 pl-0 pr-2 font-bold tracking-widest">
-                                            NAME
-                                        </th>
-                                        <th className="w-[16%] border-b border-wa-accent/20 px-2 py-2 font-bold tracking-widest">
-                                            CATEGORY
-                                        </th>
-                                        <th className="w-[12%] border-b border-wa-accent/20 px-2 py-2 font-bold tracking-widest">
-                                            PRICE
-                                        </th>
-                                        <th className="w-[12%] border-b border-wa-accent/20 px-2 py-2 font-bold tracking-widest">
-                                            STATE
-                                        </th>
-                                        <th className="w-[18%] border-b border-wa-accent/20 px-2 py-2 font-bold tracking-widest">
-                                            UPDATED
-                                        </th>
+                                        <SortableTh
+                                            label="NAME"
+                                            active={sort === 'name'}
+                                            dir={dir}
+                                            onToggle={() => toggleSort('name')}
+                                            className="w-[32%] border-b border-wa-accent/20 py-2 pl-0 pr-2 font-bold tracking-widest"
+                                        />
+                                        <SortableTh
+                                            label="CATEGORY"
+                                            active={sort === 'category'}
+                                            dir={dir}
+                                            onToggle={() => toggleSort('category')}
+                                            className="w-[16%] border-b border-wa-accent/20 px-2 py-2 font-bold tracking-widest"
+                                        />
+                                        <SortableTh
+                                            label="PRICE"
+                                            active={sort === 'price'}
+                                            dir={dir}
+                                            onToggle={() => toggleSort('price')}
+                                            className="w-[12%] border-b border-wa-accent/20 px-2 py-2 font-bold tracking-widest"
+                                        />
+                                        <SortableTh
+                                            label="STATE"
+                                            active={sort === 'is_active'}
+                                            dir={dir}
+                                            onToggle={() => toggleSort('is_active')}
+                                            className="w-[12%] border-b border-wa-accent/20 px-2 py-2 font-bold tracking-widest"
+                                        />
+                                        <SortableTh
+                                            label="UPDATED"
+                                            active={sort === 'updated_at'}
+                                            dir={dir}
+                                            onToggle={() => toggleSort('updated_at')}
+                                            className="w-[18%] border-b border-wa-accent/20 px-2 py-2 font-bold tracking-widest"
+                                        />
                                         <th className="w-[10%] border-b border-wa-accent/20 py-2 pl-2 pr-0 text-right font-bold tracking-widest">
                                             ACTIONS
                                         </th>

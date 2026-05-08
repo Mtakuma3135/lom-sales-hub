@@ -46,10 +46,28 @@ class ProductService
     /**
      * @return Collection<int, Product>
      */
-    public function indexFilteredFor(User $actor, ?string $search, ?string $category, bool $activeOnly): Collection
+    public function indexFilteredFor(
+        User $actor,
+        ?string $search,
+        ?string $category,
+        bool $activeOnly,
+        ?string $sort = null,
+        ?string $dir = null,
+    ): Collection
     {
         try {
-            $q = Product::query()->orderByDesc('updated_at');
+            $dirNorm = strtolower(trim((string) $dir)) === 'asc' ? 'asc' : 'desc';
+            $sortKey = trim((string) $sort);
+            $allowed = [
+                'updated_at' => 'updated_at',
+                'name' => 'name',
+                'category' => 'category',
+                'price' => 'price',
+                'is_active' => 'is_active',
+            ];
+            $sortCol = $allowed[$sortKey] ?? 'updated_at';
+
+            $q = Product::query()->orderBy($sortCol, $dirNorm);
             $isAdmin = ($actor->role ?? 'general') === 'admin';
 
             if (! $isAdmin) {
@@ -72,6 +90,8 @@ class ProductService
             if ($c !== '' && $c !== 'すべて' && $c !== '__all__') {
                 $q->where('category', $c);
             }
+
+            $q->orderByDesc('id');
 
             return $q->get();
         } catch (\Throwable $e) {

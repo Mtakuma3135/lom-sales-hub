@@ -4,6 +4,7 @@ import DetailDrawer from '@/Components/DetailDrawer';
 import StatusBadge from '@/Components/StatusBadge';
 import InformationTrigger from '@/Components/UI/InformationTrigger';
 import SlotNumber from '@/Components/UI/SlotNumber';
+import { nextDir, type SortDir, SortableTh } from '@/Components/SortableTh';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import {
@@ -182,6 +183,17 @@ function WaCard({ className = '', children }: { className?: string; children: Re
 
 type SalesKpiTab = 'summary' | 'ranking' | 'trend' | 'csv';
 
+const RANK_SORT_KEYS = ['rank', 'name', 'ok', 'ng', 'rate'] as const;
+type RankSortKey = (typeof RANK_SORT_KEYS)[number];
+
+function readRankingSortFromUrl(): { key: RankSortKey; dir: SortDir } {
+    const p = new URLSearchParams(window.location.search);
+    const raw = p.get('rsort') ?? 'rank';
+    const key = (RANK_SORT_KEYS as readonly string[]).includes(raw) ? (raw as RankSortKey) : 'rank';
+    const dir = (p.get('rdir') ?? 'asc') === 'desc' ? 'desc' : 'asc';
+    return { key, dir };
+}
+
 export default function Summary() {
     const { props } = usePage<{ sales?: SalesPayload; personalKpi?: KpiTriplet }>();
     const isDev = import.meta.env.DEV;
@@ -207,7 +219,34 @@ export default function Summary() {
             setTab('summary');
         }
     }, [tab, canCsv]);
+
     const [drawerRank, setDrawerRank] = useState<RankRow | null>(null);
+    const [rankingSort, setRankingSort] = useState(() => readRankingSortFromUrl());
+
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        params.set('tab', tab);
+        params.set('rsort', rankingSort.key);
+        params.set('rdir', rankingSort.dir);
+        window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
+    }, [tab, rankingSort]);
+
+    useEffect(() => {
+        const onPop = () => {
+            const params = new URLSearchParams(window.location.search);
+            const t = params.get('tab');
+            if (t === 'ranking' || t === 'trend' || t === 'summary') {
+                setTab(t);
+            } else if (t === 'csv' && canCsv) {
+                setTab('csv');
+            } else {
+                setTab('summary');
+            }
+            setRankingSort(readRankingSortFromUrl());
+        };
+        window.addEventListener('popstate', onPop);
+        return () => window.removeEventListener('popstate', onPop);
+    }, [canCsv]);
 
     const kpi = payload.data.summary;
     const teamOkHref = recordsQueryHref('ok');
@@ -229,12 +268,24 @@ export default function Summary() {
         return trend.reduce((best, cur) => (cur.rate > best.rate ? cur : best), trend[0]);
     }, [trend]);
 
-    useEffect(() => {
-        const params = new URLSearchParams(window.location.search);
-        params.set('tab', tab);
-        const next = `${window.location.pathname}?${params.toString()}`;
-        window.history.replaceState({}, '', next);
-    }, [tab]);
+    const rankingSorted = useMemo(() => {
+        const key = rankingSort.key;
+        const dir = rankingSort.dir;
+        const sign = dir === 'asc' ? 1 : -1;
+        return [...ranking].sort((a, b) => {
+            const av = a[key];
+            const bv = b[key];
+            if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * sign;
+            return String(av).localeCompare(String(bv), 'ja') * sign;
+        });
+    }, [ranking, rankingSort.dir, rankingSort.key]);
+
+    const toggleRankingSort = (key: RankSortKey) => {
+        setRankingSort((s) => {
+            if (s.key !== key) return { key, dir: 'asc' };
+            return { key, dir: nextDir(s.dir) };
+        });
+    };
 
     return (
         <AuthenticatedLayout
@@ -441,15 +492,45 @@ export default function Summary() {
                                 <table className="w-full border-collapse text-sm">
                                     <thead>
                                         <tr className="text-left text-xs font-semibold uppercase tracking-wider text-wa-muted">
-                                            <th className="border-b border-wa-accent/20 px-5 py-4">順位</th>
-                                            <th className="border-b border-wa-accent/20 px-5 py-4">名前</th>
-                                            <th className="border-b border-wa-accent/20 px-5 py-4">OK</th>
-                                            <th className="border-b border-wa-accent/20 px-5 py-4">NG</th>
-                                            <th className="border-b border-wa-accent/20 px-5 py-4">率</th>
+                                            <SortableTh
+                                                label="順位"
+                                                active={rankingSort.key === 'rank'}
+                                                dir={rankingSort.dir}
+                                                onToggle={() => toggleRankingSort('rank')}
+                                                className="border-b border-wa-accent/20 px-5 py-4"
+                                            />
+                                            <SortableTh
+                                                label="名前"
+                                                active={rankingSort.key === 'name'}
+                                                dir={rankingSort.dir}
+                                                onToggle={() => toggleRankingSort('name')}
+                                                className="border-b border-wa-accent/20 px-5 py-4"
+                                            />
+                                            <SortableTh
+                                                label="OK"
+                                                active={rankingSort.key === 'ok'}
+                                                dir={rankingSort.dir}
+                                                onToggle={() => toggleRankingSort('ok')}
+                                                className="border-b border-wa-accent/20 px-5 py-4"
+                                            />
+                                            <SortableTh
+                                                label="NG"
+                                                active={rankingSort.key === 'ng'}
+                                                dir={rankingSort.dir}
+                                                onToggle={() => toggleRankingSort('ng')}
+                                                className="border-b border-wa-accent/20 px-5 py-4"
+                                            />
+                                            <SortableTh
+                                                label="率"
+                                                active={rankingSort.key === 'rate'}
+                                                dir={rankingSort.dir}
+                                                onToggle={() => toggleRankingSort('rate')}
+                                                className="border-b border-wa-accent/20 px-5 py-4"
+                                            />
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {ranking.map((r) => (
+                                        {rankingSorted.map((r) => (
                                             <tr
                                                 key={r.rank}
                                                 className="cursor-pointer transition-colors hover:bg-wa-ink"

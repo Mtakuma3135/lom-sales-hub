@@ -61,7 +61,7 @@ class SendKotPunchJob implements ShouldQueue
             $this->auditLog(
                 integration: 'kot',
                 eventType: 'punch',
-                status: 'success',
+                status: 'skipped',
                 requestPayload: $payload,
                 actor: $user,
                 meta: ['mode' => 'mock', 'reason' => 'no_token'],

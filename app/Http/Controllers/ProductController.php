@@ -35,6 +35,8 @@ class ProductController extends Controller
             is_string($q) ? $q : null,
             is_string($category) ? $category : null,
             $activeOnly,
+            $request->string('sort')->toString(),
+            $request->string('dir')->toString(),
         );
 
         $productsResource = ProductResource::collection($products)
@@ -48,6 +50,8 @@ class ProductController extends Controller
                 'q' => is_string($q) ? $q : '',
                 'category' => is_string($category) ? $category : '',
                 'active_only' => $activeOnly,
+                'sort' => $request->string('sort')->toString(),
+                'dir' => $request->string('dir')->toString(),
             ],
             'categoryOptions' => Product::query()
                 ->select('category')

@@ -5,7 +5,8 @@ import TextInput from '@/Components/TextInput';
 import InputLabel from '@/Components/InputLabel';
 import InputError from '@/Components/InputError';
 import NeonCard from '@/Components/NeonCard';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { nextDir, type SortDir, SortableTh } from '@/Components/SortableTh';
 
 type UserRow = {
     id: number;
@@ -20,6 +21,24 @@ type UserRow = {
 type UsersProp = {
     data: UserRow[];
 };
+
+const USER_SORT_KEYS = ['name', 'employee_code', 'role'] as const;
+type UserSortKey = (typeof USER_SORT_KEYS)[number];
+
+function readUsersSortFromUrl(): { key: UserSortKey; dir: SortDir } {
+    const p = new URLSearchParams(window.location.search);
+    const raw = p.get('sort') ?? 'name';
+    const key = (USER_SORT_KEYS as readonly string[]).includes(raw) ? (raw as UserSortKey) : 'name';
+    const dir = (p.get('dir') ?? 'asc') === 'desc' ? 'desc' : 'asc';
+    return { key, dir };
+}
+
+function writeUsersSortUrl(key: UserSortKey, dir: SortDir) {
+    const p = new URLSearchParams(window.location.search);
+    p.set('sort', key);
+    p.set('dir', dir);
+    window.history.replaceState({}, '', `${window.location.pathname}?${p.toString()}`);
+}
 
 export default function Index({ users }: { users: UsersProp }) {
     const { data, setData, post, processing, errors, reset } = useForm({
@@ -59,6 +78,35 @@ export default function Index({ users }: { users: UsersProp }) {
     const [editName, setEditName] = useState<string>('');
     const [editRole, setEditRole] = useState<'admin' | 'general'>('general');
     const [editActive, setEditActive] = useState<boolean>(true);
+
+    const [sort, setSort] = useState<{ key: UserSortKey; dir: SortDir }>(() => readUsersSortFromUrl());
+
+    useEffect(() => {
+        writeUsersSortUrl(sort.key, sort.dir);
+    }, [sort.key, sort.dir]);
+
+    useEffect(() => {
+        const onPop = () => setSort(readUsersSortFromUrl());
+        window.addEventListener('popstate', onPop);
+        return () => window.removeEventListener('popstate', onPop);
+    }, []);
+
+    const sortedUsers = useMemo(() => {
+        const sign = sort.dir === 'asc' ? 1 : -1;
+        const key = sort.key;
+        return [...users.data].sort((a, b) => {
+            const av = a[key] ?? '';
+            const bv = b[key] ?? '';
+            return String(av).localeCompare(String(bv), 'ja') * sign;
+        });
+    }, [sort.dir, sort.key, users.data]);
+
+    const toggleSort = (key: UserSortKey) => {
+        setSort((s) => {
+            if (s.key !== key) return { key, dir: 'asc' };
+            return { key, dir: nextDir(s.dir) };
+        });
+    };
 
     const openEdit = (u: UserRow) => {
         setEditingUserId(u.id);
@@ -155,9 +203,27 @@ export default function Index({ users }: { users: UsersProp }) {
                         <table className="mt-4 w-full border-collapse text-left">
                             <thead>
                                 <tr className="text-xs text-wa-muted">
-                                    <th className="border-b border-wa-accent/20 p-3 font-bold tracking-widest">NAME</th>
-                                    <th className="border-b border-wa-accent/20 p-3 font-bold tracking-widest">CODE</th>
-                                    <th className="border-b border-wa-accent/20 p-3 font-bold tracking-widest">ROLE</th>
+                                    <SortableTh
+                                        label="NAME"
+                                        active={sort.key === 'name'}
+                                        dir={sort.dir}
+                                        onToggle={() => toggleSort('name')}
+                                        className="border-b border-wa-accent/20 p-3 font-bold tracking-widest"
+                                    />
+                                    <SortableTh
+                                        label="CODE"
+                                        active={sort.key === 'employee_code'}
+                                        dir={sort.dir}
+                                        onToggle={() => toggleSort('employee_code')}
+                                        className="border-b border-wa-accent/20 p-3 font-bold tracking-widest"
+                                    />
+                                    <SortableTh
+                                        label="ROLE"
+                                        active={sort.key === 'role'}
+                                        dir={sort.dir}
+                                        onToggle={() => toggleSort('role')}
+                                        className="border-b border-wa-accent/20 p-3 font-bold tracking-widest"
+                                    />
                                     <th className="border-b border-wa-accent/20 p-3 font-bold tracking-widest">ACTIONS</th>
                                 </tr>
                             </thead>
@@ -169,7 +235,7 @@ export default function Index({ users }: { users: UsersProp }) {
                                         </td>
                                     </tr>
                                 )}
-                                {users.data.map((user) => (
+                                {sortedUsers.map((user) => (
                                     <tr key={user.id} className="transition-colors hover:bg-wa-ink/80">
                                         <td className="border-b border-wa-accent/20 p-3 text-sm font-black tracking-tight text-wa-body">
                                             {user.name}

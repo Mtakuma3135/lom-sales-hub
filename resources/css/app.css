@@ -55,7 +55,8 @@
 
   /** フォーム（モダン和風ダーク） */
   .nordic-field {
-    @apply w-full rounded-sm border border-wa-accent/25 bg-wa-ink px-4 py-3 text-sm text-wa-body shadow-none placeholder:text-wa-muted focus:border-wa-accent/45 focus:outline-none focus:ring-1 focus:ring-wa-accent/30;
+    /* 角丸は「ほんの少し」(≈2px) */
+    @apply w-full rounded-[2px] border border-wa-accent/25 bg-wa-ink px-4 py-3 text-sm text-wa-body shadow-none placeholder:text-wa-muted focus:border-wa-accent/45 focus:outline-none focus:ring-1 focus:ring-wa-accent/30;
   }
 
   /* 長いURL/ID/パスワードなどのはみ出し対策 */

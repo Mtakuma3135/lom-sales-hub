@@ -21,6 +21,7 @@ use App\Http\Controllers\ProductApiController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductShowController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\PortalMypageApiController;
 use App\Http\Controllers\SalesController;
 use App\Http\Controllers\SalesRecordController;
 use App\Http\Controllers\TaskRequestController;
@@ -83,6 +84,9 @@ Route::middleware('auth')->group(function () {
         Route::delete('/api/daily-tasks/templates/{id}', [DailyTaskApiController::class, 'destroyTemplate'])->name('portal.api.daily-tasks.templates.destroy');
         Route::get('/mypage', [MypageController::class, 'index'])->name('mypage.index');
         Route::patch('/mypage/password', [MypageController::class, 'updatePassword'])->name('mypage.password.update');
+
+        Route::post('/api/mypage/kot/punch', [PortalMypageApiController::class, 'kotPunch'])
+            ->name('portal.api.mypage.kot.punch');
 
         // KOT mock endpoint (internal)
         Route::post('/mock/kot/punch', [KotMockController::class, 'punch'])->name('portal.mock.kot.punch');

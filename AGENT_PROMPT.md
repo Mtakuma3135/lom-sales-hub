@@ -1,71 +1,85 @@
-# Agent Prompt (Implementation Spec)
+## Agent Prompt: 85点→120点 改善指示書（KOT証明 + 保守性）
 
-You are the implementation owner for this repo (Laravel + Inertia React + Tailwind).
-Implement the following 13 tickets. Follow the global rules first.
+あなたはこのリポジトリ（Laravel + Inertia React + Tailwind）の実装担当です。
+この指示書に沿って「実数値で動く証明力」と「ロジック矛盾の排除」を行ってください。
 
-## Global rules
-- Never allow layout breakage or content overflowing outside a card/container.
-  - For long text/URL/unbroken strings: use `overflow-wrap:anywhere` and `whitespace-pre-wrap`, and/or confine inside a scrollable container.
-- Every user action must produce an immediate visible UI change (button state, badge, toast, or optimistic update). Do not rely on polling only.
-- State of truth is the API response. For time/date, use `meta.server_time` and `meta.date` to avoid UTC/JST drift.
-- Enforce permissions both in UI and API.
-- Improve perceived performance with skeleton/placeholder + progressive rendering; heavy sync (e.g. GAS) should be async or user-triggered.
-- Do not create new git branches; work on the current branch.
+### 絶対ルール
+- **モックで“成功”に見せかけない**。localでモックを許可しても、UI/監査ログ/証明モードで必ず区別する。
+- **状態の真実はサーバー**（API/DB）。UIはそれを正にする。
+- **同じ情報は単一ソース**で決める（connected判定などを二重実装しない）。
+- **安全なホワイトリスト方式**（sortキー等は許可リスト以外を受けない）。
+- 既存のUXを壊さない（レイアウト崩れ・コンテンツはみ出し禁止）。
+- Git: 新しいブランチは作らず、現ブランチで作業。
 
-## Tickets
+---
 
-### T1 Home: Notices scrollable and shows all (newest first)
-- Make the Home notices card vertically scrollable and able to display all notices (sorted newest first).
+## ゴール
+- local mock が混じっても、運用者が誤解しない。
+- 「実通信/実処理が起きた」ことを UI で証明できる（一次ソースは監査ログ）。
+- 将来の改修で壊れやすい“二重実装”を整理する。
 
-### T2 Lunch break timers: Home must move when Lunch screen starts timer
-- Fix any remaining sync drift so Home timer always moves after start/stop/reset on LunchBreaks screen.
-- Ensure both pages compute time based on server_time offset and query date based on server-provided date.
-- Ensure event-driven refresh exists (start/stop/reset dispatch → Home refetch).
+---
 
-### T3 Home KPI: make “this month” impactful
-- Redesign KPI section so contract rate is the hero (bigger, stronger contrast).
-- Add a clear visual gauge/bar and a small delta indicator (mock is OK).
-- Keep it stable and not noisy.
+## 実装チケット（優先順）
 
-### T4 Home task list: scrollable list
-- Make Home task list scrollable within its card (no page stretch).
+### T1（P0）KOT: 実通信とlocal mockを混ぜない（証明力）
+**現状課題**: `KOT_API_TOKEN` 未設定でも監査ログが success になり得て、証明が曖昧。
 
-### T5 Sales records calendar YYYY/MM/DD looks cramped
-- Adjust date input width/spacing so it doesn’t look cramped; keep responsive.
+**実装**:
+- `SendKotPunchJob` の no-token 分岐の監査ログ方針を決めて反映。
+- 必ず `meta.mode='mock'` と `meta.reason='no_token'` を付与。
 
-### T6 TASK / MANAGEMENT
-- Creating a request must immediately add to the list without manual reload.
-- When a request is assigned to the current user, highlight it with a special style.
-- Color-code statuses: pending vs in_progress (and others if present) consistently.
+**ここは選択**（どちらかを採用して実装）:
+- **A（推奨）**: `status='skipped'`（または `status='mock'`）に変更。success扱いにしない。
+- **B**: `status='success'` は維持。ただし「証明モード」や集計では `meta.mode=mock` を必ず除外。
 
-### T7 Task screen: task add is broken, “管理” always showing is ugly
-- Fix task add functionality.
-- Remove always-on “管理” clutter; move add/edit into a clean modal/drawer edit UI.
+### T2（P0）Mypage: integrationsのKOT接続状態の矛盾を解消
+**現状課題**: integrations上のKOTが常にconnectedになり得て `kot_status.connected` と矛盾。
 
-### T8 NOTICE / FEED enhancements
-- Add “Save as draft” button (published_at null) in create/edit flows.
-- Add admin-only delete button for notices (UI + API + policy).
+**実装**:
+- KOTの接続状態は **単一ソース**（推奨: `services.kot.api_token` または `kot_status.connected`）で決める。
+- integrations配列のKOT表示もその値に一致させる。
 
-### T9 PRODUCTS / CATALOG search doesn’t work
-- Implement functional search (name/category/active) end-to-end.
+### T3（P1）監査ログ一覧: mockを確実に見分ける
+**現状課題**: 一覧propsに `meta` が無いと `meta.mode` バッジが出ない可能性。
 
-### T10 Product edit: add missing fields
-- Add editing for price/status/category etc. on product edit screen (admin only), with API validation.
+**実装案（いずれか）**:
+- **案A**: 監査ログの一覧レスポンスに `meta`（少なくとも `mode`）を含める。
+- **案B（堅牢）**: `audit_logs` に `mode` 列（nullable）を追加し、書込み時に保存。一覧はその列で判断。
 
-### T11 My page: align PROFILE and ATTENDANCE heights
-- Make both cards the same height in the grid.
+### T4（P1）Productsソート: 二重実装を1本化（将来バグ予防）
+**現状課題**: `applySearch()` と `toggleSort()` が似た責務で壊れやすい。
 
-### T12 Credentials: slow load → optimize perceived performance
-- Show fast initial UI (skeleton/placeholder).
-- Avoid blocking on GAS; load from DB first, refresh asynchronously or on user action.
+**実装**:
+- `runSearch({ q, category, activeOnly, sort, dir })` のような関数を1本用意し、そこからのみ `router.get` を呼ぶ。
+- `applySearch/toggleSort` は `runSearch` 呼び出しに統一。
 
-### T13 Logs: paginate about 10 per page
-- Convert log lists that are too long into 10-per-page pagination (API paginate + UI pager).
+### T5（P2）クライアントソートもURL同期（運用再現性）
+**対象候補**: Users / Sales Summary Ranking など
 
-## Delivery
-- Implement in dependency order and keep each ticket verifiable.
-- After completing all, provide:
-  - What changed (by ticket),
-  - How to test each ticket quickly,
-  - Any follow-ups/risks.
+**実装**:
+- `?sort=&dir=` をURLに反映し、初期表示で読み取って state を復元する。
+- フルリロード不要（`history.replaceState` などでOK）。
 
+### T6（P2）attendance=null の意味を分離（未連携/未取得/失敗）
+**現状課題**: null が複数の意味を持ち、運用で原因切り分けが難しい。
+
+**実装**:
+- `attendance.state` を導入（例: `not_connected | not_fetched | ok | has_error | error`）。
+- UIの表示文言も state に合わせて分岐。
+
+---
+
+## 受け入れ条件（Done定義）
+- local mockが **成功に見えない**（UI/監査ログ/証明モードで区別できる）。
+- MypageのKOT表示が **矛盾しない**（integrations と kot_status が一致）。
+- 監査ログ一覧で mock が **確実に判別できる**。
+- Products検索/ソートが **1つの関数**に集約され、改修で壊れにくい。
+- 可能ならソート状態がURLで再現できる（運用ツールとして共有できる）。
+
+---
+
+## 仕上げ（提出物）
+- 何を変えたか（チケット単位の要約）
+- 最短テスト手順（画面/URL/操作）
+- 残課題/リスク（あれば）

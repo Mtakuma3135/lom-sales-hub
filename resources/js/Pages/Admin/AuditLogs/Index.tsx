@@ -5,6 +5,18 @@ import { Fragment, useState } from 'react';
 import NordicCard from '@/Components/UI/NordicCard';
 import StatusBadge from '@/Components/StatusBadge';
 import JsonCodeBlock from '@/Components/JsonCodeBlock';
+import { nextDir, type SortDir, SortableTh } from '@/Components/SortableTh';
+
+function auditRowStatusVariant(
+    status: string,
+): { label: string; variant: 'success' | 'danger' | 'warning' | 'muted' } {
+    const s = status.toLowerCase();
+    if (s === 'success') return { label: status, variant: 'success' };
+    if (s === 'failed') return { label: status, variant: 'danger' };
+    if (s === 'skipped' || s === 'mock') return { label: status, variant: 'warning' };
+    if (s === 'pending') return { label: status, variant: 'muted' };
+    return { label: status, variant: 'muted' };
+}
 
 type Row = {
     id: number;
@@ -16,6 +28,8 @@ type Row = {
     actor_id: number | null;
     user?: { id: number; name: string } | null;
     related_id: number | null;
+    meta?: Record<string, unknown> | null;
+    mode?: string | null;
     created_at: string;
 };
 
@@ -58,8 +72,25 @@ function formatJst(dt: string): string {
 export default function Index() {
     const { props } = usePage<{ logs: Paginator<Row> }>();
     const items = props.logs?.data ?? [];
+    const currentParams = new URLSearchParams(window.location.search);
+    const sort = currentParams.get('sort') ?? 'created_at';
+    const dir = ((currentParams.get('dir') ?? 'desc') === 'asc' ? 'asc' : 'desc') as SortDir;
     const [expandedId, setExpandedId] = useState<number | null>(null);
     const [cache, setCache] = useState<Record<number, Detail | 'loading' | 'error'>>({});
+
+    const toggleSort = (key: string) => {
+        const next = new URLSearchParams(window.location.search);
+        const curSort = next.get('sort') ?? 'created_at';
+        const curDir = ((next.get('dir') ?? 'desc') === 'asc' ? 'asc' : 'desc') as SortDir;
+
+        if (curSort !== key) {
+            next.set('sort', key);
+            next.set('dir', 'asc');
+        } else {
+            next.set('dir', nextDir(curDir));
+        }
+        window.location.href = `${window.location.pathname}?${next.toString()}`;
+    };
 
     const toggleRow = async (id: number) => {
         if (expandedId === id) {
@@ -106,19 +137,51 @@ export default function Index() {
                         <table className="w-full text-left text-sm">
                             <thead className="bg-wa-card text-xs font-semibold uppercase tracking-wider text-wa-muted">
                                 <tr>
-                                    <th className="px-5 py-4">実行日時</th>
+                                    <SortableTh
+                                        label="実行日時"
+                                        active={sort === 'created_at'}
+                                        dir={dir}
+                                        onToggle={() => toggleSort('created_at')}
+                                        className="px-5 py-4"
+                                    />
                                     <th className="px-5 py-4">ユーザー</th>
-                                    <th className="px-5 py-4">アクション</th>
-                                    <th className="px-5 py-4">ステータス</th>
-                                    <th className="px-5 py-4">対象ID</th>
+                                    <SortableTh
+                                        label="アクション"
+                                        active={sort === 'event_type'}
+                                        dir={dir}
+                                        onToggle={() => toggleSort('event_type')}
+                                        className="px-5 py-4"
+                                    />
+                                    <SortableTh
+                                        label="記録 / HTTP"
+                                        active={sort === 'status_code'}
+                                        dir={dir}
+                                        onToggle={() => toggleSort('status_code')}
+                                        className="px-5 py-4"
+                                    />
+                                    <SortableTh
+                                        label="対象ID"
+                                        active={sort === 'related_id'}
+                                        dir={dir}
+                                        onToggle={() => toggleSort('related_id')}
+                                        className="px-5 py-4"
+                                    />
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-wa-accent/15 bg-wa-card">
                                 {items.length ? (
                                     items.map((x) => {
-                                        const badge = statusCodeVariant(x.status_code);
+                                        const httpBadge = statusCodeVariant(x.status_code);
+                                        const rowSt = auditRowStatusVariant(x.status);
                                         const open = expandedId === x.id;
                                         const rowDetail = cache[x.id];
+                                        const modeVal =
+                                            typeof x.mode === 'string' && x.mode !== ''
+                                                ? x.mode
+                                                : x.meta && typeof x.meta === 'object' && 'mode' in x.meta
+                                                  ? String((x.meta as Record<string, unknown>).mode ?? '')
+                                                  : '';
+                                        const showMock = modeVal === 'mock' || x.status.toLowerCase() === 'skipped';
                                         return (
                                             <Fragment key={x.id}>
                                                 <tr
@@ -135,10 +198,20 @@ export default function Index() {
                                                         {x.user?.name ?? (x.actor_id ? `#${x.actor_id}` : '—')}
                                                     </td>
                                                     <td className="px-5 py-4 font-medium text-wa-body">
-                                                        {actionLabel(x.integration, x.event_type)}
+                                                        <div className="flex flex-wrap items-center gap-2">
+                                                            <span>{actionLabel(x.integration, x.event_type)}</span>
+                                                            {showMock ? (
+                                                                <span className="rounded-full border border-wa-accent/20 bg-wa-ink px-2 py-0.5 text-[10px] font-semibold text-wa-muted">
+                                                                    MOCK
+                                                                </span>
+                                                            ) : null}
+                                                        </div>
                                                     </td>
                                                     <td className="px-5 py-4">
-                                                        <StatusBadge variant={badge.variant}>{badge.label}</StatusBadge>
+                                                        <div className="flex flex-wrap items-center gap-2">
+                                                            <StatusBadge variant={rowSt.variant}>{rowSt.label}</StatusBadge>
+                                                            <StatusBadge variant={httpBadge.variant}>{httpBadge.label}</StatusBadge>
+                                                        </div>
                                                     </td>
                                                     <td className="px-5 py-4 font-mono text-xs text-wa-muted">
                                                         {x.related_id ?? '—'}

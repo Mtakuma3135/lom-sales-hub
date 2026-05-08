@@ -34,6 +34,8 @@ class ProductApiController extends Controller
             is_string($q) ? $q : null,
             is_string($category) ? $category : null,
             $activeOnly,
+            $request->string('sort')->toString(),
+            $request->string('dir')->toString(),
         );
 
         return response()->json(ProductResource::collection($items));
