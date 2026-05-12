@@ -25,6 +25,8 @@ class User extends Authenticatable
         'password',
         'role',
         'is_active',
+        'internal_policy_explained_at',
+        'internal_policy_version',
     ];
 
     /**
@@ -35,6 +37,8 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'two_factor_secret',
+        'two_factor_recovery_hashes',
     ];
 
     /**
@@ -47,10 +51,28 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
         'is_active' => 'boolean',
+        'internal_policy_explained_at' => 'datetime',
+        'two_factor_secret' => 'encrypted',
+        'two_factor_recovery_hashes' => 'array',
+        'two_factor_confirmed_at' => 'datetime',
     ];
 
     public function department(): BelongsTo
     {
         return $this->belongsTo(Department::class);
     }
+
+    public function hasTwoFactorEnabled(): bool
+    {
+        return $this->two_factor_confirmed_at !== null && $this->two_factor_secret !== null;
+    }
+
+    /**
+     * パスワード変更・リセット後に全 Sanctum トークンを失効（漏洩トークンの窓を閉じる）。
+     */
+    public function revokeAllTokens(): void
+    {
+        $this->tokens()->delete();
+    }
 }
+

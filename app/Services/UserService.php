@@ -18,11 +18,13 @@ class UserService
     }
 
     /**
-     * @param  array{name:string,employee_code:string,email?:string|null,password:string,role:string,is_active?:bool}  $data
+     * @param  array{name:string,employee_code:string,email?:string|null,password:string,role:string,is_active?:bool,internal_policy_explained?:bool|string|int}  $data
      */
     public function store(array $data): User
     {
         try {
+            $policyExplained = filter_var($data['internal_policy_explained'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
             return User::query()->create([
                 'name' => $data['name'],
                 'employee_code' => $data['employee_code'],
@@ -30,6 +32,8 @@ class UserService
                 'password' => Hash::make($data['password']),
                 'role' => $data['role'],
                 'is_active' => $data['is_active'] ?? true,
+                'internal_policy_explained_at' => $policyExplained ? now() : null,
+                'internal_policy_version' => $policyExplained ? (string) config('lom.internal_policy_version') : null,
                 'department_id' => null,
             ]);
         } catch (\Throwable $e) {

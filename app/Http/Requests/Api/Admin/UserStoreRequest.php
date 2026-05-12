@@ -23,6 +23,7 @@ class UserStoreRequest extends FormRequest
             'password' => ['required', 'string', 'min:8', 'max:255'],
             'role' => ['required', 'in:admin,general'],
             'is_active' => ['sometimes', 'boolean'],
+            'internal_policy_explained' => ['accepted'],
         ];
     }
 }

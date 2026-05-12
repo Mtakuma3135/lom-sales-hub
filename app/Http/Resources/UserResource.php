@@ -23,6 +23,8 @@ class UserResource extends JsonResource
             'email' => $this->resource->email,
             'role' => $this->resource->role,
             'is_active' => $this->resource->is_active,
+            'internal_policy_explained_at' => optional($this->resource->internal_policy_explained_at)->toISOString(),
+            'internal_policy_version' => $this->resource->internal_policy_version,
             'department' => $dept ? [
                 'id' => (int) $dept->id,
                 'name' => (string) $dept->name,

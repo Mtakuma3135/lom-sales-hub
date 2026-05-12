@@ -15,6 +15,8 @@ type UserRow = {
     email: string | null;
     role: 'admin' | 'general' | string;
     is_active?: boolean;
+    internal_policy_explained_at?: string | null;
+    internal_policy_version?: string | null;
     department?: { id: number; name: string; code: string } | null;
 };
 
@@ -46,12 +48,13 @@ export default function Index({ users }: { users: UsersProp }) {
         employee_code: '',
         password: '',
         role: 'general' as 'admin' | 'general',
+        internal_policy_explained: false,
     });
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
         post(route('admin.users.store'), {
-            onSuccess: () => reset('password'),
+            onSuccess: () => reset(),
         });
     };
 
@@ -132,7 +135,9 @@ export default function Index({ users }: { users: UsersProp }) {
                     <NeonCard elevate={false}>
                         <div className="text-xs font-bold tracking-widest text-wa-muted">CREATE</div>
                         <div className="mt-2 text-sm font-black tracking-tight text-wa-body">新規ユーザー登録</div>
-                        <div className="mt-1 text-xs text-wa-muted">必須項目を入力して登録してください</div>
+                        <div className="mt-1 text-xs text-wa-muted">
+                            社内ポータル利用規程と個人情報の取り扱いを説明したうえで登録します
+                        </div>
 
                         <form onSubmit={submit} className="mt-5 space-y-5">
                             <div>
@@ -185,6 +190,27 @@ export default function Index({ users }: { users: UsersProp }) {
                                 </select>
                                 <InputError message={errors.role} className="mt-2" />
                             </div>
+                            <label className="block rounded-sm border border-wa-accent/20 bg-wa-ink/70 p-4 text-sm text-wa-body">
+                                <span className="flex items-start gap-3">
+                                    <input
+                                        type="checkbox"
+                                        checked={data.internal_policy_explained}
+                                        onChange={(e) => setData('internal_policy_explained', e.target.checked)}
+                                        className="mt-1 rounded-sm border-wa-accent/35 text-wa-accent"
+                                        required
+                                    />
+                                    <span>
+                                        <span className="block font-black tracking-tight">
+                                            社内ポータル利用規程・個人情報取り扱い説明済み
+                                        </span>
+                                        <span className="mt-1 block text-xs leading-5 text-wa-muted">
+                                            業務上必要な氏名・社員コード・操作履歴等を社内ポータルで利用し、
+                                            監査・不正アクセス防止・運用改善のため記録されることを説明済みです。
+                                        </span>
+                                    </span>
+                                </span>
+                                <InputError message={errors.internal_policy_explained} className="mt-2" />
+                            </label>
                             <PrimaryButton className="w-full justify-center" disabled={processing}>
                                 登録
                             </PrimaryButton>
@@ -224,13 +250,14 @@ export default function Index({ users }: { users: UsersProp }) {
                                         onToggle={() => toggleSort('role')}
                                         className="border-b border-wa-accent/20 p-3 font-bold tracking-widest"
                                     />
+                                    <th className="border-b border-wa-accent/20 p-3 font-bold tracking-widest">POLICY</th>
                                     <th className="border-b border-wa-accent/20 p-3 font-bold tracking-widest">ACTIONS</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {users.data.length === 0 && (
                                     <tr>
-                                        <td colSpan={4} className="py-10 text-center text-sm text-wa-muted">
+                                        <td colSpan={5} className="py-10 text-center text-sm text-wa-muted">
                                             ユーザーが登録されていません
                                         </td>
                                     </tr>
@@ -253,6 +280,19 @@ export default function Index({ users }: { users: UsersProp }) {
                                                 }
                                             >
                                                 {user.role === 'admin' ? '管理者' : user.role === 'general' ? '一般' : user.role}
+                                            </span>
+                                        </td>
+                                        <td className="border-b border-wa-accent/20 p-3 text-sm">
+                                            <span
+                                                className={
+                                                    'inline-flex items-center rounded-full px-2.5 py-1 text-xs font-black tracking-tight ' +
+                                                    (user.internal_policy_explained_at
+                                                        ? 'border border-emerald-500/35 bg-wa-ink text-emerald-300 ring-1 ring-inset ring-emerald-500/25'
+                                                        : 'border border-amber-500/35 bg-wa-ink text-amber-300 ring-1 ring-inset ring-amber-500/25')
+                                                }
+                                                title={user.internal_policy_version ? `規程バージョン: ${user.internal_policy_version}` : undefined}
+                                            >
+                                                {user.internal_policy_explained_at ? '説明済み' : '未確認'}
                                             </span>
                                         </td>
                                         <td className="border-b border-wa-accent/20 p-3 text-sm">
