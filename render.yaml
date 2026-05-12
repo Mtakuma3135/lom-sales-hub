@@ -52,6 +52,8 @@ services:
         value: "false"
       - key: AUTO_SEED_EMPTY_DATABASE
         value: "true"
+      - key: AUTO_ENSURE_DEMO_ADMIN
+        value: "true"
 
 databases:
   - name: lom-sales-hub-db

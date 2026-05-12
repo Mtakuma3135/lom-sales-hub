@@ -4,11 +4,12 @@ namespace App\Console\Commands;
 
 use App\Models\User;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 
 class SeedIfEmptyCommand extends Command
 {
-    protected $signature = 'app:seed-if-empty';
+    protected $signature = 'app:seed-if-empty {--ensure-demo-admin : Always upsert the portfolio demo admin account.}';
 
     protected $description = 'Seed demo data only when the users table exists and has no records.';
 
@@ -17,6 +18,10 @@ class SeedIfEmptyCommand extends Command
         if (! Schema::hasTable('users')) {
             $this->warn('Skipped seeding because the users table does not exist.');
             return self::SUCCESS;
+        }
+
+        if ($this->option('ensure-demo-admin')) {
+            $this->ensureDemoAdmin();
         }
 
         if (User::query()->exists()) {
@@ -28,5 +33,21 @@ class SeedIfEmptyCommand extends Command
         $this->call('db:seed', ['--force' => true]);
 
         return self::SUCCESS;
+    }
+
+    private function ensureDemoAdmin(): void
+    {
+        User::query()->updateOrCreate(
+            ['employee_code' => '12345'],
+            [
+                'name' => 'Admin User',
+                'email' => 'admin@example.com',
+                'password' => Hash::make('password'),
+                'role' => 'admin',
+                'is_active' => true,
+            ],
+        );
+
+        $this->info('Ensured demo admin account: 12345 / password.');
     }
 }

@@ -40,6 +40,7 @@ The Blueprint already sets the production-safe defaults:
 | `REGISTRATION_ENABLED` | `false` |
 | `KOT_MOCK_ENDPOINT_ENABLED` | `false` |
 | `AUTO_SEED_EMPTY_DATABASE` | `true` |
+| `AUTO_ENSURE_DEMO_ADMIN` | `true` |
 
 ## 4. First Deploy
 
@@ -47,14 +48,14 @@ The Docker start script runs:
 
 ```bash
 php artisan migrate --force
-php artisan app:seed-if-empty # only when AUTO_SEED_EMPTY_DATABASE=true and users table is empty
+php artisan app:seed-if-empty --ensure-demo-admin # ensures 12345 / password and seeds when users table is empty
 php artisan storage:link --force
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
 ```
 
-Forced seeders are disabled by default. The Blueprint enables `AUTO_SEED_EMPTY_DATABASE=true`, so the demo seed runs once when the production database has no users.
+Forced seeders are disabled by default. The Blueprint enables `AUTO_SEED_EMPTY_DATABASE=true`, so the demo seed runs once when the production database has no users. It also enables `AUTO_ENSURE_DEMO_ADMIN=true`, so the portfolio login `12345 / password` is restored on deploy.
 
 If you need to seed manually later and Render Shell is available, run:
 
