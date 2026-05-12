@@ -39,6 +39,7 @@ The Blueprint already sets the production-safe defaults:
 | `TRUSTED_PROXIES` | `*` |
 | `REGISTRATION_ENABLED` | `false` |
 | `KOT_MOCK_ENDPOINT_ENABLED` | `false` |
+| `AUTO_SEED_EMPTY_DATABASE` | `true` |
 
 ## 4. First Deploy
 
@@ -46,19 +47,22 @@ The Docker start script runs:
 
 ```bash
 php artisan migrate --force
+php artisan app:seed-if-empty # only when AUTO_SEED_EMPTY_DATABASE=true and users table is empty
 php artisan storage:link --force
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
 ```
 
-Seeders are disabled by default. For a portfolio demo, run this once from Render Shell:
+Forced seeders are disabled by default. The Blueprint enables `AUTO_SEED_EMPTY_DATABASE=true`, so the demo seed runs once when the production database has no users.
+
+If you need to seed manually later and Render Shell is available, run:
 
 ```bash
 php artisan db:seed --force
 ```
 
-Or temporarily set `RUN_SEEDERS=true` for the first deploy, then set it back to `false`.
+Or temporarily set `RUN_SEEDERS=true` for one deploy, then set it back to `false`.
 
 ## 5. Queue Notes
 
