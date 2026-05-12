@@ -33,7 +33,8 @@ The Blueprint already sets the production-safe defaults:
 | `APP_ENV` | `production` |
 | `APP_DEBUG` | `false` |
 | `DB_CONNECTION` | `pgsql` |
-| `DATABASE_URL` | Render PostgreSQL internal connection string |
+| `DB_URL` | Render PostgreSQL internal connection string used by Laravel |
+| `DATABASE_URL` | Same Render PostgreSQL connection string, kept for platform compatibility |
 | `FORCE_HTTPS` | `true` |
 | `TRUSTED_PROXIES` | `*` |
 | `REGISTRATION_ENABLED` | `false` |
