@@ -17,7 +17,8 @@ class TaskRequestStoreRequest extends FormRequest
             'title' => ['required', 'string', 'max:100'],
             'to_user_id' => ['required', 'integer', 'min:1', 'exists:users,id'],
             'priority' => ['required', 'in:urgent,important,normal'],
-            'body' => ['required', 'string', 'max:2000'],
+            'body' => ['nullable', 'string', 'max:2000'],
+            'due_date' => ['nullable', 'date'],
         ];
     }
 
@@ -38,7 +39,13 @@ class TaskRequestStoreRequest extends FormRequest
 
     public function body(): string
     {
-        return (string) $this->input('body');
+        return (string) ($this->input('body') ?? '');
+    }
+
+    public function dueDate(): ?string
+    {
+        $v = $this->input('due_date');
+
+        return $v === null || $v === '' ? null : (string) $v;
     }
 }
-

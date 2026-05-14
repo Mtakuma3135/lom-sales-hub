@@ -6,6 +6,46 @@
   html, body {
     @apply bg-wa-ink text-wa-body;
   }
+
+  /**
+   * スクロールバーを OS の白デフォルトから外し、wa ダークテーマに合わせる。
+   * Firefox: scrollbar-* / Chromium・Safari: ::-webkit-scrollbar
+   */
+  html {
+    color-scheme: dark;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #3f3d3a #1e1e1e;
+  }
+
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  *::-webkit-scrollbar-corner {
+    background: #1e1e1e;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: #1e1e1e;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: #3f3d3a;
+    border-radius: 6px;
+    border: 2px solid #1e1e1e;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: rgba(192, 132, 87, 0.45);
+  }
+
+  *::-webkit-scrollbar-thumb:active {
+    background: rgba(192, 132, 87, 0.62);
+  }
 }
 
 @layer utilities {

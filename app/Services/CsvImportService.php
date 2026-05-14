@@ -2,13 +2,11 @@
 
 namespace App\Services;
 
-use App\Jobs\SendDiscordNotification;
+use App\Events\CsvImportCompleted;
 use App\Jobs\SendCsvToGasJob;
-use App\Models\DiscordNotificationLog;
 use App\Models\CsvUpload;
-use App\Notifications\Discord\DiscordPayloadFactory;
-use App\Models\User;
 use App\Models\SalesRecord;
+use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
@@ -26,6 +24,7 @@ class CsvImportService
                 ->get();
         } catch (\Throwable $e) {
             Log::error('CsvImportService.uploads failed', ['error' => $e->getMessage()]);
+
             return collect();
         }
     }
@@ -73,14 +72,13 @@ class CsvImportService
             // GASダミー転送（Queue枠組み）
             SendCsvToGasJob::dispatch((int) $row->id, $filename, $success, $failed);
 
-            // Discord通知（本番仕様: Job + 監査ログ）
-            $payload = DiscordPayloadFactory::csvCompleted((int) $row->id, $filename, $success, $failed);
-            $log = DiscordNotificationLog::query()->create([
-                'event_type' => 'csv.completion',
-                'payload' => $payload,
-                'triggered_by' => $actor?->id,
-            ]);
-            SendDiscordNotification::dispatch((int) $log->id);
+            event(new CsvImportCompleted(
+                uploadId: (int) $row->id,
+                filename: $filename,
+                successCount: $success,
+                failedCount: $failed,
+                actor: $actor,
+            ));
 
             return [
                 'upload_id' => (int) $row->id,
@@ -124,14 +122,17 @@ class CsvImportService
             $productName = $this->col($cols, $map, ['product_name', '商材', '商品']);
             $contractType = $this->col($cols, $map, ['contract_type', '契約種別']);
             $channel = $this->col($cols, $map, ['channel', '流入', 'チャネル']);
+            $statusRaw = $this->col($cols, $map, ['status', 'ステータス', '判定', '合否']);
             $result = $this->col($cols, $map, ['result', '結果', '成約']);
 
             if ($date === '' || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
                 $errors[] = ['row' => $rowNum, 'message' => '日付が不正です'];
+
                 continue;
             }
             if ($staffName === '') {
                 $errors[] = ['row' => $rowNum, 'message' => '担当者が空です'];
+
                 continue;
             }
 
@@ -147,7 +148,7 @@ class CsvImportService
                 'store_name' => $storeName,
                 'sales_amount' => max(0, $amount),
                 'customer_count' => max(0, $count),
-                'status' => 'ok',
+                'status' => $this->inferCsvStatus($statusRaw, $result),
                 'product_name' => $productName !== '' ? $productName : null,
                 'contract_type' => $contractType !== '' ? $contractType : null,
                 'channel' => $channel !== '' ? $channel : null,
@@ -157,6 +158,31 @@ class CsvImportService
         }
 
         return [$rows, $errors];
+    }
+
+    private function inferCsvStatus(string $explicit, string $resultText): string
+    {
+        $e = mb_strtolower(trim($explicit));
+        if (in_array($e, ['ng', '×', 'x', 'false', '0'], true)) {
+            return 'ng';
+        }
+        if (in_array($e, ['ok', '○', 'o', 'true', '1'], true)) {
+            return 'ok';
+        }
+
+        $r = mb_strtolower($resultText);
+        foreach (['ng', '否', '不成立', '失敗', '却下', '未成約'] as $bad) {
+            if ($r !== '' && str_contains($r, mb_strtolower($bad))) {
+                return 'ng';
+            }
+        }
+        foreach (['成約', 'ok', '成立', '成功'] as $good) {
+            if ($r !== '' && str_contains($r, mb_strtolower($good))) {
+                return 'ok';
+            }
+        }
+
+        return 'ok';
     }
 
     /**
@@ -172,6 +198,7 @@ class CsvImportService
                 $map[$key] = (int) $i;
             }
         }
+
         return $map;
     }
 
@@ -185,9 +212,11 @@ class CsvImportService
         foreach ($candidates as $name) {
             if (array_key_exists($name, $map)) {
                 $idx = $map[$name];
+
                 return isset($cols[$idx]) ? trim((string) $cols[$idx]) : '';
             }
         }
+
         return '';
     }
 
@@ -206,7 +235,7 @@ class CsvImportService
             }
             $raw[$key] = isset($cols[$i]) ? (string) $cols[$i] : '';
         }
+
         return $raw;
     }
 }
-

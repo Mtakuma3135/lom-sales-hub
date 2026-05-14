@@ -2,14 +2,16 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\AuditLog;
+use App\Models\Credential;
+use App\Models\CsvUpload;
+use App\Models\DiscordNotificationLog;
+use App\Models\User;
+use App\Services\LunchBreakService;
+use App\Services\NoticeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Middleware;
-use App\Models\AuditLog;
-use App\Models\CsvUpload;
-use App\Models\Credential;
-use App\Models\DiscordNotificationLog;
-use App\Models\User;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -51,6 +53,35 @@ class HandleInertiaRequests extends Middleware
                 'user' => $user,
                 'can' => $can,
             ],
+            'portalAlerts' => $this->portalAlerts($request),
         ];
+    }
+
+    /**
+     * @return array{lunch_not_started_count: int, unread_notices_count: int, server_time: string}
+     */
+    private function portalAlerts(Request $request): array
+    {
+        $user = $request->user();
+        $base = [
+            'lunch_not_started_count' => 0,
+            'unread_notices_count' => 0,
+            'server_time' => now()->toISOString(),
+        ];
+
+        if (! $user) {
+            return $base;
+        }
+
+        try {
+            $base['lunch_not_started_count'] = app(LunchBreakService::class)
+                ->countScheduledButNotStartedUsers(now()->toDateString());
+            $base['unread_notices_count'] = app(NoticeService::class)
+                ->unreadPublishedCount($user);
+        } catch (\Throwable) {
+            // ignore
+        }
+
+        return $base;
     }
 }

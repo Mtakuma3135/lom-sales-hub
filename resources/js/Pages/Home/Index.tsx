@@ -40,7 +40,7 @@ type LunchLaneStatus = {
 };
 
 type KpiPayload = {
-    summary: { ok: number; ng: number; contract_rate: number };
+    summary: { ok: number; ng: number; contract_rate: number; contract_message?: string | null };
 };
 
 type TaskRow = {
@@ -52,6 +52,12 @@ type TaskRow = {
     due_date: string;
     created_at: string;
     to_user_id?: number | null;
+};
+
+type DailyTaskRow = {
+    id: number;
+    title: string;
+    status: 'pending' | 'in_progress' | 'completed' | string;
 };
 
 function laneRemainingMs(row: LunchLaneStatus, nowMs: number, totalMs: number): number | null {
@@ -143,6 +149,7 @@ export default function Index({
     lunchBreaks,
     kpi,
     tasks,
+    dailyTasks,
     personalKpi,
     serverMeta,
 }: {
@@ -151,7 +158,8 @@ export default function Index({
     lunchBreaks: { data: LunchSlot[]; meta?: { date?: string; server_time?: string } };
     kpi: { data: KpiPayload; meta?: Record<string, unknown> };
     tasks?: { data: TaskRow[] } | TaskRow[];
-    personalKpi?: { ok: number; ng: number; contract_rate: number };
+    dailyTasks?: DailyTaskRow[];
+    personalKpi?: { ok: number; ng: number; contract_rate: number; contract_message?: string | null };
     serverMeta?: { server_time?: string; date?: string };
 }) {
     const pageTitle = title ?? 'ホーム';
@@ -175,8 +183,8 @@ export default function Index({
     }, [noticeRows]);
     const noticeDisplay = noticeRowsSorted;
     const lunchSlots = lunchBreaks?.data ?? [];
-    const summary = kpi?.data?.summary ?? { ok: 0, ng: 0, contract_rate: 0 };
-    const personal = personalKpi ?? { ok: 0, ng: 0, contract_rate: 0 };
+    const summary = kpi?.data?.summary ?? { ok: 0, ng: 0, contract_rate: 0, contract_message: null };
+    const personal = personalKpi ?? { ok: 0, ng: 0, contract_rate: 0, contract_message: null };
     const taskRows = parseTaskData(tasks);
 
     const lunchTableRows = useMemo(() => {
@@ -269,9 +277,35 @@ export default function Index({
         return d.toLocaleString('ja-JP', { dateStyle: 'short', timeStyle: 'short' });
     };
 
-    const activeTasks = useMemo(
-        () => taskRows.filter((t) => t.status === 'pending' || t.status === 'in_progress'),
-        [taskRows],
+    const dailyRows = Array.isArray(dailyTasks) ? dailyTasks : [];
+
+    const homeSortedTasks = useMemo(() => {
+        const uid = userId ?? -1;
+        const activeRank = (s: string) =>
+            s === 'pending' || s === 'in_progress' || s === 'rejected' ? 0 : 1;
+        return [...taskRows].sort((a, b) => {
+            const ar = activeRank(a.status);
+            const br = activeRank(b.status);
+            if (ar !== br) return ar - br;
+            const aMine = (a.to_user_id ?? -1) === uid;
+            const bMine = (b.to_user_id ?? -1) === uid;
+            if (aMine !== bMine) return aMine ? -1 : 1;
+            const prio = (p: string) => (p === 'urgent' || p === 'high' ? 0 : p === 'important' || p === 'medium' ? 1 : 2);
+            const ap = prio(a.priority);
+            const bp = prio(b.priority);
+            if (ap !== bp) return ap - bp;
+            return String(b.created_at).localeCompare(String(a.created_at));
+        });
+    }, [taskRows, userId]);
+
+    const myTaskCount = useMemo(
+        () =>
+            homeSortedTasks.filter(
+                (t) =>
+                    (t.to_user_id ?? 0) === (userId ?? -2) &&
+                    (t.status === 'pending' || t.status === 'in_progress'),
+            ).length,
+        [homeSortedTasks, userId],
     );
 
     return (
@@ -371,23 +405,31 @@ export default function Index({
                                 <div className="text-[10px] font-bold uppercase tracking-widest text-wa-muted">
                                     チーム全体
                                 </div>
-                                <span className="rounded-full border border-teal-500/30 bg-teal-500/10 px-2.5 py-1 text-[11px] font-semibold tabular-nums text-teal-200">
-                                    ▲ 先月比 +1.2pt（モック）
+                                <span className="rounded-full border border-wa-accent/20 bg-wa-ink/80 px-2.5 py-1 text-[11px] font-semibold tabular-nums text-wa-muted">
+                                    CSV取込ベース
                                 </span>
                             </div>
-                            <div className="mt-4 flex flex-wrap items-end gap-3">
-                                <div className="wa-nums text-5xl font-black tabular-nums tracking-tight text-wa-body sm:text-6xl">
-                                    <SlotNumber value={String(summary.contract_rate)} />
-                                    <span className="text-2xl font-bold text-wa-muted">%</span>
+                            {summary.contract_message ? (
+                                <div className="mt-6 text-sm font-medium leading-relaxed text-wa-muted">
+                                    {summary.contract_message}
                                 </div>
-                                <div className="pb-1 text-xs text-wa-muted">契約率（今月）</div>
-                            </div>
-                            <div className="mt-4 h-3 w-full overflow-hidden rounded-full bg-wa-ink ring-1 ring-wa-accent/15">
-                                <div
-                                    className="h-full rounded-full bg-gradient-to-r from-teal-400 via-wa-accent to-sky-400 transition-[width] duration-700 ease-out"
-                                    style={{ width: `${Math.min(100, Math.max(0, summary.contract_rate))}%` }}
-                                />
-                            </div>
+                            ) : (
+                                <>
+                                    <div className="mt-4 flex flex-wrap items-end gap-3">
+                                        <div className="wa-nums text-5xl font-black tabular-nums tracking-tight text-wa-body sm:text-6xl">
+                                            <SlotNumber value={String(summary.contract_rate)} />
+                                            <span className="text-2xl font-bold text-wa-muted">%</span>
+                                        </div>
+                                        <div className="pb-1 text-xs text-wa-muted">契約率（今月）</div>
+                                    </div>
+                                    <div className="mt-4 h-3 w-full overflow-hidden rounded-full bg-wa-ink ring-1 ring-wa-accent/15">
+                                        <div
+                                            className="h-full rounded-full bg-gradient-to-r from-teal-400 via-wa-accent to-sky-400 transition-[width] duration-700 ease-out"
+                                            style={{ width: `${Math.min(100, Math.max(0, summary.contract_rate))}%` }}
+                                        />
+                                    </div>
+                                </>
+                            )}
                             <div className="mt-5 flex flex-wrap gap-3">
                                 <div className="rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-3">
                                     <div className="text-[10px] font-semibold uppercase tracking-wide text-wa-muted">OK</div>
@@ -404,37 +446,45 @@ export default function Index({
                             </div>
                         </div>
 
-                        {/* Personal KPI */}
-                        <div className="rounded-2xl border border-wa-accent/15 bg-wa-ink/80 p-6">
+                        {/* Personal KPI（チーム側とトーンを揃え、白っぽい枠を避ける） */}
+                        <div className="rounded-2xl border border-wa-accent/25 bg-gradient-to-br from-wa-ink via-wa-card to-wa-ink p-6 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)]">
                             <div className="flex flex-wrap items-start justify-between gap-3">
                                 <div className="text-[10px] font-bold uppercase tracking-widest text-wa-muted">
                                     個人成績
                                 </div>
-                                <span className="rounded-full border border-wa-accent/20 bg-wa-card px-2.5 py-1 text-[11px] font-semibold tabular-nums text-wa-muted">
-                                    → 安定（モック）
+                                <span className="rounded-full border border-wa-accent/20 bg-wa-ink/80 px-2.5 py-1 text-[11px] font-semibold tabular-nums text-wa-muted">
+                                    担当者名一致
                                 </span>
                             </div>
-                            <div className="mt-4 flex flex-wrap items-end gap-3">
-                                <div className="wa-nums text-4xl font-black tabular-nums tracking-tight text-wa-body sm:text-5xl">
-                                    <SlotNumber value={String(personal.contract_rate)} />
-                                    <span className="text-xl font-bold text-wa-muted">%</span>
+                            {personal.contract_message ? (
+                                <div className="mt-6 text-sm font-medium leading-relaxed text-wa-muted">
+                                    {personal.contract_message}
                                 </div>
-                                <div className="pb-1 text-xs text-wa-muted">契約率（今月）</div>
-                            </div>
-                            <div className="mt-4 h-2.5 w-full overflow-hidden rounded-full bg-wa-card ring-1 ring-wa-accent/10">
-                                <div
-                                    className="h-full rounded-full bg-wa-accent/80 transition-[width] duration-700 ease-out"
-                                    style={{ width: `${Math.min(100, Math.max(0, personal.contract_rate))}%` }}
-                                />
-                            </div>
+                            ) : (
+                                <>
+                                    <div className="mt-4 flex flex-wrap items-end gap-3">
+                                        <div className="wa-nums text-4xl font-black tabular-nums tracking-tight text-wa-body sm:text-5xl">
+                                            <SlotNumber value={String(personal.contract_rate)} />
+                                            <span className="text-xl font-bold text-wa-muted">%</span>
+                                        </div>
+                                        <div className="pb-1 text-xs text-wa-muted">契約率（今月）</div>
+                                    </div>
+                                    <div className="mt-4 h-2.5 w-full overflow-hidden rounded-full bg-wa-ink ring-1 ring-wa-accent/15">
+                                        <div
+                                            className="h-full rounded-full bg-wa-accent/80 transition-[width] duration-700 ease-out"
+                                            style={{ width: `${Math.min(100, Math.max(0, personal.contract_rate))}%` }}
+                                        />
+                                    </div>
+                                </>
+                            )}
                             <div className="mt-5 flex flex-wrap gap-3">
-                                <div className="rounded-xl border border-wa-accent/10 bg-wa-card px-4 py-3">
+                                <div className="rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-3">
                                     <div className="text-[10px] font-semibold uppercase tracking-wide text-wa-muted">OK</div>
                                     <div className="wa-nums mt-1 text-lg font-semibold tabular-nums text-teal-300">
                                         <SlotNumber value={String(personal.ok)} />
                                     </div>
                                 </div>
-                                <div className="rounded-xl border border-wa-accent/10 bg-wa-card px-4 py-3">
+                                <div className="rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-3">
                                     <div className="text-[10px] font-semibold uppercase tracking-wide text-wa-muted">NG</div>
                                     <div className="wa-nums mt-1 text-lg font-semibold tabular-nums text-red-400">
                                         <SlotNumber value={String(personal.ng)} />
@@ -445,59 +495,104 @@ export default function Index({
                     </div>
                 </NeonCard>
 
-                {/* ── 4. タスク管理 ── */}
+                {/* ── 4. タスク管理（業務依頼 全ステータス + 責タスク） ── */}
                 <NeonCard elevate={false} className="p-8">
                     <SectionHeader
                         eyebrow="TASKS"
                         title="タスク管理"
-                        meta={activeTasks.length > 0 ? `未完了 ${activeTasks.length} 件` : ''}
+                        meta={
+                            [
+                                homeSortedTasks.length > 0 ? `業務依頼 ${homeSortedTasks.length} 件` : null,
+                                dailyRows.length > 0 ? `責タスク ${dailyRows.length} 件` : null,
+                            ]
+                                .filter(Boolean)
+                                .join(' · ') || undefined
+                        }
                         action={{ label: 'すべて見る', onClick: () => go(route('task-requests.index')), variant: 'secondary' }}
                     />
+                    {myTaskCount > 0 ? (
+                        <p className="mt-2 text-sm text-wa-muted">
+                            あなた宛の未完了が{' '}
+                            <span className="font-black tabular-nums text-wa-accent">{myTaskCount}</span> 件あります
+                        </p>
+                    ) : null}
 
-                    {activeTasks.length === 0 ? (
-                        <div className="mt-5 rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-6 text-center text-sm text-wa-muted">
-                            未対応のタスクはありません
-                        </div>
-                    ) : (
-                        <div className="mt-5 max-h-[min(380px,50vh)] space-y-3 overflow-y-auto overflow-x-hidden pr-1">
-                            {activeTasks.map((t) => (
-                                <div
-                                    key={t.id}
-                                    role="button"
-                                    tabIndex={0}
-                                    onClick={() => go(route('task-requests.index'))}
-                                    onKeyDown={(e) => {
-                                        if (e.key !== 'Enter' && e.key !== ' ') return;
-                                        e.preventDefault();
-                                        go(route('task-requests.index'));
-                                    }}
-                                    className="group cursor-pointer rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-4 transition hover:border-wa-accent/30"
-                                >
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div className="min-w-0 flex-1">
-                                            <div className="flex items-center gap-2">
-                                                <StatusBadge variant={priorityVariant(t.priority)}>
-                                                    {priorityLabel(t.priority)}
-                                                </StatusBadge>
-                                                <StatusBadge variant={statusVariant(t.status)}>
-                                                    {statusLabel(t.status)}
-                                                </StatusBadge>
-                                            </div>
-                                            <div className="mt-2 text-sm font-black tracking-tight text-wa-body">
-                                                {t.title}
-                                            </div>
-                                            <div className="mt-1 text-xs text-wa-muted">
-                                                依頼元: {t.requester} / 期限: {t.due_date}
-                                            </div>
-                                        </div>
-                                        <div className="shrink-0 text-[10px] text-wa-muted">
-                                            #{t.id}
-                                        </div>
-                                    </div>
+                    <div className="mt-5 space-y-8">
+                        <div>
+                            <div className="text-xs font-semibold uppercase tracking-widest text-wa-muted">業務依頼</div>
+                            {homeSortedTasks.length === 0 ? (
+                                <div className="mt-3 rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-6 text-center text-sm text-wa-muted">
+                                    業務依頼はありません
                                 </div>
-                            ))}
+                            ) : (
+                                <div className="mt-3 max-h-[min(320px,45vh)] space-y-3 overflow-y-auto overflow-x-hidden pr-1">
+                                    {homeSortedTasks.map((t) => (
+                                        <div
+                                            key={t.id}
+                                            role="button"
+                                            tabIndex={0}
+                                            onClick={() => go(route('task-requests.index'))}
+                                            onKeyDown={(e) => {
+                                                if (e.key !== 'Enter' && e.key !== ' ') return;
+                                                e.preventDefault();
+                                                go(route('task-requests.index'));
+                                            }}
+                                            className="group cursor-pointer rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-4 transition hover:border-wa-accent/30"
+                                        >
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        <StatusBadge variant={priorityVariant(t.priority)}>
+                                                            {priorityLabel(t.priority)}
+                                                        </StatusBadge>
+                                                        <StatusBadge variant={statusVariant(t.status)}>
+                                                            {statusLabel(t.status)}
+                                                        </StatusBadge>
+                                                    </div>
+                                                    <div className="mt-2 text-sm font-black tracking-tight text-wa-body">
+                                                        {t.title}
+                                                    </div>
+                                                    <div className="mt-1 text-xs text-wa-muted">
+                                                        依頼元: {t.requester} / 期限: {t.due_date}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
-                    )}
+
+                        <div className="border-t border-wa-accent/15 pt-6">
+                            <div className="text-xs font-semibold uppercase tracking-widest text-wa-muted">責タスク（今日）</div>
+                            {dailyRows.length === 0 ? (
+                                <div className="mt-3 rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-6 text-center text-sm text-wa-muted">
+                                    今日の責タスクはありません
+                                </div>
+                            ) : (
+                                <ul className="mt-3 max-h-[min(220px,35vh)] space-y-2 overflow-y-auto pr-1">
+                                    {dailyRows.map((d) => (
+                                        <li
+                                            key={d.id}
+                                            className="flex items-center justify-between gap-3 rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-3 text-sm"
+                                        >
+                                            <span
+                                                className={
+                                                    d.status === 'completed'
+                                                        ? 'min-w-0 flex-1 text-wa-muted line-through'
+                                                        : 'min-w-0 flex-1 font-medium text-wa-body'
+                                                }
+                                            >
+                                                {d.title}
+                                            </span>
+                                            <StatusBadge variant={statusVariant(d.status)}>{statusLabel(d.status)}</StatusBadge>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                            <p className="mt-3 text-xs text-wa-muted">チェックの更新はタスク管理の「責タスク」タブから行えます。</p>
+                        </div>
+                    </div>
                 </NeonCard>
             </div>
         </AuthenticatedLayout>

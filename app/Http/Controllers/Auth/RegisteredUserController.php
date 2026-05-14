@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Providers\RouteServiceProvider;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -13,7 +14,6 @@ use Illuminate\Validation\Rules;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
-use App\Providers\RouteServiceProvider;
 
 class RegisteredUserController extends Controller
 {
@@ -22,6 +22,10 @@ class RegisteredUserController extends Controller
      */
     public function create(): Response
     {
+        if (! config('lom.registration_enabled')) {
+            abort(404);
+        }
+
         return Inertia::render('Auth/Register');
     }
 
@@ -32,6 +36,10 @@ class RegisteredUserController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        if (! config('lom.registration_enabled')) {
+            abort(404);
+        }
+
         $request->validate([
             'name' => 'required|string|max:255',
             'employee_code' => ['required', 'string', 'max:255', 'unique:'.User::class.',employee_code'],

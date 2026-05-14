@@ -8,6 +8,7 @@ use App\Http\Resources\CredentialResource;
 use App\Models\Credential;
 use App\Services\CredentialService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class CredentialController extends Controller
 {
@@ -15,9 +16,32 @@ class CredentialController extends Controller
     {
         $this->authorize('viewAny', Credential::class);
 
+        $credentialService->importFromGas();
+
         $items = $credentialService->index();
 
         return CredentialResource::collection($items)->response();
+    }
+
+    public function store(Request $request, CredentialService $credentialService): JsonResponse
+    {
+        $this->authorize('create', Credential::class);
+
+        $validated = $request->validate([
+            'service_name' => ['required', 'string', 'max:255'],
+        ]);
+
+        try {
+            $row = $credentialService->createWithLabelThenImport($validated['service_name']);
+        } catch (\InvalidArgumentException) {
+            return response()->json(['message' => 'サービス名を入力してください。'], 422);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return response()->json(['message' => '追加に失敗しました。'], 500);
+        }
+
+        return CredentialResource::make($row)->response();
     }
 
     public function syncFromGas(CredentialService $credentialService): JsonResponse

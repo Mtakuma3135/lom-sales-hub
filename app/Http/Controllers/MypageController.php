@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Resources\MypageResource;
 use App\Http\Requests\MypagePasswordUpdateRequest;
+use App\Http\Resources\MypageResource;
+use App\Services\CredentialService;
 use App\Services\MypageService;
-use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redirect;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -16,6 +18,17 @@ class MypageController extends Controller
 {
     public function index(Request $request, MypageService $mypageService): Response
     {
+        $user = $request->user();
+        if ($user !== null && ($user->role ?? 'general') === 'admin') {
+            app()->terminating(function (): void {
+                try {
+                    app(CredentialService::class)->importFromGas();
+                } catch (\Throwable $e) {
+                    Log::warning('Mypage GAS credential sync skipped', ['error' => $e->getMessage()]);
+                }
+            });
+        }
+
         $payload = $mypageService->index($request->user());
 
         $resource = (new MypageResource($payload))
@@ -41,4 +54,3 @@ class MypageController extends Controller
         return Redirect::route('mypage.index');
     }
 }
-

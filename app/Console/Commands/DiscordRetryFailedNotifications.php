@@ -22,10 +22,11 @@ class DiscordRetryFailedNotifications extends Command
             })
             ->orderBy('id')
             ->limit($limit)
-            ->get(['id', 'event_type', 'payload']);
+            ->get(['id', 'event_type', 'payload', 'webhook_url']);
 
         if ($failed->isEmpty()) {
             $this->info('No failed/pending logs found.');
+
             return self::SUCCESS;
         }
 
@@ -36,6 +37,7 @@ class DiscordRetryFailedNotifications extends Command
                 'event_type' => (string) $base->event_type,
                 'payload' => $base->payload,
                 'triggered_by' => null,
+                'webhook_url' => $base->webhook_url,
             ]);
             SendDiscordNotification::dispatch((int) $log->id);
             $count++;
@@ -46,4 +48,3 @@ class DiscordRetryFailedNotifications extends Command
         return self::SUCCESS;
     }
 }
-

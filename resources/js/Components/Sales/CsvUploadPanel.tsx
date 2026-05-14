@@ -1,6 +1,8 @@
 import NeonCard from '@/Components/NeonCard';
 import { useEffect, useMemo, useState } from 'react';
 
+const ERROR_LOG_PAGE_SIZE = 15;
+
 /** KPI（売上記録）用 CSV 取り込み — 元 Admin/Csv/Upload と同一 UI */
 export default function CsvUploadPanel() {
     const [fileName, setFileName] = useState<string | null>(null);
@@ -18,17 +20,27 @@ export default function CsvUploadPanel() {
         { id: number; filename: string; success_count: number; failed_count: number; created_at: string }[]
     >([]);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [errorLogPage, setErrorLogPage] = useState(1);
 
     const api = useMemo(() => {
         return {
-            uploads: () => fetch(route('portal.api.csv.uploads'), { headers: { Accept: 'application/json' } }),
+            uploads: () =>
+                fetch(route('portal.api.csv.uploads'), {
+                    headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    credentials: 'same-origin',
+                }),
             upload: (file: File) => {
                 const fd = new FormData();
                 fd.append('file', file);
                 return fetch(route('portal.api.csv.upload'), {
                     method: 'POST',
                     body: fd,
-                    headers: { Accept: 'application/json' },
+                    headers: {
+                        Accept: 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? '',
+                    },
+                    credentials: 'same-origin',
                 });
             },
         };
@@ -50,6 +62,18 @@ export default function CsvUploadPanel() {
     }, [api]);
 
     const errors = result?.errors ?? [];
+    const errorLogPageCount = Math.max(1, Math.ceil(errors.length / ERROR_LOG_PAGE_SIZE));
+    const errorLogPageSafe = Math.min(errorLogPage, errorLogPageCount);
+    const errorLogSlice = useMemo(() => {
+        const start = (errorLogPageSafe - 1) * ERROR_LOG_PAGE_SIZE;
+
+        return errors.slice(start, start + ERROR_LOG_PAGE_SIZE);
+    }, [errors, errorLogPageSafe]);
+
+    useEffect(() => {
+        setErrorLogPage((p) => Math.min(p, errorLogPageCount));
+    }, [errorLogPageCount]);
+
     const totals = useMemo(() => {
         if (!result) return { total: 0, success: 0, failed: 0 };
         return {
@@ -65,7 +89,7 @@ export default function CsvUploadPanel() {
                 <div className="text-xs font-bold tracking-widest text-wa-muted">DROPZONE</div>
                 <div className="mt-2 text-sm font-black tracking-tight text-wa-body">CSVをアップロード</div>
                 <p className="mt-2 text-xs text-wa-muted">
-                    アップロードしたデータは案件・KPIの集計に反映されます。
+                    アップロードしたデータはKPI・案件の集計に反映されます。
                 </p>
 
                 <label className="mt-4 block cursor-pointer rounded-sm border border-dashed border-wa-accent/35 bg-wa-ink px-5 py-8 text-center transition hover:border-wa-accent/55 hover:bg-wa-card">
@@ -79,6 +103,7 @@ export default function CsvUploadPanel() {
                             setFileName(f ? f.name : null);
                             setProgress(0);
                             setResult(null);
+                            setErrorLogPage(1);
                             setErrorMessage(null);
                         }}
                     />
@@ -104,6 +129,7 @@ export default function CsvUploadPanel() {
                             setProgress(72);
                             const json = (await res.json()) as any;
                             setResult(json);
+                            setErrorLogPage(1);
                             setProgress(100);
 
                             const hisRes = await api.uploads();
@@ -202,16 +228,51 @@ export default function CsvUploadPanel() {
                 </NeonCard>
 
                 <NeonCard elevate={false}>
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
                             <div className="text-xs font-bold tracking-widest text-wa-muted">ERROR LOG</div>
                             <div className="mt-1 text-lg font-black tracking-tight text-wa-body">エラー行</div>
                         </div>
-                        <div className="text-xs text-wa-muted">{errors.length} 件</div>
+                        <div className="text-right text-xs text-wa-muted">
+                            <div>全 {errors.length.toLocaleString()} 件</div>
+                            {errors.length > 0 ? (
+                                <div className="mt-1 font-mono text-[11px] text-wa-body">
+                                    {((errorLogPageSafe - 1) * ERROR_LOG_PAGE_SIZE + 1).toLocaleString()}–
+                                    {Math.min(errorLogPageSafe * ERROR_LOG_PAGE_SIZE, errors.length).toLocaleString()} 件を表示
+                                </div>
+                            ) : null}
+                        </div>
                     </div>
 
+                    {errors.length > ERROR_LOG_PAGE_SIZE ? (
+                        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-b border-wa-accent/15 pb-3">
+                            <div className="text-xs text-wa-muted">
+                                ページ {errorLogPageSafe.toLocaleString()} / {errorLogPageCount.toLocaleString()}（各{' '}
+                                {ERROR_LOG_PAGE_SIZE} 件）
+                            </div>
+                            <div className="flex gap-2">
+                                <button
+                                    type="button"
+                                    disabled={errorLogPageSafe <= 1}
+                                    onClick={() => setErrorLogPage((p) => Math.max(1, p - 1))}
+                                    className="rounded-sm border border-wa-accent/30 bg-wa-ink px-3 py-1.5 text-xs font-semibold text-wa-body transition hover:border-wa-accent/50 disabled:cursor-not-allowed disabled:opacity-40"
+                                >
+                                    前へ
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled={errorLogPageSafe >= errorLogPageCount}
+                                    onClick={() => setErrorLogPage((p) => p + 1)}
+                                    className="rounded-sm border border-wa-accent/30 bg-wa-ink px-3 py-1.5 text-xs font-semibold text-wa-body transition hover:border-wa-accent/50 disabled:cursor-not-allowed disabled:opacity-40"
+                                >
+                                    次へ
+                                </button>
+                            </div>
+                        </div>
+                    ) : null}
+
                     <div className="mt-4 space-y-2">
-                        {errors.map((e) => (
+                        {errorLogSlice.map((e) => (
                             <div key={e.row} className="rounded-sm border border-red-500/35 bg-wa-ink px-4 py-3 text-sm">
                                 <div className="font-black tracking-tight text-red-300">行 {e.row}</div>
                                 <div className="mt-1 text-xs text-red-300/85">{e.message}</div>

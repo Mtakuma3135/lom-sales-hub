@@ -97,7 +97,7 @@ export default function Records() {
                         href={route('sales.summary')}
                         className="rounded-sm border border-wa-accent/30 px-4 py-2 text-xs font-black tracking-widest text-wa-accent transition hover:border-wa-accent/45 hover:bg-wa-accent/10"
                     >
-                        KPIへ戻る
+                        KPI・案件へ戻る
                     </Link>
                 </div>
 

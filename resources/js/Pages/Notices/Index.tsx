@@ -14,6 +14,7 @@ type Notice = {
     body: string;
     is_pinned: boolean;
     published_at: string | null;
+    is_read?: boolean;
 };
 
 type NoticesProp = {
@@ -36,40 +37,8 @@ function formatNaiveNow(): string {
 export default function Index({ notices, initialDrafts }: { notices?: NoticesProp; initialDrafts?: boolean }) {
     const { props } = usePage<PageProps>();
     const isAdmin = (props.auth?.user?.role ?? 'general') === 'admin';
-    const userId = props.auth?.user?.id ?? null;
 
-    const list =
-        notices?.data ??
-        [
-            {
-                id: 1,
-                title: '【重要】4月度の営業目標について',
-                body: '今月の重点は「初回トークの品質」です。録音チェックの基準を更新しました。',
-                published_at: '2026-04-18 14:30',
-                is_pinned: true,
-            },
-            {
-                id: 2,
-                title: '新商材「光回線プラン」のトークスクリプト公開',
-                body: 'ヒアリング質問とクロージング例を追加しました。',
-                published_at: '2026-04-20 10:00',
-                is_pinned: false,
-            },
-            {
-                id: 3,
-                title: 'システムメンテナンスのお知らせ',
-                body: '4/28 02:00-03:00 に停止の可能性があります。',
-                published_at: '2026-04-16 09:00',
-                is_pinned: false,
-            },
-            {
-                id: 4,
-                title: 'FAQ更新：本人確認のトーク例を追加',
-                body: '本人確認の断られ対応の例文を追加しました。',
-                published_at: '2026-04-15 18:10',
-                is_pinned: false,
-            },
-        ];
+    const list = notices?.data ?? [];
 
     const [items, setItems] = useState<Notice[]>(list);
     const [drawerId, setDrawerId] = useState<number | null>(null);
@@ -84,9 +53,10 @@ export default function Index({ notices, initialDrafts }: { notices?: NoticesPro
     const [isSaving, setIsSaving] = useState<boolean>(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
-    const [readIds, setReadIds] = useState<Set<number>>(() => new Set());
     const [draftsOnly, setDraftsOnly] = useState<boolean>(() => !!initialDrafts);
     const [drawerEdit, setDrawerEdit] = useState<boolean>(false);
+
+    const [readToggleId, setReadToggleId] = useState<number | null>(null);
 
     const api = useMemo(() => {
         return {
@@ -95,10 +65,16 @@ export default function Index({ notices, initialDrafts }: { notices?: NoticesPro
                 if (query.trim()) p.set('q', query.trim());
                 if (drafts) p.set('drafts', '1');
                 const qs = p.toString() ? `?${p.toString()}` : '';
-                return fetch(`${route('portal.api.notices.index')}${qs}`, { headers: { Accept: 'application/json' } });
+                return fetch(`${route('portal.api.notices.index')}${qs}`, {
+                    headers: { Accept: 'application/json' },
+                    credentials: 'same-origin',
+                });
             },
             show: (id: number) =>
-                fetch(route('portal.api.notices.show', { id }), { headers: { Accept: 'application/json' } }),
+                fetch(route('portal.api.notices.show', { id }), {
+                    headers: { Accept: 'application/json' },
+                    credentials: 'same-origin',
+                }),
             store: (payload: {
                 title: string;
                 body: string;
@@ -136,6 +112,26 @@ export default function Index({ notices, initialDrafts }: { notices?: NoticesPro
                     },
                     credentials: 'same-origin',
                 }),
+            read: (id: number) =>
+                fetch(route('portal.api.notices.read', { id }), {
+                    method: 'POST',
+                    headers: {
+                        Accept: 'application/json',
+                        'X-CSRF-TOKEN': csrf(),
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    credentials: 'same-origin',
+                }),
+            unread: (id: number) =>
+                fetch(route('portal.api.notices.unread', { id }), {
+                    method: 'DELETE',
+                    headers: {
+                        Accept: 'application/json',
+                        'X-CSRF-TOKEN': csrf(),
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    credentials: 'same-origin',
+                }),
         };
     }, []);
 
@@ -145,8 +141,12 @@ export default function Index({ notices, initialDrafts }: { notices?: NoticesPro
             .then(async (res) => {
                 if (!res.ok) return;
                 const json = (await res.json()) as unknown;
-                if (!Array.isArray(json)) return;
-                if (mounted) setItems(json as Notice[]);
+                const rows = Array.isArray(json)
+                    ? (json as Notice[])
+                    : json && typeof json === 'object' && Array.isArray((json as { data?: unknown }).data)
+                      ? ((json as { data: Notice[] }).data as Notice[])
+                      : [];
+                if (mounted) setItems(rows);
             })
             .catch(() => {});
         return () => {
@@ -154,7 +154,9 @@ export default function Index({ notices, initialDrafts }: { notices?: NoticesPro
         };
     }, [api, draftsOnly]);
 
-    // Home などから `?open=<id>` で遷移したとき、自動で詳細を開く
+    useEffect(() => {
+        setItems(notices?.data ?? []);
+    }, [notices]);
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         const raw = params.get('open');
@@ -164,29 +166,38 @@ export default function Index({ notices, initialDrafts }: { notices?: NoticesPro
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    useEffect(() => {
-        if (!userId) return;
-        const prefix = `noticeRead:${userId}:`;
-        const next = new Set<number>();
-        for (let i = 0; i < localStorage.length; i++) {
-            const k = localStorage.key(i);
-            if (!k || !k.startsWith(prefix)) continue;
-            const id = Number(k.slice(prefix.length));
-            if (Number.isFinite(id) && id > 0) next.add(id);
+    const markReadServer = async (id: number) => {
+        try {
+            const res = await api.read(id);
+            if (!res.ok) return;
+            setItems((prev) => prev.map((x) => (x.id === id ? { ...x, is_read: true } : x)));
+            setSelectedNotice((n) => (n && n.id === id ? { ...n, is_read: true } : n));
+            router.reload();
+        } catch {
+            /* ignore */
         }
-        setReadIds(next);
-    }, [userId]);
+    };
 
-    const markRead = (id: number) => {
-        if (!userId) return;
-        localStorage.setItem(`noticeRead:${userId}:${id}`, String(Date.now()));
-        setReadIds((prev) => {
-            const next = new Set(prev);
-            next.add(id);
-            return next;
-        });
-        setSuccessMessage('既読にしました。');
-        window.setTimeout(() => setSuccessMessage(null), 1200);
+    const markUnreadServer = async (id: number) => {
+        try {
+            const res = await api.unread(id);
+            if (!res.ok) return;
+            setItems((prev) => prev.map((x) => (x.id === id ? { ...x, is_read: false } : x)));
+            setSelectedNotice((n) => (n && n.id === id ? { ...n, is_read: false } : n));
+            router.reload();
+        } catch {
+            /* ignore */
+        }
+    };
+
+    const toggleNoticeReadInList = async (n: Notice) => {
+        setReadToggleId(n.id);
+        try {
+            if (n.is_read) await markUnreadServer(n.id);
+            else await markReadServer(n.id);
+        } finally {
+            setReadToggleId(null);
+        }
     };
 
     const openCreate = () => {
@@ -200,13 +211,6 @@ export default function Index({ notices, initialDrafts }: { notices?: NoticesPro
         setDraftPublishedAt('');
         setErrorMessage(null);
         setSuccessMessage(null);
-    };
-
-    const openEdit = async (id: number) => {
-        // 編集は右パネル（DetailDrawer）内で行う
-        await openDetail(id);
-        if (!isAdmin) return;
-        setDrawerEdit(true);
     };
 
     const openDetail = async (id: number) => {
@@ -226,7 +230,6 @@ export default function Index({ notices, initialDrafts }: { notices?: NoticesPro
             setDraftBody(n?.body ?? '');
             setDraftPinned(!!n?.is_pinned);
             setDraftPublishedAt((n?.published_at ?? '').replace('T', ' ').slice(0, 19));
-            markRead(id);
         } catch {
             setSelectedNotice(null);
             setErrorMessage('詳細の取得に失敗しました。');
@@ -258,7 +261,12 @@ export default function Index({ notices, initialDrafts }: { notices?: NoticesPro
                                         const res = await api.index(q, draftsOnly);
                                         if (!res.ok) throw new Error();
                                         const json = (await res.json()) as unknown;
-                                        setItems(Array.isArray(json) ? (json as Notice[]) : []);
+                                        const rows = Array.isArray(json)
+                                            ? (json as Notice[])
+                                            : json && typeof json === 'object' && Array.isArray((json as { data?: unknown }).data)
+                                              ? ((json as { data: Notice[] }).data as Notice[])
+                                              : [];
+                                        setItems(rows);
                                     } catch {
                                         setErrorMessage('検索に失敗しました。');
                                     }
@@ -427,46 +435,17 @@ export default function Index({ notices, initialDrafts }: { notices?: NoticesPro
 
                         <div className="mt-4 space-y-3">
                             {items.map((n) => (
-                                <div key={n.id} className="space-y-2">
-                                    <NoticeFeedItem
-                                        title={n.title}
-                                        body={n.body}
-                                        publishedAt={n.published_at ?? undefined}
-                                        isPinned={n.is_pinned}
-                                        isRead={readIds.has(n.id)}
-                                        onOpen={() => openDetail(n.id)}
-                                    />
-
-                                    <div className="flex items-center justify-end gap-2">
-                                        <button
-                                            type="button"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                if (isAdmin) void openEdit(n.id);
-                                                else openDetail(n.id);
-                                            }}
-                                            className="rounded-sm border border-wa-accent/25 bg-wa-ink px-4 py-2 text-xs font-black tracking-tight text-wa-body transition hover:border-wa-accent/40 hover:bg-wa-card"
-                                        >
-                                            {isAdmin ? '編集' : '詳細'}
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                markRead(n.id);
-                                            }}
-                                            disabled={readIds.has(n.id)}
-                                            className={[
-                                                'rounded-sm border px-4 py-2 text-xs font-black tracking-tight transition',
-                                                readIds.has(n.id)
-                                                    ? 'border-teal-500/25 bg-teal-500/10 text-teal-300'
-                                                    : 'border-wa-accent/20 bg-wa-ink text-wa-muted hover:border-wa-accent/35 hover:text-wa-body',
-                                            ].join(' ')}
-                                        >
-                                            {readIds.has(n.id) ? '既読済' : '既読'}
-                                        </button>
-                                    </div>
-                                </div>
+                                <NoticeFeedItem
+                                    key={n.id}
+                                    title={n.title}
+                                    body={n.body}
+                                    publishedAt={n.published_at ?? undefined}
+                                    isPinned={n.is_pinned}
+                                    isRead={!!n.is_read}
+                                    onOpen={() => openDetail(n.id)}
+                                    onToggleRead={() => void toggleNoticeReadInList(n)}
+                                    readToggleBusy={readToggleId === n.id}
+                                />
                             ))}
                         </div>
                     </NeonCard>
@@ -475,7 +454,7 @@ export default function Index({ notices, initialDrafts }: { notices?: NoticesPro
 
             <DetailDrawer
                 open={drawerId !== null}
-                title={`NOTICE #${drawerId ?? ''}`}
+                title={selectedNotice?.title ?? '周知事項'}
                 onClose={() => {
                     setDrawerId(null);
                     setSelectedNotice(null);

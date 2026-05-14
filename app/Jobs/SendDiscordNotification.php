@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\DiscordNotificationLog;
+use App\Support\DiscordWebhookResolver;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -22,15 +23,17 @@ class SendDiscordNotification implements ShouldQueue
 
     public $backoff = 60;
 
-    public function __construct(public int $logId)
-    {
-    }
+    public function __construct(public int $logId) {}
 
     public function handle(): void
     {
         $log = DiscordNotificationLog::query()->findOrFail($this->logId);
 
-        $webhook = (string) config('services.discord.webhook_url', '');
+        $webhook = trim((string) ($log->webhook_url ?? ''));
+        if ($webhook === '') {
+            $webhook = DiscordWebhookResolver::globalWebhook();
+        }
+
         if ($webhook === '') {
             Log::warning('Discord webhook not configured; skipped sending.', [
                 'event_type' => (string) $log->event_type,
@@ -38,7 +41,7 @@ class SendDiscordNotification implements ShouldQueue
             ]);
 
             $log->update([
-                'error_message' => 'DISCORD_WEBHOOK_URL is not configured.',
+                'error_message' => 'Discord Webhook が未設定です（全体 DISCORD_WEBHOOK_URL またはログに保存された送信先）。',
             ]);
 
             return;
@@ -80,4 +83,3 @@ class SendDiscordNotification implements ShouldQueue
             ]);
     }
 }
-

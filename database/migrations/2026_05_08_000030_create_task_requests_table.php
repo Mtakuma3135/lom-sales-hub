@@ -20,6 +20,7 @@ return new class extends Migration
             $table->text('body')->nullable();
             $table->boolean('chat_sent')->default(false);
             $table->timestamps();
+            $table->softDeletes();
 
             $table->index(['to_user_id', 'status']);
             $table->index(['from_user_id', 'status']);

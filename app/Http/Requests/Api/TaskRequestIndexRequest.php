@@ -15,7 +15,7 @@ class TaskRequestIndexRequest extends FormRequest
     {
         return [
             'type' => ['nullable', 'in:received,sent'],
-            'status' => ['nullable', 'in:pending,completed'],
+            'status' => ['nullable', 'in:pending,in_progress,completed,rejected'],
             'priority' => ['nullable', 'in:urgent,important,normal'],
             'sort' => ['nullable', 'in:created_at_desc,created_at_asc'],
         ];
@@ -29,12 +29,14 @@ class TaskRequestIndexRequest extends FormRequest
     public function status(): ?string
     {
         $v = $this->input('status');
+
         return $v === null || $v === '' ? null : (string) $v;
     }
 
     public function priority(): ?string
     {
         $v = $this->input('priority');
+
         return $v === null || $v === '' ? null : (string) $v;
     }
 
@@ -43,4 +45,3 @@ class TaskRequestIndexRequest extends FormRequest
         return (string) $this->input('sort', 'created_at_desc');
     }
 }
-

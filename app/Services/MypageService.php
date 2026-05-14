@@ -31,32 +31,65 @@ class MypageService
                 $attendance = $this->attendance($user);
             }
 
-            $discordConfigured = (string) config('services.discord.webhook_url', '') !== '';
+            $discordGlobal = trim((string) config('services.discord.webhook_url', '')) !== '';
 
-            $kotConnected = $this->kotBackendConfigured();
+            $kotGlobal = $this->kotBackendConfigured();
+            $kotPersonal = $user !== null && trim((string) ($user->kot_personal_api_token ?? '')) !== '';
+            $discordPersonal = $user !== null && trim((string) ($user->personal_discord_webhook_url ?? '')) !== '';
+
+            $kotConnected = $kotGlobal || $kotPersonal;
+            $discordConfigured = $discordGlobal || $discordPersonal;
 
             $integrations = collect([
                 ['key' => 'king_of_time', 'label' => 'KING OF TIME', 'status' => $kotConnected ? 'connected' : 'not_connected'],
                 ['key' => 'discord', 'label' => 'Discord（通知）', 'status' => $discordConfigured ? 'connected' : 'not_connected'],
             ]);
 
-            $quickLinks = collect([
-                ['label' => '勤怠管理', 'href' => '#'],
-                ['label' => '商材一覧', 'href' => '#'],
-                ['label' => '周知事項', 'href' => '#'],
-                ['label' => '業務依頼', 'href' => '#'],
-            ]);
+            $extrasMeta = [];
+            if ($user !== null) {
+                $rawExtras = $user->extra_integrations;
+                if (is_iterable($rawExtras)) {
+                    foreach ($rawExtras as $row) {
+                        if (! is_array($row)) {
+                            continue;
+                        }
+                        $has = trim((string) ($row['token_value'] ?? '')) !== '';
+                        $label = trim((string) ($row['label'] ?? ''));
+                        $integrations->push([
+                            'key' => 'extra:'.sha1(($label !== '' ? $label : 'x').(string) ($row['token_label'] ?? '')),
+                            'label' => $label !== '' ? $label : 'その他連携',
+                            'status' => $has ? 'connected' : 'not_connected',
+                        ]);
+                        $extrasMeta[] = [
+                            'label' => (string) ($row['label'] ?? ''),
+                            'token_label' => (string) ($row['token_label'] ?? ''),
+                            'has_value' => $has,
+                        ];
+                    }
+                }
+            }
 
-            $credentials = $this->credentials();
             $kotStatus = $user ? $this->kotStatusFromAuditLog($user) : null;
+
+            $integrationMeta = [
+                'kot' => [
+                    'system_configured' => $kotGlobal,
+                    'personal_configured' => $kotPersonal,
+                ],
+                'discord' => [
+                    'system_configured' => $discordGlobal,
+                    'personal_configured' => $discordPersonal,
+                ],
+                'extras' => $extrasMeta,
+            ];
 
             return [
                 'profile' => $profile,
                 'attendance' => $attendance,
                 'kot_status' => $kotStatus,
                 'integrations' => $integrations,
-                'quick_links' => $quickLinks,
-                'credentials' => $credentials,
+                'integration_meta' => $integrationMeta,
+                'credentials' => $this->credentials(),
             ];
         } catch (\Throwable $e) {
             Log::error('MypageService.index failed', ['error' => $e->getMessage()]);
@@ -70,7 +103,11 @@ class MypageService
                 'attendance' => null,
                 'kot_status' => null,
                 'integrations' => collect(),
-                'quick_links' => collect(),
+                'integration_meta' => [
+                    'kot' => ['system_configured' => false, 'personal_configured' => false],
+                    'discord' => ['system_configured' => false, 'personal_configured' => false],
+                    'extras' => [],
+                ],
                 'credentials' => collect(),
             ];
         }

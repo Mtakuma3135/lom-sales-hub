@@ -43,6 +43,23 @@ class GasWebhookService
             return 'skipped';
         }
 
+        if ($this->rejectsUnsignedOutbound($base)) {
+            Log::warning('GasWebhookService.post refused: GAS URL set but signing secret empty', [
+                'event' => $auditEventType,
+            ]);
+            $this->auditLog(
+                integration: 'gas',
+                eventType: $auditEventType,
+                status: 'failed',
+                requestPayload: $payload,
+                relatedType: $relatedType,
+                relatedId: $relatedId,
+                meta: ['reason' => 'missing_signing_secret'],
+            );
+
+            return 'failed';
+        }
+
         try {
             $res = $this->sendSignedPost($base, $payload);
 
@@ -101,6 +118,12 @@ class GasWebhookService
     {
         $base = $this->resolveCredentialsBaseUrl();
         if ($base === '') {
+            return null;
+        }
+
+        if ($this->rejectsUnsignedOutbound($base)) {
+            Log::warning('GasWebhookService.pullCredentialsJson refused: GAS URL set but signing secret empty');
+
             return null;
         }
 
@@ -209,5 +232,22 @@ class GasWebhookService
         $sep = str_contains($url, '?') ? '&' : '?';
 
         return $url.$sep.'signature='.rawurlencode($secret);
+    }
+
+    /**
+     * §3.2 / lom.gas_reject_unsigned_outbound: 本番同等の拒否（テストでは config で true にできる）。
+     */
+    private function rejectsUnsignedOutbound(string $baseUrl): bool
+    {
+        if (! config('lom.gas_reject_unsigned_outbound')) {
+            return false;
+        }
+
+        $base = trim($baseUrl);
+        if ($base === '') {
+            return false;
+        }
+
+        return trim((string) config('services.gas.signing_secret', '')) === '';
     }
 }

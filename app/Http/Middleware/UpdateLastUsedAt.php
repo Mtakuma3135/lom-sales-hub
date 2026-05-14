@@ -9,8 +9,6 @@ use Symfony\Component\HttpFoundation\Response;
 
 class UpdateLastUsedAt
 {
-    private const EXPIRE_MINUTES = 180;
-
     /**
      * @param  Closure(Request): Response  $next
      */
@@ -28,8 +26,10 @@ class UpdateLastUsedAt
             return $next($request);
         }
 
+        $idleMinutes = max(1, (int) config('lom.sanctum_api_idle_minutes', 180));
+
         $lastUsedAt = $token->last_used_at ?? $token->created_at;
-        $expiredAt = now()->subMinutes(self::EXPIRE_MINUTES);
+        $expiredAt = now()->subMinutes($idleMinutes);
 
         if ($lastUsedAt && $lastUsedAt->lt($expiredAt)) {
             $token->delete();
@@ -45,4 +45,3 @@ class UpdateLastUsedAt
         return $next($request);
     }
 }
-

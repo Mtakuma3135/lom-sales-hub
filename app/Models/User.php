@@ -2,11 +2,12 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\AsEncryptedArrayObject;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class User extends Authenticatable
 {
@@ -27,6 +28,9 @@ class User extends Authenticatable
         'is_active',
         'internal_policy_explained_at',
         'internal_policy_version',
+        'kot_personal_api_token',
+        'personal_discord_webhook_url',
+        'extra_integrations',
     ];
 
     /**
@@ -39,6 +43,9 @@ class User extends Authenticatable
         'remember_token',
         'two_factor_secret',
         'two_factor_recovery_hashes',
+        'kot_personal_api_token',
+        'personal_discord_webhook_url',
+        'extra_integrations',
     ];
 
     /**
@@ -55,6 +62,9 @@ class User extends Authenticatable
         'two_factor_secret' => 'encrypted',
         'two_factor_recovery_hashes' => 'array',
         'two_factor_confirmed_at' => 'datetime',
+        'kot_personal_api_token' => 'encrypted',
+        'personal_discord_webhook_url' => 'encrypted',
+        'extra_integrations' => AsEncryptedArrayObject::class,
     ];
 
     public function department(): BelongsTo
@@ -75,4 +85,3 @@ class User extends Authenticatable
         $this->tokens()->delete();
     }
 }
-

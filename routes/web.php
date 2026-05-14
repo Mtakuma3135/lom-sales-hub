@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminPageController;
+use App\Http\Controllers\Admin\AdminTwoFactorController;
 use App\Http\Controllers\Admin\AuditLogController as AdminAuditLogController;
 use App\Http\Controllers\Admin\CredentialController as AdminCredentialController;
 use App\Http\Controllers\Admin\CsvController as AdminCsvController;
@@ -15,27 +16,29 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\KotMockController;
 use App\Http\Controllers\LunchBreakController;
 use App\Http\Controllers\MypageController;
+use App\Http\Controllers\MypageIntegrationController;
 use App\Http\Controllers\NoticeApiController;
 use App\Http\Controllers\NoticeController;
+use App\Http\Controllers\PortalMypageApiController;
 use App\Http\Controllers\ProductApiController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductShowController;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\PortalMypageApiController;
 use App\Http\Controllers\SalesController;
 use App\Http\Controllers\SalesRecordController;
 use App\Http\Controllers\TaskRequestController;
-use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 
 Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
-    ]);
+    if (auth()->check()) {
+        return redirect()->route('home');
+    }
+
+    return redirect()->route('login');
+});
+
+Route::get('/welcome', function () {
+    return redirect()->route(auth()->check() ? 'home' : 'login');
 });
 
 Route::middleware('auth')->group(function () {
@@ -52,6 +55,9 @@ Route::middleware('auth')->group(function () {
     Route::redirect('/admin/credentials', '/portal/credentials');
 
     Route::prefix('portal')->group(function () {
+        Route::get('/two-factor/setup', [AdminTwoFactorController::class, 'show'])->name('portal.two-factor.setup');
+        Route::post('/two-factor/setup', [AdminTwoFactorController::class, 'store'])->name('portal.two-factor.store');
+
         Route::get('/', [HomeController::class, 'index'])->name('home');
 
         // --- Portal routes ---
@@ -69,6 +75,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/api/lunch-breaks/reset', [LunchBreakController::class, 'reset'])->name('portal.api.lunch-breaks.reset');
 
         Route::get('/sales', [SalesController::class, 'summary'])->name('sales.summary');
+        Route::get('/sales/ranking', fn () => redirect()->to(route('sales.summary').'?tab=ranking'))->name('sales.ranking');
+        Route::get('/sales/trend', fn () => redirect()->to(route('sales.summary').'?tab=trend'))->name('sales.trend');
         Route::get('/sales/records', [SalesRecordController::class, 'page'])->name('sales.records');
 
         Route::get('/notices', [NoticeController::class, 'index'])->name('notices.index');
@@ -78,6 +86,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/tasks', [TaskRequestController::class, 'index'])->name('task-requests.index');
         Route::post('/tasks', [TaskRequestController::class, 'store'])->name('task-requests.store');
         Route::patch('/tasks/{id}', [TaskRequestController::class, 'update'])->name('task-requests.update');
+        Route::delete('/tasks/{id}', [TaskRequestController::class, 'destroy'])->name('task-requests.destroy');
+        Route::post('/tasks/{id}/restore', [TaskRequestController::class, 'restore'])->name('task-requests.restore');
 
         Route::patch('/api/daily-tasks/{id}/status', [DailyTaskApiController::class, 'updateStatus'])->name('portal.api.daily-tasks.status');
         Route::post('/api/daily-tasks/templates', [DailyTaskApiController::class, 'storeTemplate'])->name('portal.api.daily-tasks.templates.store');
@@ -87,9 +97,13 @@ Route::middleware('auth')->group(function () {
 
         Route::post('/api/mypage/kot/punch', [PortalMypageApiController::class, 'kotPunch'])
             ->name('portal.api.mypage.kot.punch');
+        Route::put('/api/mypage/integrations', [MypageIntegrationController::class, 'update'])
+            ->name('portal.api.mypage.integrations');
 
         // KOT mock endpoint (internal)
-        Route::post('/mock/kot/punch', [KotMockController::class, 'punch'])->name('portal.mock.kot.punch');
+        Route::post('/mock/kot/punch', [KotMockController::class, 'punch'])
+            ->middleware('lom.kot.mock')
+            ->name('portal.mock.kot.punch');
 
         // 設計書URL: /portal/csv → KPI の CSV タブへリダイレクト、/portal/credentials（管理者のみ）
         Route::get('/csv', [AdminPageController::class, 'csv'])->name('admin.csv.upload');
@@ -102,6 +116,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/api/csv/upload', [AdminCsvController::class, 'upload'])->name('portal.api.csv.upload');
 
         Route::get('/api/credentials', [AdminCredentialController::class, 'index'])->name('portal.api.credentials.index');
+        Route::post('/api/credentials', [AdminCredentialController::class, 'store'])->name('portal.api.credentials.store');
         Route::post('/api/credentials/sync-from-gas', [AdminCredentialController::class, 'syncFromGas'])->name('portal.api.credentials.sync-from-gas');
         Route::patch('/api/credentials/{id}', [AdminCredentialController::class, 'update'])->name('portal.api.credentials.update');
 
@@ -117,6 +132,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/api/sales/records', [SalesRecordController::class, 'index'])->name('portal.api.sales.records');
         Route::get('/api/notices', [NoticeApiController::class, 'index'])->name('portal.api.notices.index');
         Route::get('/api/notices/{id}', [NoticeApiController::class, 'show'])->name('portal.api.notices.show');
+        Route::post('/api/notices/{id}/read', [NoticeApiController::class, 'markRead'])->name('portal.api.notices.read');
+        Route::delete('/api/notices/{id}/read', [NoticeApiController::class, 'markUnread'])->name('portal.api.notices.unread');
         Route::get('/api/products', [ProductApiController::class, 'index'])->name('portal.api.products.index');
         Route::get('/api/products/{id}', [ProductApiController::class, 'show'])->name('portal.api.products.show');
 

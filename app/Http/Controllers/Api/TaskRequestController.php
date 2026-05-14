@@ -7,9 +7,12 @@ use App\Http\Requests\Api\TaskRequestIndexRequest;
 use App\Http\Requests\Api\TaskRequestStoreRequest;
 use App\Http\Requests\Api\TaskRequestUpdateRequest;
 use App\Http\Resources\TaskRequestResource;
+use App\Models\TaskRequest;
 use App\Services\TaskRequestService;
+use App\Support\TaskRequests\TaskRequestIndexFilter;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Collection;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
 
 class TaskRequestController extends Controller
@@ -22,7 +25,14 @@ class TaskRequestController extends Controller
         }
 
         $items = $taskRequestService->indexFor($actor);
-        $filtered = $this->filter($items, (int) $actor->id, $request->type(), $request->status(), $request->priority(), $request->sort());
+        $filtered = TaskRequestIndexFilter::apply(
+            $items,
+            $actor,
+            $request->type(),
+            $request->status(),
+            $request->priority(),
+            $request->sort(),
+        );
 
         return response()->json([
             'data' => TaskRequestResource::collection($filtered)->resolve(),
@@ -44,6 +54,7 @@ class TaskRequestController extends Controller
             $request->title(),
             $request->priority(),
             $request->body(),
+            $request->dueDate(),
         );
 
         return response()->json(new TaskRequestResource($row), 201);
@@ -56,13 +67,27 @@ class TaskRequestController extends Controller
             abort(401);
         }
 
-        $task = $taskRequestService->index()->first(fn (array $t) => (int) ($t['id'] ?? -1) === (int) $id);
-        if (! is_array($task)) {
-            abort(404);
-        }
-        // IMPORTANT: associative array would be treated as named arguments in PHP8
-        Gate::authorize('taskRequest.update', [$task]);
+        $task = TaskRequest::query()->findOrFail($id);
 
+        if ($request->isMetaUpdate()) {
+            Gate::authorize('taskRequest.updateFields', $task);
+            $row = $taskRequestService->updateMeta(
+                $id,
+                $request->metaTitle(),
+                $request->metaBody(),
+                $request->metaPriority(),
+                $request->metaDueDate(),
+            );
+            if ($request->filled('status')) {
+                Gate::authorize('taskRequest.updateStatus', $task);
+                $taskRequestService->updateStatus($actor, $id, $request->status());
+                $row = $taskRequestService->rowForId($id);
+            }
+
+            return response()->json(new TaskRequestResource($row));
+        }
+
+        Gate::authorize('taskRequest.updateStatus', $task);
         $taskRequestService->updateStatus($actor, $id, $request->status());
 
         return response()->json([
@@ -71,33 +96,38 @@ class TaskRequestController extends Controller
         ]);
     }
 
-    /**
-     * @param  Collection<int, array<string, mixed>>  $items
-     * @return Collection<int, array<string, mixed>>
-     */
-    private function filter(Collection $items, int $actorId, string $type, ?string $status, ?string $priority, string $sort): Collection
+    public function destroy(Request $request, TaskRequestService $taskRequestService, int $id): Response
     {
-        $filtered = $items->values();
-
-        if ($type === 'sent') {
-            $filtered = $filtered->filter(fn (array $t) => (int) ($t['from_user_id'] ?? -1) === $actorId)->values();
-        } else {
-            $filtered = $filtered->filter(fn (array $t) => (int) ($t['to_user_id'] ?? -1) === $actorId)->values();
+        $actor = $request->user();
+        if (! $actor) {
+            abort(401);
         }
 
-        if ($status !== null) {
-            $filtered = $filtered->filter(fn (array $t) => (string) ($t['status'] ?? '') === $status)->values();
+        $task = TaskRequest::query()->findOrFail($id);
+        Gate::authorize('taskRequest.delete', $task);
+        $taskRequestService->softDelete($id);
+
+        return response()->noContent();
+    }
+
+    public function restore(Request $request, TaskRequestService $taskRequestService, int $id): JsonResponse
+    {
+        $actor = $request->user();
+        if (! $actor) {
+            abort(401);
         }
 
-        if ($priority !== null) {
-            $filtered = $filtered->filter(fn (array $t) => (string) ($t['priority'] ?? '') === $priority)->values();
+        if (! TaskRequest::softDeleteColumnExists()) {
+            abort(
+                503,
+                'task_requests.deleted_at がありません。`php artisan migrate` または `php artisan db:ensure-task-requests-soft-deletes` を実行してください。',
+            );
         }
 
-        $filtered = $filtered->sortBy(function (array $t) {
-            return (string) ($t['created_at'] ?? '');
-        }, options: SORT_REGULAR, descending: $sort !== 'created_at_asc')->values();
+        $task = TaskRequest::onlyTrashed()->findOrFail($id);
+        Gate::authorize('taskRequest.restore', $task);
+        $taskRequestService->restore($id);
 
-        return $filtered;
+        return response()->json(['id' => $id, 'restored' => true]);
     }
 }
-

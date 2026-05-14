@@ -11,5 +11,17 @@ export type PageProps<
 > = T & {
     auth?: {
         user?: User | null;
+        can?: {
+            admin_users?: boolean;
+            admin_csv?: boolean;
+            admin_credentials?: boolean;
+            admin_discord_notifications?: boolean;
+            admin_audit_logs?: boolean;
+        };
+    };
+    portalAlerts?: {
+        lunch_not_started_count?: number;
+        unread_notices_count?: number;
+        server_time?: string;
     };
 };

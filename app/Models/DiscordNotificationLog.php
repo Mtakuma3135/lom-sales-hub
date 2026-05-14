@@ -15,6 +15,11 @@ class DiscordNotificationLog extends Model
         'status_code' => 'integer',
         'parent_id' => 'integer',
         'triggered_by' => 'integer',
+        'webhook_url' => 'encrypted',
+    ];
+
+    /** @var array<int, string> */
+    protected $hidden = [
+        'webhook_url',
     ];
 }
-

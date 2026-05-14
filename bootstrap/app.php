@@ -1,8 +1,15 @@
 <?php
 
+use App\Http\Middleware\AddContentSecurityPolicyHeaders;
+use App\Http\Middleware\EnforceAdminPortalSecurity;
+use App\Http\Middleware\EnsureKotMockEndpointEnabled;
+use App\Http\Middleware\EnsureRegistrationEnabled;
+use App\Http\Middleware\HandleInertiaRequests;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -12,6 +19,9 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
+    ->withSchedule(function (Schedule $schedule): void {
+        $schedule->command('lunch:alert-not-started')->everyMinute();
+    })
     ->withMiddleware(function (Middleware $middleware): void {
         $proxies = array_values(array_filter(array_map(
             'trim',
@@ -29,9 +39,16 @@ return Application::configure(basePath: dirname(__DIR__))
             );
         }
 
+        $middleware->alias([
+            'lom.registration' => EnsureRegistrationEnabled::class,
+            'lom.kot.mock' => EnsureKotMockEndpointEnabled::class,
+        ]);
+
         $middleware->web(append: [
-            \App\Http\Middleware\HandleInertiaRequests::class,
-            \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
+            AddContentSecurityPolicyHeaders::class,
+            EnforceAdminPortalSecurity::class,
+            HandleInertiaRequests::class,
+            AddLinkHeadersForPreloadedAssets::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

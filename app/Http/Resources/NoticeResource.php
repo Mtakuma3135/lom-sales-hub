@@ -23,7 +23,7 @@ class NoticeResource extends JsonResource
             'body' => $this->resource['body'],
             'is_pinned' => (bool) $this->resource['is_pinned'],
             'published_at' => $published,
+            'is_read' => (bool) data_get($this->resource, 'is_read', false),
         ];
     }
 }
-

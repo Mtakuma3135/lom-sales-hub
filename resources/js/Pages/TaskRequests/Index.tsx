@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router, usePage } from '@inertiajs/react';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { PageProps } from '@/types';
 import { showAppToast } from '@/lib/toast';
 import NeonCard from '@/Components/NeonCard';
@@ -17,6 +17,7 @@ type Task = {
     due_date: string;
     created_at: string;
     to_user_id?: number | null;
+    from_user_id?: number | null;
     body?: string;
 };
 
@@ -76,6 +77,23 @@ const statusLabel = (s: string): string => {
     }
 };
 
+const taskPrioRank = (p: string): number =>
+    p === 'urgent' || p === 'high' ? 0 : p === 'important' || p === 'medium' ? 1 : 2;
+
+function sortTasksForViewer(tasks: Task[], uid: number | null): Task[] {
+    if (uid == null) return [...tasks];
+    const n = Number(uid);
+    return [...tasks].sort((a, b) => {
+        const aMine = a.to_user_id != null && Number(a.to_user_id) === n;
+        const bMine = b.to_user_id != null && Number(b.to_user_id) === n;
+        if (aMine !== bMine) return aMine ? -1 : 1;
+        const ap = taskPrioRank(a.priority);
+        const bp = taskPrioRank(b.priority);
+        if (ap !== bp) return ap - bp;
+        return String(b.created_at).localeCompare(String(a.created_at));
+    });
+}
+
 const sectionTab = (active: boolean) =>
     'rounded-xl px-5 py-2.5 text-xs font-black tracking-widest transition-all ' +
     (active
@@ -90,10 +108,12 @@ const subTab = (active: boolean) =>
 
 export default function Index({
     tasks,
+    trashTasks,
     dailyTasks: dailyTasksProp,
     dailyTemplates: dailyTemplatesProp,
 }: {
     tasks?: TasksProp;
+    trashTasks?: TasksProp;
     dailyTasks?: DailyTask[];
     dailyTemplates?: DailyTemplate[];
 }) {
@@ -103,6 +123,7 @@ export default function Index({
     const userOptions = props.userOptions ?? [];
     const pageErrors = props.errors ?? {};
     const userId = props.auth?.user?.id ?? null;
+    const isAdmin = (props.auth?.user?.role ?? 'general') === 'admin';
 
     // ── Section tab ──
     const [section, setSection] = useState<'requests' | 'daily'>('requests');
@@ -115,28 +136,103 @@ export default function Index({
     useEffect(() => {
         setItems(tasks?.data ?? []);
     }, [tasks]);
-    const [reqTab, setReqTab] = useState<'active' | 'done'>('active');
+
+    const trashList = trashTasks?.data ?? [];
+    const [trashItems, setTrashItems] = useState<Task[]>(trashList);
+    useEffect(() => {
+        setTrashItems(trashTasks?.data ?? []);
+    }, [trashTasks]);
+    const [reqTab, setReqTab] = useState<'active' | 'done' | 'trash'>('active');
     const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
     const selectedTask = useMemo(() => items.find((t) => t.id === selectedTaskId) ?? null, [items, selectedTaskId]);
 
-    const activeItems = useMemo(() => items.filter((t) => t.status === 'pending' || t.status === 'in_progress'), [items]);
+    const canChangeStatus = useMemo(
+        () =>
+            isAdmin ||
+            (userId != null &&
+                selectedTask != null &&
+                selectedTask.to_user_id != null &&
+                Number(selectedTask.to_user_id) === Number(userId)),
+        [isAdmin, userId, selectedTask],
+    );
+
+    const canDeleteTask = useMemo(() => {
+        if (!selectedTask || userId == null) return false;
+        if (isAdmin) return true;
+        const uid = Number(userId);
+        return (
+            (selectedTask.to_user_id != null && Number(selectedTask.to_user_id) === uid) ||
+            (selectedTask.from_user_id != null && Number(selectedTask.from_user_id) === uid)
+        );
+    }, [selectedTask, userId, isAdmin]);
+
+    const canEditMeta = useMemo(
+        () =>
+            isAdmin ||
+            (userId != null &&
+                selectedTask != null &&
+                selectedTask.to_user_id != null &&
+                Number(selectedTask.to_user_id) === Number(userId)),
+        [isAdmin, userId, selectedTask],
+    );
+
+    const canRestoreTask = useCallback(
+        (t: Task) => {
+            if (isAdmin) return true;
+            if (userId == null) return false;
+            const uid = Number(userId);
+            return (
+                (t.to_user_id != null && Number(t.to_user_id) === uid) ||
+                (t.from_user_id != null && Number(t.from_user_id) === uid)
+            );
+        },
+        [isAdmin, userId],
+    );
+
+    const activeItems = useMemo(
+        () => items.filter((t) => t.status === 'pending' || t.status === 'in_progress' || t.status === 'rejected'),
+        [items],
+    );
     const doneItems = useMemo(() => items.filter((t) => t.status === 'completed'), [items]);
 
-    const onChangeStatus = (id: number, next: Task['status']) => {
-        setItems((prev) => prev.map((t) => (t.id === id ? { ...t, status: next } : t)));
-        if (next === 'completed') setReqTab('done');
-        router.patch(route('task-requests.update', id), { status: next }, {
-            preserveScroll: true,
-            onSuccess: () => showAppToast('ステータスを更新しました'),
-            onError: () => showAppToast('更新に失敗しました'),
-        });
-    };
+    const activeItemsSorted = useMemo(() => sortTasksForViewer(activeItems, userId), [activeItems, userId]);
+    const doneItemsSorted = useMemo(() => sortTasksForViewer(doneItems, userId), [doneItems, userId]);
+
+    const assignedToMeCount = useMemo(
+        () =>
+            activeItems.filter(
+                (t) => userId != null && t.to_user_id != null && Number(t.to_user_id) === Number(userId),
+            ).length,
+        [activeItems, userId],
+    );
 
     const [formTitle, setFormTitle] = useState('');
     const [formToUserId, setFormToUserId] = useState('');
     const [formPriority, setFormPriority] = useState<'urgent' | 'important' | 'normal'>('normal');
     const [formBody, setFormBody] = useState('');
+    const [formDueDate, setFormDueDate] = useState('');
     const [creating, setCreating] = useState(false);
+
+    const [editTitle, setEditTitle] = useState('');
+    const [editBody, setEditBody] = useState('');
+    const [editPriority, setEditPriority] = useState<'urgent' | 'important' | 'normal'>('normal');
+    const [editDueDate, setEditDueDate] = useState('');
+    const [editStatus, setEditStatus] = useState<Task['status']>('pending');
+    const [savingMeta, setSavingMeta] = useState(false);
+
+    useEffect(() => {
+        if (!selectedTask) return;
+        setEditTitle(selectedTask.title);
+        setEditBody(selectedTask.body ?? '');
+        const p = selectedTask.priority;
+        setEditPriority(p === 'urgent' || p === 'important' || p === 'normal' ? p : 'normal');
+        setEditDueDate(selectedTask.due_date && selectedTask.due_date.length >= 10 ? selectedTask.due_date.slice(0, 10) : '');
+        setEditStatus(
+            (['pending', 'in_progress', 'completed', 'rejected'].includes(selectedTask.status)
+                ? selectedTask.status
+                : 'pending') as Task['status'],
+        );
+    }, [selectedTask]);
 
     // ══════════════════════════════════════════
     // ② 責タスク
@@ -155,7 +251,13 @@ export default function Index({
         setDailyItems((prev) => prev.map((d) => (d.id === id ? { ...d, status } : d)));
         await fetch(route('portal.api.daily-tasks.status', { id }), {
             method: 'PATCH',
-            headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN':
+                    (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? '',
+            },
             credentials: 'same-origin',
             body: JSON.stringify({ status }),
         });
@@ -247,8 +349,11 @@ export default function Index({
                                     <option value="normal">優先度：順次</option>
                                 </select>
                                 {pageErrors.priority ? <p className="text-xs font-semibold text-red-400">{pageErrors.priority}</p> : null}
-                                <textarea rows={4} placeholder="内容" value={formBody} onChange={(e) => setFormBody(e.target.value)} className="nordic-field min-h-[120px]" />
+                                <textarea rows={4} placeholder="内容（任意）" value={formBody} onChange={(e) => setFormBody(e.target.value)} className="nordic-field min-h-[120px]" />
                                 {pageErrors.body ? <p className="text-xs font-semibold text-red-400">{pageErrors.body}</p> : null}
+                                <label className="block text-[11px] font-semibold text-wa-muted">期限（任意・未入力は7日後）</label>
+                                <input type="date" value={formDueDate} onChange={(e) => setFormDueDate(e.target.value)} className="nordic-field" />
+                                {pageErrors.due_date ? <p className="text-xs font-semibold text-red-400">{pageErrors.due_date}</p> : null}
                                 <ActionButton
                                     className="w-full"
                                     disabled={creating}
@@ -258,6 +363,7 @@ export default function Index({
                                             to_user_id: formToUserId ? Number(formToUserId) : '',
                                             priority: formPriority,
                                             body: formBody,
+                                            due_date: formDueDate || null,
                                         }, {
                                             onStart: () => setCreating(true),
                                             onFinish: () => setCreating(false),
@@ -266,6 +372,7 @@ export default function Index({
                                                 setFormToUserId('');
                                                 setFormPriority('normal');
                                                 setFormBody('');
+                                                setFormDueDate('');
                                                 showAppToast('依頼を作成しました');
                                             },
                                             onError: () => showAppToast('入力内容を確認してください'),
@@ -279,24 +386,71 @@ export default function Index({
                         </NeonCard>
 
                         <NeonCard className="lg:col-span-2 overflow-x-auto p-8" elevate={false}>
-                            <div className="flex flex-wrap items-center justify-between gap-3">
+                                <div className="flex flex-wrap items-center justify-between gap-3">
                                 <div>
                                     <div className="text-xs font-bold tracking-widest text-wa-muted">LIST</div>
                                     <div className="mt-1 text-sm font-black tracking-tight text-wa-body">依頼一覧</div>
+                                    {assignedToMeCount > 0 ? (
+                                        <p className="mt-2 text-sm text-wa-muted">
+                                            あなた宛のタスク依頼が{' '}
+                                            <span className="align-middle text-2xl font-black tabular-nums text-teal-300">
+                                                {assignedToMeCount}
+                                            </span>{' '}
+                                            件あります
+                                        </p>
+                                    ) : null}
                                 </div>
                                 <div className="flex flex-wrap items-center gap-2">
                                     <button type="button" onClick={() => setReqTab('active')} className={subTab(reqTab === 'active')}>未対応/対応中</button>
                                     <button type="button" onClick={() => setReqTab('done')} className={subTab(reqTab === 'done')}>対応完了</button>
+                                    <button type="button" onClick={() => setReqTab('trash')} className={subTab(reqTab === 'trash')}>ゴミ箱</button>
                                 </div>
                             </div>
 
                             <div className="mt-5 space-y-3">
-                                {(reqTab === 'done' ? doneItems : activeItems).length === 0 ? (
+                                {reqTab === 'trash' ? (
+                                    trashItems.length === 0 ? (
+                                        <div className="rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-6 text-center text-sm text-wa-muted">
+                                            ゴミ箱は空です
+                                        </div>
+                                    ) : (
+                                        trashItems.map((t) => (
+                                            <div
+                                                key={t.id}
+                                                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-4"
+                                            >
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="text-sm font-black tracking-tight text-wa-body">{t.title}</div>
+                                                    <div className="mt-1 text-xs text-wa-muted">依頼元: {t.requester}</div>
+                                                </div>
+                                                {canRestoreTask(t) ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            router.post(
+                                                                route('task-requests.restore', t.id),
+                                                                {},
+                                                                {
+                                                                    preserveScroll: true,
+                                                                    onSuccess: () => showAppToast('復元しました'),
+                                                                    onError: () => showAppToast('復元に失敗しました'),
+                                                                },
+                                                            );
+                                                        }}
+                                                        className="shrink-0 rounded-xl border border-teal-500/35 bg-wa-subtle px-4 py-2 text-xs font-black text-teal-200 transition hover:border-teal-400/50"
+                                                    >
+                                                        復元
+                                                    </button>
+                                                ) : null}
+                                            </div>
+                                        ))
+                                    )
+                                ) : (reqTab === 'done' ? doneItemsSorted : activeItemsSorted).length === 0 ? (
                                     <div className="rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-6 text-center text-sm text-wa-muted">
                                         {reqTab === 'done' ? '完了した依頼はありません' : '未対応の依頼はありません'}
                                     </div>
                                 ) : (
-                                    (reqTab === 'done' ? doneItems : activeItems).map((t) => {
+                                    (reqTab === 'done' ? doneItemsSorted : activeItemsSorted).map((t) => {
                                         const mine =
                                             userId != null &&
                                             t.to_user_id != null &&
@@ -325,7 +479,6 @@ export default function Index({
                                                     <div className="mt-1 text-xs text-wa-muted">依頼元: {t.requester} / 期限: {t.due_date}</div>
                                                     <div className="mt-2 text-[11px] text-wa-accent">タップして詳細・ステータス変更</div>
                                                 </div>
-                                                <span className="shrink-0 text-[10px] text-wa-muted">#{t.id}</span>
                                             </div>
                                         </div>
                                         );
@@ -368,6 +521,7 @@ export default function Index({
                                         <div className="text-xs font-bold tracking-widest text-wa-muted">CHECKLIST</div>
                                         <div className="mt-1 text-sm font-black tracking-tight text-wa-body">今日のタスク</div>
                                     </div>
+                                    {isAdmin ? (
                                     <button
                                         type="button"
                                         onClick={() => setTplDrawerOpen(true)}
@@ -375,12 +529,15 @@ export default function Index({
                                     >
                                         テンプレートを管理
                                     </button>
+                                    ) : null}
                                 </div>
 
                                 <div className="mt-5 space-y-2">
                                     {dailyItems.length === 0 ? (
                                         <div className="rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-6 text-center text-sm text-wa-muted">
-                                            タスクが登録されていません。「テンプレートを管理」から追加してください。
+                                            {isAdmin
+                                                ? 'タスクが登録されていません。「テンプレートを管理」から追加してください。'
+                                                : 'タスクが登録されていません。管理者にテンプレート登録を依頼してください。'}
                                         </div>
                                     ) : (
                                         dailyItems.map((d) => (
@@ -434,47 +591,152 @@ export default function Index({
             </div>
 
             {/* Detail Drawer for 業務依頼 */}
-            <DetailDrawer open={selectedTaskId !== null} title={`TASK #${selectedTaskId ?? ''}`} onClose={() => setSelectedTaskId(null)}>
+            <DetailDrawer
+                open={selectedTaskId !== null}
+                title={selectedTask?.title ?? '業務依頼'}
+                onClose={() => setSelectedTaskId(null)}
+            >
                 {selectedTask ? (
                     <div className="space-y-4">
-                        <div>
-                            <div className="text-xs font-bold tracking-widest text-wa-muted">TITLE</div>
-                            <div className="mt-1 text-base font-black tracking-tight text-wa-body">{selectedTask.title}</div>
-                            <div className="mt-2 text-xs text-wa-muted">
-                                依頼元: {selectedTask.requester} / 作成: {selectedTask.created_at} / 期限: {selectedTask.due_date}
+                        {canEditMeta ? (
+                            <div className="rounded-xl border border-wa-accent/20 bg-wa-ink px-4 py-4">
+                                <div className="text-[11px] font-bold tracking-widest text-wa-muted">依頼の編集</div>
+                                <div className="mt-3 space-y-3">
+                                    <input
+                                        type="text"
+                                        value={editTitle}
+                                        onChange={(e) => setEditTitle(e.target.value)}
+                                        className="nordic-field"
+                                        placeholder="タイトル"
+                                    />
+                                    <textarea
+                                        rows={6}
+                                        value={editBody}
+                                        onChange={(e) => setEditBody(e.target.value)}
+                                        className="nordic-field min-h-[120px]"
+                                        placeholder="内容"
+                                    />
+                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                                        <select
+                                            value={editPriority}
+                                            onChange={(e) =>
+                                                setEditPriority(e.target.value as 'urgent' | 'important' | 'normal')
+                                            }
+                                            className="nordic-field py-2 text-xs font-black"
+                                        >
+                                            <option value="urgent">至急</option>
+                                            <option value="important">重要</option>
+                                            <option value="normal">順次</option>
+                                        </select>
+                                        <input
+                                            type="date"
+                                            value={editDueDate}
+                                            onChange={(e) => setEditDueDate(e.target.value)}
+                                            className="nordic-field py-2 text-xs"
+                                        />
+                                        {canChangeStatus ? (
+                                            <select
+                                                value={editStatus}
+                                                onChange={(e) => setEditStatus(e.target.value as Task['status'])}
+                                                className="nordic-field py-2 text-xs font-black tracking-tight lg:col-span-2"
+                                            >
+                                                <option value="pending">未対応</option>
+                                                <option value="in_progress">対応中</option>
+                                                <option value="completed">完了</option>
+                                                <option value="rejected">却下</option>
+                                            </select>
+                                        ) : (
+                                            <div className="flex items-center gap-2 rounded-xl border border-wa-accent/15 bg-wa-card px-3 py-2 lg:col-span-2">
+                                                <span className="text-[10px] font-bold uppercase tracking-widest text-wa-muted">
+                                                    状態
+                                                </span>
+                                                <StatusBadge variant={statusVariant(selectedTask.status)}>
+                                                    {statusLabel(selectedTask.status)}
+                                                </StatusBadge>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        disabled={savingMeta}
+                                        onClick={() => {
+                                            setSavingMeta(true);
+                                            const payload: Record<string, string | null> = {
+                                                title: editTitle,
+                                                body: editBody,
+                                                priority: editPriority,
+                                                due_date: editDueDate || null,
+                                            };
+                                            if (canChangeStatus) {
+                                                payload.status = editStatus;
+                                            }
+                                            router.patch(route('task-requests.update', selectedTask.id), payload, {
+                                                preserveScroll: true,
+                                                onFinish: () => setSavingMeta(false),
+                                                onSuccess: () => {
+                                                    showAppToast('保存しました');
+                                                    if (editStatus === 'completed') setReqTab('done');
+                                                },
+                                                onError: () => showAppToast('保存に失敗しました'),
+                                            });
+                                        }}
+                                        className="w-full rounded-xl border border-wa-accent/40 bg-wa-accent px-4 py-3 text-xs font-black text-wa-ink transition hover:bg-wa-accent/90 disabled:opacity-40"
+                                    >
+                                        {savingMeta ? '保存中…' : '保存'}
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                            <div className="rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-3">
-                                <div className="text-[11px] font-bold tracking-widest text-wa-muted">STATUS</div>
-                                <div className="mt-2"><StatusBadge variant={statusVariant(selectedTask.status)}>{statusLabel(selectedTask.status)}</StatusBadge></div>
+                        ) : (
+                            <div className="space-y-4">
+                                <div>
+                                    <div className="text-xs font-bold tracking-widest text-wa-muted">TITLE</div>
+                                    <div className="mt-1 text-base font-black tracking-tight text-wa-body">{selectedTask.title}</div>
+                                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                                        <StatusBadge variant={statusVariant(selectedTask.status)}>
+                                            {statusLabel(selectedTask.status)}
+                                        </StatusBadge>
+                                        <StatusBadge variant={priorityVariant(selectedTask.priority)}>
+                                            {priorityLabel(selectedTask.priority)}
+                                        </StatusBadge>
+                                    </div>
+                                    <div className="mt-2 text-xs text-wa-muted">
+                                        依頼元: {selectedTask.requester} / 作成: {selectedTask.created_at} / 期限:{' '}
+                                        {selectedTask.due_date}
+                                    </div>
+                                </div>
+                                <div className="rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-3">
+                                    <div className="text-[11px] font-bold tracking-widest text-wa-muted">本文</div>
+                                    <div className="wa-wrap-anywhere mt-2 max-h-64 overflow-y-auto whitespace-pre-wrap text-sm text-wa-body">
+                                        {selectedTask.body?.trim() ? selectedTask.body : '（本文なし）'}
+                                    </div>
+                                </div>
                             </div>
-                            <div className="rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-3">
-                                <div className="text-[11px] font-bold tracking-widest text-wa-muted">PRIORITY</div>
-                                <div className="mt-2"><StatusBadge variant={priorityVariant(selectedTask.priority)}>{priorityLabel(selectedTask.priority)}</StatusBadge></div>
-                            </div>
-                        </div>
-                        <div className="rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-3">
-                            <div className="text-[11px] font-bold tracking-widest text-wa-muted">BODY</div>
-                            <div className="wa-wrap-anywhere mt-2 max-h-48 overflow-y-auto whitespace-pre-wrap text-sm text-wa-body">
-                                {selectedTask.body?.trim() ? selectedTask.body : '（本文なし）'}
-                            </div>
-                        </div>
-                        <div className="rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-3">
-                            <div className="text-[11px] font-bold tracking-widest text-wa-muted">UPDATE STATUS</div>
-                            <div className="mt-3 flex flex-wrap items-center gap-3">
-                                <select
-                                    value={selectedTask.status}
-                                    onChange={(e) => onChangeStatus(selectedTask.id, e.target.value as Task['status'])}
-                                    className="nordic-field max-w-[180px] py-2 text-xs font-black tracking-tight"
+                        )}
+                        {canDeleteTask ? (
+                            <div className="rounded-xl border border-red-500/30 bg-red-950/20 px-4 py-4">
+                                <div className="text-[11px] font-bold uppercase tracking-widest text-red-200">ゴミ箱へ移動</div>
+                                <p className="mt-2 text-xs text-red-200/90">
+                                    一覧から非表示になります。依頼の関係者はゴミ箱から復元できます。
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (!window.confirm('この依頼をゴミ箱に移動しますか？')) return;
+                                        router.delete(route('task-requests.destroy', selectedTask.id), {
+                                            preserveScroll: true,
+                                            onSuccess: () => {
+                                                setSelectedTaskId(null);
+                                                showAppToast('ゴミ箱に移動しました');
+                                            },
+                                            onError: () => showAppToast('削除に失敗しました'),
+                                        });
+                                    }}
+                                    className="mt-3 w-full rounded-xl border border-red-500/45 bg-wa-ink px-4 py-3 text-xs font-black tracking-widest text-red-200 transition hover:border-red-400 hover:bg-red-950/40"
                                 >
-                                    <option value="pending">未対応</option>
-                                    <option value="in_progress">対応中</option>
-                                    <option value="completed">完了</option>
-                                </select>
-                                <ActionButton onClick={() => setSelectedTaskId(null)}>閉じる</ActionButton>
+                                    ゴミ箱へ移動
+                                </button>
                             </div>
-                        </div>
+                        ) : null}
                     </div>
                 ) : (
                     <div className="rounded-xl border border-wa-accent/15 bg-wa-card px-4 py-6 text-sm text-wa-muted">データがありません</div>

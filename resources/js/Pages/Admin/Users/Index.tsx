@@ -1,5 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
 import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
 import InputLabel from '@/Components/InputLabel';
@@ -43,6 +43,9 @@ function writeUsersSortUrl(key: UserSortKey, dir: SortDir) {
 }
 
 export default function Index({ users }: { users: UsersProp }) {
+    const page = usePage<{ errors?: Record<string, string> }>();
+    const pageErrors = page.props.errors ?? {};
+
     const { data, setData, post, processing, errors, reset } = useForm({
         name: '',
         employee_code: '',
@@ -79,8 +82,12 @@ export default function Index({ users }: { users: UsersProp }) {
     }, [editingUserId, users.data]);
 
     const [editName, setEditName] = useState<string>('');
+    const [editEmployeeCode, setEditEmployeeCode] = useState<string>('');
+    const [editEmail, setEditEmail] = useState<string>('');
+    const [editPassword, setEditPassword] = useState<string>('');
     const [editRole, setEditRole] = useState<'admin' | 'general'>('general');
     const [editActive, setEditActive] = useState<boolean>(true);
+    const [deactivatePhrase, setDeactivatePhrase] = useState<string>('');
 
     const [sort, setSort] = useState<{ key: UserSortKey; dir: SortDir }>(() => readUsersSortFromUrl());
 
@@ -114,8 +121,12 @@ export default function Index({ users }: { users: UsersProp }) {
     const openEdit = (u: UserRow) => {
         setEditingUserId(u.id);
         setEditName(u.name ?? '');
+        setEditEmployeeCode(u.employee_code ?? '');
+        setEditEmail(u.email ?? '');
+        setEditPassword('');
         setEditRole((u.role === 'admin' ? 'admin' : 'general') as 'admin' | 'general');
         setEditActive(u.is_active !== false);
+        setDeactivatePhrase('');
     };
 
     return (
@@ -250,6 +261,7 @@ export default function Index({ users }: { users: UsersProp }) {
                                         onToggle={() => toggleSort('role')}
                                         className="border-b border-wa-accent/20 p-3 font-bold tracking-widest"
                                     />
+                                    <th className="border-b border-wa-accent/20 p-3 font-bold tracking-widest">STATUS</th>
                                     <th className="border-b border-wa-accent/20 p-3 font-bold tracking-widest">POLICY</th>
                                     <th className="border-b border-wa-accent/20 p-3 font-bold tracking-widest">ACTIONS</th>
                                 </tr>
@@ -257,7 +269,7 @@ export default function Index({ users }: { users: UsersProp }) {
                             <tbody>
                                 {users.data.length === 0 && (
                                     <tr>
-                                        <td colSpan={5} className="py-10 text-center text-sm text-wa-muted">
+                                        <td colSpan={6} className="py-10 text-center text-sm text-wa-muted">
                                             ユーザーが登録されていません
                                         </td>
                                     </tr>
@@ -286,6 +298,18 @@ export default function Index({ users }: { users: UsersProp }) {
                                             <span
                                                 className={
                                                     'inline-flex items-center rounded-full px-2.5 py-1 text-xs font-black tracking-tight ' +
+                                                    (user.is_active === false
+                                                        ? 'border border-red-500/35 bg-wa-ink text-red-300 ring-1 ring-inset ring-red-500/25'
+                                                        : 'border border-teal-500/35 bg-wa-ink text-teal-300 ring-1 ring-inset ring-teal-500/25')
+                                                }
+                                            >
+                                                {user.is_active === false ? '無効' : '有効'}
+                                            </span>
+                                        </td>
+                                        <td className="border-b border-wa-accent/20 p-3 text-sm">
+                                            <span
+                                                className={
+                                                    'inline-flex items-center rounded-full px-2.5 py-1 text-xs font-black tracking-tight ' +
                                                     (user.internal_policy_explained_at
                                                         ? 'border border-emerald-500/35 bg-wa-ink text-emerald-300 ring-1 ring-inset ring-emerald-500/25'
                                                         : 'border border-amber-500/35 bg-wa-ink text-amber-300 ring-1 ring-inset ring-amber-500/25')
@@ -304,16 +328,6 @@ export default function Index({ users }: { users: UsersProp }) {
                                                 >
                                                     編集
                                                 </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                        if (!confirm('このユーザーを無効化しますか？')) return;
-                                                        router.delete(route('admin.users.destroy', { id: user.id }));
-                                                    }}
-                                                    className="rounded-sm border border-red-500/40 bg-wa-ink px-4 py-2 text-xs font-black tracking-tight text-red-300 ring-1 ring-red-500/25 transition hover:border-red-400/60"
-                                                >
-                                                    無効化
-                                                </button>
                                             </div>
                                         </td>
                                     </tr>
@@ -331,13 +345,14 @@ export default function Index({ users }: { users: UsersProp }) {
                             <div>
                                 <div className="text-xs font-bold tracking-widest text-wa-muted">EDIT</div>
                                 <div className="mt-1 text-lg font-black tracking-tight text-wa-body">ユーザー編集</div>
-                                <div className="mt-1 text-xs text-wa-muted">
-                                    社員コード: {editingUser.employee_code || '—'}
-                                </div>
+                                <div className="mt-1 text-xs text-wa-muted">ID: {editingUser.id}</div>
                             </div>
                             <button
                                 type="button"
-                                onClick={() => setEditingUserId(null)}
+                                onClick={() => {
+                                    setEditingUserId(null);
+                                    setDeactivatePhrase('');
+                                }}
                                 className="rounded-sm border border-wa-accent/25 bg-wa-ink px-4 py-2 text-xs font-black tracking-widest text-wa-body transition hover:border-wa-accent/40"
                             >
                                 CLOSE
@@ -354,6 +369,44 @@ export default function Index({ users }: { users: UsersProp }) {
                                     value={editName}
                                     onChange={(e) => setEditName(e.target.value)}
                                 />
+                                <InputError message={pageErrors.name} className="mt-2" />
+                            </div>
+                            <div>
+                                <InputLabel htmlFor="edit_employee_code" value="社員コード（ログインID）" />
+                                <TextInput
+                                    id="edit_employee_code"
+                                    type="text"
+                                    className="mt-1 block w-full"
+                                    value={editEmployeeCode}
+                                    onChange={(e) => setEditEmployeeCode(e.target.value)}
+                                    autoComplete="username"
+                                />
+                                <InputError message={pageErrors.employee_code} className="mt-2" />
+                            </div>
+                            <div>
+                                <InputLabel htmlFor="edit_email" value="メール（任意）" />
+                                <TextInput
+                                    id="edit_email"
+                                    type="email"
+                                    className="mt-1 block w-full"
+                                    value={editEmail}
+                                    onChange={(e) => setEditEmail(e.target.value)}
+                                    autoComplete="off"
+                                />
+                                <InputError message={pageErrors.email} className="mt-2" />
+                            </div>
+                            <div>
+                                <InputLabel htmlFor="edit_password" value="新しいパスワード（変更する場合のみ）" />
+                                <TextInput
+                                    id="edit_password"
+                                    type="password"
+                                    className="mt-1 block w-full"
+                                    value={editPassword}
+                                    onChange={(e) => setEditPassword(e.target.value)}
+                                    autoComplete="new-password"
+                                />
+                                <p className="mt-1 text-xs text-wa-muted">8文字以上。空のままなら変更しません。</p>
+                                <InputError message={pageErrors.password} className="mt-2" />
                             </div>
                             <div>
                                 <InputLabel htmlFor="edit_role" value="権限" />
@@ -366,6 +419,7 @@ export default function Index({ users }: { users: UsersProp }) {
                                     <option value="general">一般</option>
                                     <option value="admin">管理者</option>
                                 </select>
+                                <InputError message={pageErrors.role} className="mt-2" />
                             </div>
                             <label className="flex items-center gap-2 text-sm font-semibold text-wa-body">
                                 <input
@@ -377,10 +431,47 @@ export default function Index({ users }: { users: UsersProp }) {
                                 有効
                             </label>
 
+                            <div className="rounded-sm border border-red-500/30 bg-red-950/20 p-4">
+                                <div className="text-[11px] font-bold uppercase tracking-widest text-red-200">アカウント無効化</div>
+                                <p className="mt-2 text-xs leading-relaxed text-red-200/90">
+                                    無効化するとこのユーザーはログインできなくなります。取り消しは「有効」に戻すことで可能です。
+                                </p>
+                                <p className="mt-2 text-xs font-semibold text-red-100">
+                                    続行するには下欄に「<span className="font-black">無効化する</span>」と入力してください。
+                                </p>
+                                <input
+                                    type="text"
+                                    value={deactivatePhrase}
+                                    onChange={(e) => setDeactivatePhrase(e.target.value)}
+                                    placeholder="無効化する"
+                                    className="nordic-field mt-3 w-full"
+                                    autoComplete="off"
+                                />
+                                <button
+                                    type="button"
+                                    disabled={deactivatePhrase !== '無効化する'}
+                                    onClick={() => {
+                                        router.delete(route('admin.users.destroy', { id: editingUser.id }), {
+                                            preserveScroll: true,
+                                            onSuccess: () => {
+                                                setEditingUserId(null);
+                                                setDeactivatePhrase('');
+                                            },
+                                        });
+                                    }}
+                                    className="mt-3 w-full rounded-sm border border-red-500/50 bg-wa-ink px-4 py-3 text-xs font-black tracking-widest text-red-200 transition hover:border-red-400 hover:bg-red-950/40 disabled:cursor-not-allowed disabled:opacity-35"
+                                >
+                                    このユーザーを無効化する
+                                </button>
+                            </div>
+
                             <div className="flex items-center justify-end gap-2">
                                 <button
                                     type="button"
-                                    onClick={() => setEditingUserId(null)}
+                                    onClick={() => {
+                                        setEditingUserId(null);
+                                        setDeactivatePhrase('');
+                                    }}
                                     className="rounded-sm border border-wa-accent/25 bg-wa-ink px-4 py-2.5 text-sm font-black tracking-tight text-wa-body transition hover:border-wa-accent/40"
                                 >
                                     CANCEL
@@ -388,12 +479,24 @@ export default function Index({ users }: { users: UsersProp }) {
                                 <button
                                     type="button"
                                     onClick={() => {
-                                        router.patch(route('admin.users.update', { id: editingUser.id }), {
+                                        const payload: Record<string, string | boolean> = {
                                             name: editName,
+                                            employee_code: editEmployeeCode,
+                                            email: editEmail.trim(),
                                             role: editRole,
                                             is_active: editActive,
+                                        };
+                                        if (editPassword.trim() !== '') {
+                                            payload.password = editPassword;
+                                        }
+                                        router.patch(route('admin.users.update', { id: editingUser.id }), payload, {
+                                            preserveScroll: true,
+                                            onSuccess: () => {
+                                                setEditingUserId(null);
+                                                setDeactivatePhrase('');
+                                                setEditPassword('');
+                                            },
                                         });
-                                        setEditingUserId(null);
                                     }}
                                     className="rounded-sm border border-wa-accent/45 bg-wa-accent px-4 py-2.5 text-sm font-black tracking-tight text-wa-ink shadow-sm ring-1 ring-wa-accent/30 transition hover:bg-wa-accent/90"
                                 >

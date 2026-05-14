@@ -57,7 +57,9 @@ export default function DetailDrawer({
                                 閉じる
                             </button>
                         </div>
-                        <div className="min-h-0 flex-1 overflow-auto p-5 text-wa-body wa-body-track">{children}</div>
+                        <div className="min-h-0 flex-1 overflow-auto p-5 text-wa-body wa-body-track [scrollbar-color:rgba(148,163,184,0.35)_rgba(15,23,42,0.9)] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-wa-ink [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-wa-accent/35 hover:[&::-webkit-scrollbar-thumb]:bg-wa-accent/55">
+                            {children}
+                        </div>
                     </motion.aside>
                 </motion.div>
             ) : null}

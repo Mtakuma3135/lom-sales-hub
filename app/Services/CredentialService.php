@@ -43,6 +43,33 @@ class CredentialService
     }
 
     /**
+     * スプレッドシートの行ラベルに紐づく行を用意し、直後に GAS から取り込みしてセル値を反映する。
+     */
+    public function createWithLabelThenImport(string $label): Credential
+    {
+        $normalized = trim($label);
+        if ($normalized === '') {
+            throw new \InvalidArgumentException('Empty service label');
+        }
+
+        Credential::query()->firstOrCreate(
+            ['label' => $normalized],
+            [
+                'login_id' => '',
+                'value' => '',
+                'is_password' => true,
+                'visible_on_credentials_page' => true,
+            ],
+        );
+
+        $this->importFromGas();
+
+        $fresh = Credential::query()->where('label', $normalized)->firstOrFail();
+
+        return $fresh;
+    }
+
+    /**
      * @return array{credential: Credential, gas_synced: ?bool, gas_queued: bool}
      */
     public function update(int $id, string $loginId, string $passwordPlain, string $updatedAt): array

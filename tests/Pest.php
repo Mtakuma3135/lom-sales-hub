@@ -18,6 +18,13 @@ pest()->extend(TestCase::class)
     ->use(RefreshDatabase::class)
     ->beforeEach(function () {
         $this->withoutVite();
+        config([
+            'lom.registration_enabled' => true,
+            'lom.kot_mock_endpoint_enabled' => true,
+            'lom.admin_allowed_ips' => [],
+            'lom.enforce_admin_two_factor' => false,
+            'lom.csp_connect_src_extra' => [],
+        ]);
     })
     ->in('Feature');
 

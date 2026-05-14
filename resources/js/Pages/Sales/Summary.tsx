@@ -1,7 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import CsvUploadPanel from '@/Components/Sales/CsvUploadPanel';
 import DetailDrawer from '@/Components/DetailDrawer';
-import StatusBadge from '@/Components/StatusBadge';
 import InformationTrigger from '@/Components/UI/InformationTrigger';
 import SlotNumber from '@/Components/UI/SlotNumber';
 import { nextDir, type SortDir, SortableTh } from '@/Components/SortableTh';
@@ -23,43 +22,21 @@ type TrendRow = { label: string; ok: number; ng: number; rate: number };
 
 type SalesPayload = {
     data: {
-        summary: { ok: number; ng: number; contract_rate: number };
+        summary: { ok: number; ng: number; contract_rate: number; contract_message?: string | null };
         ranking: RankRow[];
         trend: TrendRow[];
     };
 };
 
-type KpiTriplet = { ok: number; ng: number; contract_rate: number };
+type KpiTriplet = { ok: number; ng: number; contract_rate: number; contract_message?: string | null };
 
 const emptyPayload: SalesPayload = {
     data: {
-        summary: { ok: 0, ng: 0, contract_rate: 0 },
+        summary: { ok: 0, ng: 0, contract_rate: 0, contract_message: '今月はまだ契約がありません' },
         ranking: [],
         trend: [],
     },
 };
-
-const defaultPayload: SalesPayload = {
-    data: {
-        summary: { ok: 137, ng: 63, contract_rate: 68.5 },
-        ranking: [
-            { rank: 1, name: '山田太郎', ok: 34, ng: 9, rate: 79.1 },
-            { rank: 2, name: '佐藤花子', ok: 29, ng: 11, rate: 72.5 },
-            { rank: 3, name: '鈴木一郎', ok: 24, ng: 12, rate: 66.7 },
-            { rank: 4, name: '高橋次郎', ok: 21, ng: 14, rate: 60.0 },
-            { rank: 5, name: '田中美咲', ok: 19, ng: 17, rate: 52.8 },
-        ],
-        trend: [
-            { label: 'W1', ok: 28, ng: 19, rate: 59.6 },
-            { label: 'W2', ok: 33, ng: 14, rate: 70.2 },
-            { label: 'W3', ok: 38, ng: 12, rate: 76.0 },
-            { label: 'W4', ok: 38, ng: 18, rate: 67.9 },
-        ],
-    },
-};
-
-/** ローカルプレビュー用（Inertia 未接続時） */
-const defaultPersonalKpi: KpiTriplet = { ok: 19, ng: 17, contract_rate: 52.8 };
 
 function recordsQueryHref(status: 'ok' | 'ng', keyword?: string): string {
     const q = new URLSearchParams();
@@ -107,7 +84,7 @@ function KpiScoreColumn({
     const pad = impact ? 'p-9 sm:p-10 lg:p-11' : 'p-8 lg:p-9';
 
     return (
-        <div className={`flex flex-col border ${shell} ${pad}`}>
+        <div className={`flex flex-col ${shell} ${pad}`}>
             <div
                 className={
                     impact
@@ -118,10 +95,16 @@ function KpiScoreColumn({
                 {eyebrow}
             </div>
             <div className={impact ? 'mt-6 flex items-baseline gap-2' : 'mt-5 flex items-baseline gap-2'}>
-                <span className={rateCls}>
-                    <SlotNumber value={kpi.contract_rate.toFixed(1)} />
-                </span>
-                <span className={pctCls}>%</span>
+                {kpi.contract_message ? (
+                    <div className="text-sm font-medium leading-relaxed text-wa-muted">{kpi.contract_message}</div>
+                ) : (
+                    <>
+                        <span className={rateCls}>
+                            <SlotNumber value={kpi.contract_rate.toFixed(1)} />
+                        </span>
+                        <span className={pctCls}>%</span>
+                    </>
+                )}
             </div>
             <div className={impact ? 'mt-10 grid grid-cols-2 gap-4 sm:gap-6' : 'mt-8 grid grid-cols-2 gap-4 sm:gap-5'}>
                 <div
@@ -160,7 +143,9 @@ function KpiScoreColumn({
             <div className={`mt-8 w-full overflow-hidden rounded-full bg-wa-subtle ${barH}`}>
                 <div
                     className="h-full rounded-full bg-gradient-to-r from-wa-accent/50 via-wa-accent to-wa-accent/85 transition-all"
-                    style={{ width: `${Math.min(100, Math.max(0, kpi.contract_rate))}%` }}
+                    style={{
+                        width: kpi.contract_message ? '0%' : `${Math.min(100, Math.max(0, kpi.contract_rate))}%`,
+                    }}
                 />
             </div>
         </div>
@@ -196,10 +181,9 @@ function readRankingSortFromUrl(): { key: RankSortKey; dir: SortDir } {
 
 export default function Summary() {
     const { props } = usePage<{ sales?: SalesPayload; personalKpi?: KpiTriplet }>();
-    const isDev = import.meta.env.DEV;
 
-    const payload = (props.sales ?? (isDev ? defaultPayload : emptyPayload)) as SalesPayload;
-    const personalKpi = (props.personalKpi ?? (isDev ? defaultPersonalKpi : emptyPayload.data.summary)) as KpiTriplet;
+    const payload = (props.sales ?? emptyPayload) as SalesPayload;
+    const personalKpi = (props.personalKpi ?? emptyPayload.data.summary) as KpiTriplet;
 
     const actorName =
         (props as { auth?: { user?: { name?: string | null } } }).auth?.user?.name?.trim() ?? '';
@@ -256,7 +240,11 @@ export default function Summary() {
     const ranking = payload.data.ranking;
     const trend = payload.data.trend;
 
-    const maxTrend = useMemo(() => Math.max(...trend.map((t) => t.ok + t.ng), 1), [trend]);
+    const maxTrend = useMemo(() => {
+        const xs = trend.map((t) => t.ok + t.ng);
+
+        return xs.length > 0 ? Math.max(...xs, 1) : 1;
+    }, [trend]);
 
     const chartData = useMemo(
         () => trend.map((t) => ({ ...t, rate: Number(t.rate.toFixed(1)) })),
@@ -290,24 +278,16 @@ export default function Summary() {
     return (
         <AuthenticatedLayout
             header={
-                <h2 className="wa-body-track text-sm font-semibold text-wa-body">案件・KPI</h2>
+                <h2 className="wa-body-track text-sm font-semibold text-wa-body">KPI・案件</h2>
             }
         >
-            <Head title={tab === 'csv' ? '案件・KPI（CSV取り込み）' : '案件・KPI（サマリー）'} />
+            <Head title={tab === 'csv' ? 'KPI・案件（CSV取り込み）' : 'KPI・案件（サマリー）'} />
             <div className="mx-auto max-w-6xl wa-body-track space-y-10 sm:space-y-12">
                 <div className="flex flex-wrap items-center justify-between gap-6">
                     <div className="flex items-center gap-4">
                         <div className="text-xs font-semibold uppercase tracking-widest text-wa-muted">
                             ダッシュボード
                         </div>
-                        {isDev && props.sales === undefined ? (
-                            <StatusBadge
-                                variant="muted"
-                                className="!rounded-lg !border-wa-accent/25 !bg-wa-ink !text-wa-muted !ring-0"
-                            >
-                                DEV SAMPLE
-                            </StatusBadge>
-                        ) : null}
                     </div>
                     <Link
                         href={route('sales.records')}
@@ -377,67 +357,73 @@ export default function Summary() {
 
                     <div className="px-4 pb-6 pt-8 sm:px-8">
                         <div className="h-[min(28rem,62vw)] w-full min-w-0 sm:h-[26rem] md:h-[28rem]">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <ComposedChart data={chartData} margin={{ top: 16, right: 16, left: 4, bottom: 8 }}>
-                                    <CartesianGrid stroke={CHART_GRID} vertical={false} />
-                                    <XAxis dataKey="label" tick={{ fill: CHART_AXIS, fontSize: 12 }} />
-                                    <YAxis
-                                        yAxisId="left"
-                                        tick={{ fill: CHART_AXIS, fontSize: 12 }}
-                                        allowDecimals={false}
-                                    />
-                                    <YAxis
-                                        yAxisId="right"
-                                        orientation="right"
-                                        domain={[0, 100]}
-                                        tick={{ fill: CHART_AXIS, fontSize: 12 }}
-                                        tickFormatter={(v) => `${v}%`}
-                                    />
-                                    <Tooltip
-                                        contentStyle={{
-                                            background: '#1c1917',
-                                            border: '1px solid rgba(192, 132, 87, 0.28)',
-                                            borderRadius: '12px',
-                                        }}
-                                        labelStyle={{ color: '#e7e5e4' }}
-                                        itemStyle={{ fontSize: 13, color: '#a8a29e' }}
-                                    />
-                                    <Legend
-                                        wrapperStyle={{ fontSize: 12, color: CHART_AXIS, paddingTop: 16 }}
-                                        formatter={(value) => <span className="text-wa-muted">{value}</span>}
-                                    />
-                                    <Line
-                                        yAxisId="left"
-                                        type="monotone"
-                                        dataKey="ok"
-                                        name="OK"
-                                        stroke={CHART_OK}
-                                        strokeWidth={2.5}
-                                        dot={{ r: 3, fill: CHART_OK, strokeWidth: 0 }}
-                                        activeDot={{ r: 6 }}
-                                    />
-                                    <Line
-                                        yAxisId="left"
-                                        type="monotone"
-                                        dataKey="ng"
-                                        name="NG"
-                                        stroke={CHART_NG}
-                                        strokeWidth={2.5}
-                                        dot={{ r: 3, fill: CHART_NG, strokeWidth: 0 }}
-                                        activeDot={{ r: 6 }}
-                                    />
-                                    <Line
-                                        yAxisId="right"
-                                        type="monotone"
-                                        dataKey="rate"
-                                        name="成約率"
-                                        stroke={CHART_RATE}
-                                        strokeWidth={2.5}
-                                        dot={{ r: 3, fill: CHART_RATE, strokeWidth: 0 }}
-                                        activeDot={{ r: 6 }}
-                                    />
-                                </ComposedChart>
-                            </ResponsiveContainer>
+                            {chartData.length === 0 ? (
+                                <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-wa-accent/25 bg-wa-ink/50 px-6 text-center text-sm text-wa-muted">
+                                    データ未登録（CSV 取込後に週次トレンドが表示されます）
+                                </div>
+                            ) : (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <ComposedChart data={chartData} margin={{ top: 16, right: 16, left: 4, bottom: 8 }}>
+                                        <CartesianGrid stroke={CHART_GRID} vertical={false} />
+                                        <XAxis dataKey="label" tick={{ fill: CHART_AXIS, fontSize: 12 }} />
+                                        <YAxis
+                                            yAxisId="left"
+                                            tick={{ fill: CHART_AXIS, fontSize: 12 }}
+                                            allowDecimals={false}
+                                        />
+                                        <YAxis
+                                            yAxisId="right"
+                                            orientation="right"
+                                            domain={[0, 100]}
+                                            tick={{ fill: CHART_AXIS, fontSize: 12 }}
+                                            tickFormatter={(v) => `${v}%`}
+                                        />
+                                        <Tooltip
+                                            contentStyle={{
+                                                background: '#1c1917',
+                                                border: '1px solid rgba(192, 132, 87, 0.28)',
+                                                borderRadius: '12px',
+                                            }}
+                                            labelStyle={{ color: '#e7e5e4' }}
+                                            itemStyle={{ fontSize: 13, color: '#a8a29e' }}
+                                        />
+                                        <Legend
+                                            wrapperStyle={{ fontSize: 12, color: CHART_AXIS, paddingTop: 16 }}
+                                            formatter={(value) => <span className="text-wa-muted">{value}</span>}
+                                        />
+                                        <Line
+                                            yAxisId="left"
+                                            type="monotone"
+                                            dataKey="ok"
+                                            name="OK"
+                                            stroke={CHART_OK}
+                                            strokeWidth={2.5}
+                                            dot={{ r: 3, fill: CHART_OK, strokeWidth: 0 }}
+                                            activeDot={{ r: 6 }}
+                                        />
+                                        <Line
+                                            yAxisId="left"
+                                            type="monotone"
+                                            dataKey="ng"
+                                            name="NG"
+                                            stroke={CHART_NG}
+                                            strokeWidth={2.5}
+                                            dot={{ r: 3, fill: CHART_NG, strokeWidth: 0 }}
+                                            activeDot={{ r: 6 }}
+                                        />
+                                        <Line
+                                            yAxisId="right"
+                                            type="monotone"
+                                            dataKey="rate"
+                                            name="成約率"
+                                            stroke={CHART_RATE}
+                                            strokeWidth={2.5}
+                                            dot={{ r: 3, fill: CHART_RATE, strokeWidth: 0 }}
+                                            activeDot={{ r: 6 }}
+                                        />
+                                    </ComposedChart>
+                                </ResponsiveContainer>
+                            )}
                         </div>
                     </div>
 

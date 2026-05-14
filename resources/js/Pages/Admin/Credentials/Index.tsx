@@ -44,16 +44,18 @@ export default function Index() {
     const [items, setItems] = useState<CredentialRow[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
-    const [gasSyncing, setGasSyncing] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [toast, setToast] = useState<string | null>(null);
     const [copiedId, setCopiedId] = useState<string | null>(null);
+    const [addOpen, setAddOpen] = useState(false);
+    const [newLabel, setNewLabel] = useState('');
+    const [addSaving, setAddSaving] = useState(false);
 
     const api = useMemo(
         () => ({
             index: () => fetch(route('portal.api.credentials.index'), { headers: { Accept: 'application/json' } }),
-            syncFromGas: () =>
-                fetch(route('portal.api.credentials.sync-from-gas'), {
+            store: (service_name: string) =>
+                fetch(route('portal.api.credentials.store'), {
                     method: 'POST',
                     headers: {
                         Accept: 'application/json',
@@ -62,7 +64,7 @@ export default function Index() {
                         'X-CSRF-TOKEN': csrf(),
                     },
                     credentials: 'same-origin',
-                    body: '{}',
+                    body: JSON.stringify({ service_name }),
                 }),
             update: (id: number, body: { login_id: string; password: string; updated_at: string }) =>
                 fetch(route('portal.api.credentials.update', { id }), {
@@ -124,20 +126,31 @@ export default function Index() {
         setErrorMessage(null);
     };
 
-    const onSyncFromGas = async () => {
-        if (gasSyncing) return;
-        setGasSyncing(true);
+    const onAddCredential = async () => {
+        const label = newLabel.trim();
+        if (!label) {
+            setErrorMessage('スプレッドシートの行ラベル（サービス名）を入力してください。');
+            return;
+        }
+        setAddSaving(true);
         setErrorMessage(null);
         setToast(null);
         try {
-            const res = await api.syncFromGas();
+            const res = await api.store(label);
+            if (res.status === 422) {
+                const j = (await res.json().catch(() => null)) as { message?: string } | null;
+                setErrorMessage(j?.message ?? '入力内容を確認してください。');
+                return;
+            }
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            setToast('GAS 取り込みをバックグラウンドで開始しました。まもなく再読込します。');
-            window.setTimeout(() => load(), 2500);
+            setToast('追加し、スプレッドシートから取り込みました。');
+            setAddOpen(false);
+            setNewLabel('');
+            await load();
         } catch {
-            setErrorMessage('GAS 同期の開始に失敗しました。');
+            setErrorMessage('追加に失敗しました。');
         } finally {
-            setGasSyncing(false);
+            setAddSaving(false);
         }
     };
 
@@ -161,11 +174,22 @@ export default function Index() {
                     <SectionHeader
                         eyebrow="CREDENTIALS"
                         title="ID / パス管理"
-                        meta={!isLoading && items.length > 0 ? `${items.length} 件` : isLoading ? '読み込み中…' : ''}
+                        meta={
+                            isLoading
+                                ? '読み込み中…'
+                                : items.length > 0
+                                  ? `${items.length} 件 · スプレッドシート自動同期`
+                                  : 'スプレッドシート自動同期'
+                        }
                         action={{
-                            label: gasSyncing ? '同期開始中…' : 'GASから取り込み',
-                            onClick: () => void onSyncFromGas(),
-                            variant: 'secondary',
+                            label: '追加',
+                            onClick: () => {
+                                setAddOpen(true);
+                                setNewLabel('');
+                                setErrorMessage(null);
+                                setToast(null);
+                            },
+                            variant: 'primary',
                         }}
                     />
 
@@ -372,6 +396,52 @@ export default function Index() {
                         </div>
                     ) : null}
                 </NeonCard>
+
+                {addOpen ? (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-8">
+                        <div
+                            role="dialog"
+                            aria-modal="true"
+                            className="w-full max-w-md rounded-2xl border border-wa-accent/25 bg-wa-card p-6 shadow-nordic"
+                        >
+                            <div className="text-sm font-black tracking-tight text-wa-body">行を追加</div>
+                            <p className="mt-2 text-xs leading-relaxed text-wa-muted">
+                                連携済みスプレッドシートの行ラベル（サービス名）と同じ名前を入力すると、その行のセル内容を取り込みます。
+                            </p>
+                            <label className="mt-4 block text-[10px] font-semibold uppercase tracking-wider text-wa-muted">
+                                サービス名
+                            </label>
+                            <input
+                                type="text"
+                                value={newLabel}
+                                onChange={(e) => setNewLabel(e.target.value)}
+                                className="nordic-field mt-1 block w-full text-sm"
+                                placeholder="例: Slack / VPN など"
+                                autoComplete="off"
+                            />
+                            <div className="mt-5 flex flex-wrap justify-end gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setAddOpen(false);
+                                        setNewLabel('');
+                                    }}
+                                    className="rounded-xl border border-wa-accent/20 bg-wa-ink px-4 py-2 text-xs font-black tracking-tight text-wa-body transition hover:border-wa-accent/35"
+                                >
+                                    キャンセル
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled={addSaving || !newLabel.trim()}
+                                    onClick={() => void onAddCredential()}
+                                    className="rounded-xl border border-wa-accent/40 bg-wa-accent px-4 py-2 text-xs font-black tracking-tight text-wa-ink transition hover:bg-wa-accent/90 disabled:opacity-40"
+                                >
+                                    {addSaving ? '処理中…' : '追加して取り込む'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                ) : null}
             </div>
         </AuthenticatedLayout>
     );

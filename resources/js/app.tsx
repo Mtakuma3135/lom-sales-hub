@@ -1,6 +1,7 @@
 import '../css/app.css';
 import './bootstrap';
 
+import AppErrorBoundary from '@/Components/AppErrorBoundary';
 import ToastProvider from '@/Components/ToastProvider';
 import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
@@ -16,12 +17,19 @@ createInertiaApp({
             import.meta.glob('./Pages/**/*.tsx'),
         ),
     setup({ el, App, props }) {
+        if (!el) {
+            console.error('[Inertia] Root element (#app) not found. Check @inertia in app.blade.php.');
+            return;
+        }
+
         const root = createRoot(el);
 
         root.render(
-            <ToastProvider>
-                <App {...props} />
-            </ToastProvider>,
+            <AppErrorBoundary>
+                <ToastProvider>
+                    <App {...props} />
+                </ToastProvider>
+            </AppErrorBoundary>,
         );
     },
     progress: {

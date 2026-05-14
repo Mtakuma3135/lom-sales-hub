@@ -14,7 +14,12 @@ class NoticeController extends Controller
     {
         $this->authorize('viewAny', Notice::class);
 
-        $notices = $noticeService->index();
+        $actor = auth()->user();
+        if (! $actor) {
+            abort(401);
+        }
+
+        $notices = $noticeService->attachReadFlags($actor, $noticeService->indexFor($actor));
 
         $noticesResource = NoticeResource::collection($notices)
             ->additional(['meta' => []])
@@ -30,7 +35,12 @@ class NoticeController extends Controller
     {
         $this->authorize('viewAny', Notice::class);
 
-        $notices = $noticeService->drafts();
+        $actor = auth()->user();
+        if (! $actor) {
+            abort(401);
+        }
+
+        $notices = $noticeService->attachReadFlags($actor, $noticeService->draftsFor($actor));
 
         $noticesResource = NoticeResource::collection($notices)
             ->additional(['meta' => []])

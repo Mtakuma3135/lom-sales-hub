@@ -13,7 +13,7 @@ function auditRowStatusVariant(
     const s = status.toLowerCase();
     if (s === 'success') return { label: status, variant: 'success' };
     if (s === 'failed') return { label: status, variant: 'danger' };
-    if (s === 'skipped' || s === 'mock') return { label: status, variant: 'warning' };
+    if (s === 'skipped' || s === 'mock') return { label: s === 'mock' ? '擬似' : status, variant: 'warning' };
     if (s === 'pending') return { label: status, variant: 'muted' };
     return { label: status, variant: 'muted' };
 }

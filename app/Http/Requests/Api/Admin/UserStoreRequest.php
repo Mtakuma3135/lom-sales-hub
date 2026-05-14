@@ -26,5 +26,14 @@ class UserStoreRequest extends FormRequest
             'internal_policy_explained' => ['accepted'],
         ];
     }
-}
 
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'internal_policy_explained.accepted' => '社内の個人情報・セキュリティ方針について説明済みであることを確認してください。',
+        ];
+    }
+}

@@ -2,14 +2,15 @@
 
 namespace App\Providers;
 
+use App\Models\AuditLog;
 use App\Models\Credential;
 use App\Models\CsvUpload;
 use App\Models\DiscordNotificationLog;
-use App\Models\AuditLog;
 use App\Models\LunchBreak;
 use App\Models\Notice;
 use App\Models\Product;
 use App\Models\SalesRecord;
+use App\Models\TaskRequest;
 use App\Models\User;
 use App\Policies\AuditLogPolicy;
 use App\Policies\CredentialPolicy;
@@ -46,15 +47,39 @@ class AuthServiceProvider extends ServiceProvider
     {
         $this->registerPolicies();
 
-        // Session-mock entities (no Eloquent model) still need centralized authorization.
-        Gate::define('taskRequest.update', function (User $actor, array $task): bool {
+        Gate::define('taskRequest.updateStatus', function (User $actor, TaskRequest $task): bool {
             if (($actor->role ?? 'general') === 'admin') {
                 return true;
             }
 
-            $toUserId = isset($task['to_user_id']) ? (int) $task['to_user_id'] : null;
-            return $toUserId !== null && $toUserId === (int) $actor->id;
+            return (int) $task->to_user_id === (int) $actor->id;
+        });
+
+        Gate::define('taskRequest.updateFields', function (User $actor, TaskRequest $task): bool {
+            if (($actor->role ?? 'general') === 'admin') {
+                return true;
+            }
+
+            return (int) $task->to_user_id === (int) $actor->id;
+        });
+
+        Gate::define('taskRequest.delete', function (User $actor, TaskRequest $task): bool {
+            if (($actor->role ?? 'general') === 'admin') {
+                return true;
+            }
+
+            $id = (int) $actor->id;
+
+            return (int) $task->to_user_id === $id || (int) $task->from_user_id === $id;
+        });
+
+        Gate::define('taskRequest.restore', function (User $actor, TaskRequest $task): bool {
+            if (($actor->role ?? 'general') === 'admin') {
+                return true;
+            }
+            $id = (int) $actor->id;
+
+            return (int) $task->to_user_id === $id || (int) $task->from_user_id === $id;
         });
     }
 }
-

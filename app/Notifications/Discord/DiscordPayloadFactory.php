@@ -20,7 +20,7 @@ class DiscordPayloadFactory
         $text = "【休憩アサイン】\n".
             "対象: {$who}\n".
             "時間: {$startTime} 〜 {$endTime}\n".
-            "開始までにタスクを整えて、スマートに離脱しましょう。";
+            '開始までにタスクを整えて、スマートに離脱しましょう。';
 
         return ['content' => $text];
     }
@@ -34,7 +34,7 @@ class DiscordPayloadFactory
 
         $text = "【休憩終了】{$name} さん\n".
             "休憩時間が終了しました。\n".
-            "エネルギー満タンで、業務へリブートしてください。";
+            'エネルギー満タンで、業務へリブートしてください。';
 
         return ['content' => $text];
     }
@@ -42,9 +42,46 @@ class DiscordPayloadFactory
     /**
      * @return array{content:string}
      */
-    public static function lunchBreakScheduleUpdated(): array
+    public static function lunchBreakScheduleUpdated(string $actorName, string $date): array
     {
-        return ['content' => '昼休憩のタイムスケジュールが更新されました！'];
+        $who = $actorName !== '' ? $actorName : '—';
+
+        return ['content' => "【昼休憩テーブル更新】\n更新者: {$who}\n対象日: {$date}\nタイムテーブルが保存されました。"];
+    }
+
+    /**
+     * @param  'success'|'skipped'|'duplicate'  $outcome
+     * @return array{content:string}
+     */
+    public static function kotPunchRecorded(
+        string $userName,
+        string $employeeCode,
+        string $outcome,
+        string $atIso,
+        ?int $httpStatus = null,
+    ): array {
+        $name = $userName !== '' ? $userName : '—';
+        $code = $employeeCode !== '' ? $employeeCode : '—';
+        $status = match ($outcome) {
+            'success' => '打刻が完了しました',
+            'duplicate' => '重複打刻のため処理済みとして完了しました',
+            'skipped' => 'API トークン未設定のためモック完了（キュー処理）',
+            default => '打刻処理が記録されました',
+        };
+        $http = $httpStatus !== null ? " / HTTP {$httpStatus}" : '';
+
+        return ['content' => "【KOT 打刻】\n{$name}（{$code}）\n{$status}{$http}\n時刻: {$atIso}"];
+    }
+
+    /**
+     * @param  array<int, string>  $userNames
+     * @return array{content:string}
+     */
+    public static function lunchBreakNotStartedAlert(string $date, array $userNames): array
+    {
+        $who = $userNames !== [] ? implode('、', $userNames) : '—';
+
+        return ['content' => "【休憩アラート】\n対象日: {$date}\n予定時刻を過ぎてもスタートしていないユーザー: {$who}\n至急ステータスを確認してください。"];
     }
 
     /**
@@ -72,4 +109,3 @@ class DiscordPayloadFactory
         return ['content' => $text];
     }
 }
-

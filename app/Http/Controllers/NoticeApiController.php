@@ -21,11 +21,13 @@ class NoticeApiController extends Controller
 
         $draftsOnly = (string) $request->input('drafts', '') === '1';
         $items = $draftsOnly ? $noticeService->draftsFor($actor) : $noticeService->indexFor($actor);
+        $items = $noticeService->attachReadFlags($actor, $items);
         $q = trim((string) $request->input('q', ''));
         if ($q !== '') {
             $items = $items->filter(function (Notice $n) use ($q) {
                 $title = (string) ($n->title ?? '');
                 $body = (string) ($n->body ?? '');
+
                 return mb_stripos($title.$body, $q) !== false;
             })->values();
         }
@@ -45,5 +47,32 @@ class NoticeApiController extends Controller
 
         return response()->json(new NoticeResource($row));
     }
-}
 
+    public function markRead(Request $request, NoticeService $noticeService, int $id): JsonResponse
+    {
+        $actor = $request->user();
+        if (! $actor) {
+            abort(401);
+        }
+
+        $row = $noticeService->findFor($actor, $id);
+        $this->authorize('view', $row);
+        $noticeService->markRead($actor, $id);
+
+        return response()->json(['ok' => true]);
+    }
+
+    public function markUnread(Request $request, NoticeService $noticeService, int $id): JsonResponse
+    {
+        $actor = $request->user();
+        if (! $actor) {
+            abort(401);
+        }
+
+        $row = $noticeService->findFor($actor, $id);
+        $this->authorize('view', $row);
+        $noticeService->markUnread($actor, $id);
+
+        return response()->json(['ok' => true]);
+    }
+}

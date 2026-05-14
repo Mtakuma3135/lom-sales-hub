@@ -106,4 +106,47 @@ return [
         explode(',', (string) env('CSP_CONNECT_SRC_EXTRA', ''))
     ))),
 
+    /*
+    |--------------------------------------------------------------------------
+    | CSP: extra Vite dev server origins (APP_DEBUG=true のみ)
+    |--------------------------------------------------------------------------
+    |
+    | Add script-src / style-src / connect-src when the dev server uses a
+    | non-default host or port (comma-separated full origins, e.g. http://127.0.0.1:5180).
+    |
+    | @var list<string>
+    */
+
+    'csp_vite_dev_extra' => array_values(array_filter(array_map(
+        'trim',
+        explode(',', (string) env('CSP_VITE_DEV_EXTRA', ''))
+    ))),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Sanctum API: idle token expiry (UpdateLastUsedAt)
+    |--------------------------------------------------------------------------
+    |
+    | PersonalAccessToken の「最終利用」から何分経過で 401 になるか。
+    | `config/sanctum.php` の expiration（絶対期限）とは別。
+    |
+    */
+
+    'sanctum_api_idle_minutes' => max(1, (int) env('SANCTUM_API_IDLE_MINUTES', 180)),
+
+    /*
+    |--------------------------------------------------------------------------
+    | GAS outbound: require signing secret when enabled
+    |--------------------------------------------------------------------------
+    |
+    | true のとき、GAS 向け URL が設定されているのに GAS_SIGNING_SECRET が空なら
+    | HTTP を送らず失敗扱い（監査のみ）。本番では既定 true（環境で上書き可）。
+    |
+    */
+
+    'gas_reject_unsigned_outbound' => filter_var(
+        (string) (env('GAS_REJECT_UNSIGNED_OUTBOUND') ?? (env('APP_ENV') === 'production' ? '1' : '0')),
+        FILTER_VALIDATE_BOOLEAN
+    ),
+
 ];

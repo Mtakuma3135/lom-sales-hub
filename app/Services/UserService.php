@@ -47,7 +47,7 @@ class UserService
     }
 
     /**
-     * @param  array{name?:string,role?:string,is_active?:bool}  $data
+     * @param  array{name?:string,employee_code?:string,email?:string|null,password?:string|null,role?:string,is_active?:bool}  $data
      */
     public function update(int $id, array $data): User
     {
@@ -56,6 +56,15 @@ class UserService
 
             if (array_key_exists('name', $data)) {
                 $user->name = (string) $data['name'];
+            }
+            if (array_key_exists('employee_code', $data)) {
+                $user->employee_code = (string) $data['employee_code'];
+            }
+            if (array_key_exists('email', $data)) {
+                $user->email = $data['email'] !== null && $data['email'] !== '' ? (string) $data['email'] : null;
+            }
+            if (array_key_exists('password', $data) && is_string($data['password']) && $data['password'] !== '') {
+                $user->password = Hash::make($data['password']);
             }
             if (array_key_exists('role', $data)) {
                 $user->role = (string) $data['role'];
@@ -82,4 +91,3 @@ class UserService
         return $this->update($id, ['is_active' => false]);
     }
 }
-

@@ -19,6 +19,7 @@ class LunchBreakActive extends Model
         'lane',
         'planned_start_time',
         'started_at',
+        'paused_at',
         'finished_at',
         'duration_minutes',
         'updated_by',
@@ -31,6 +32,7 @@ class LunchBreakActive extends Model
         'date' => 'date',
         'lane' => 'integer',
         'started_at' => 'datetime',
+        'paused_at' => 'datetime',
         'finished_at' => 'datetime',
         'duration_minutes' => 'integer',
         'updated_by' => 'integer',
@@ -46,4 +48,3 @@ class LunchBreakActive extends Model
         return $this->belongsTo(User::class, 'updated_by');
     }
 }
-

@@ -19,9 +19,12 @@ class MypageResource extends JsonResource
             'attendance' => $this->resource['attendance'] ?? null,
             'kot_status' => $this->resource['kot_status'] ?? null,
             'integrations' => $this->resource['integrations'],
-            'quick_links' => $this->resource['quick_links'],
+            'integration_meta' => $this->resource['integration_meta'] ?? [
+                'kot' => ['system_configured' => false, 'personal_configured' => false],
+                'discord' => ['system_configured' => false, 'personal_configured' => false],
+                'extras' => [],
+            ],
             'credentials' => CredentialResource::collection($credentials),
         ];
     }
 }
-

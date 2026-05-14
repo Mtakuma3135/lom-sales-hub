@@ -7,6 +7,8 @@ export default function NoticeFeedItem({
     isPinned,
     isRead,
     onOpen,
+    onToggleRead,
+    readToggleBusy,
 }: {
     title: string;
     body?: string;
@@ -14,10 +16,12 @@ export default function NoticeFeedItem({
     isPinned?: boolean;
     isRead?: boolean;
     onOpen: () => void;
+    /** 一覧のみ: 既読⇔未読（クリックは行の onOpen に伝播しない） */
+    onToggleRead?: () => void;
+    readToggleBusy?: boolean;
 }) {
     return (
         <div
-            role="button"
             tabIndex={0}
             onClick={onOpen}
             onKeyDown={(e) => {
@@ -26,11 +30,11 @@ export default function NoticeFeedItem({
                 onOpen();
             }}
             className={[
-                'group border border-wa-accent/20 bg-wa-ink px-4 py-4 transition-colors hover:border-wa-accent/35',
+                'group cursor-pointer border border-wa-accent/20 bg-wa-ink px-4 py-4 transition-colors hover:border-wa-accent/35',
                 isRead ? 'opacity-80' : '',
             ].join(' ')}
         >
-            <div className="flex items-start justify-between gap-3">
+            <div className="flex gap-3">
                 <div className="min-w-0 flex-1 overflow-hidden">
                     <div className="flex flex-wrap items-center gap-2">
                         {isPinned ? <StatusBadge variant="primary" pulse>PIN</StatusBadge> : null}
@@ -44,9 +48,22 @@ export default function NoticeFeedItem({
                     ) : null}
                     {publishedAt ? <div className="mt-2 text-xs text-wa-muted">公開: {publishedAt}</div> : null}
                 </div>
-                <div className="shrink-0 rounded-sm border border-wa-accent/30 bg-wa-card px-3 py-1 text-[11px] font-semibold text-wa-accent">
-                    開く
-                </div>
+                {onToggleRead ? (
+                    <div className="shrink-0 self-start pt-0.5">
+                        <button
+                            type="button"
+                            disabled={readToggleBusy}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onToggleRead();
+                            }}
+                            aria-label={isRead ? '未読に戻す' : '既読にする'}
+                            className="rounded-lg border border-wa-accent/30 bg-wa-card px-2.5 py-1.5 text-[10px] font-black tracking-tight text-wa-body transition hover:border-wa-accent/50 disabled:cursor-wait disabled:opacity-40"
+                        >
+                            {readToggleBusy ? '…' : '既読⇔未読'}
+                        </button>
+                    </div>
+                ) : null}
             </div>
         </div>
     );

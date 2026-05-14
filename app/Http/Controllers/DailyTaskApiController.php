@@ -32,6 +32,8 @@ class DailyTaskApiController extends Controller
             abort(401);
         }
 
+        abort_unless(($actor->role ?? 'general') === 'admin', 403);
+
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:500'],
         ]);
@@ -47,6 +49,8 @@ class DailyTaskApiController extends Controller
         if (! $actor) {
             abort(401);
         }
+
+        abort_unless(($actor->role ?? 'general') === 'admin', 403);
 
         $dailyTaskService->destroyTemplate($actor, $id);
 

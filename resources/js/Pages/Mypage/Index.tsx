@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router } from '@inertiajs/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import NeonCard from '@/Components/NeonCard';
 import SectionHeader from '@/Components/UI/SectionHeader';
 
@@ -13,6 +13,14 @@ type CredentialRow = {
     updated_at: string;
     is_mock?: boolean;
 };
+
+type IntegrationMeta = {
+    kot: { system_configured: boolean; personal_configured: boolean };
+    discord: { system_configured: boolean; personal_configured: boolean };
+    extras: Array<{ label: string; token_label: string; has_value: boolean }>;
+};
+
+type ExtraFormRow = { label: string; token_label: string; token_value: string };
 
 type AttendancePayload = {
     state: 'not_connected' | 'not_fetched' | 'ok' | 'has_error' | 'error';
@@ -36,7 +44,7 @@ type MypagePayload = {
             mode: string | null;
         } | null;
         integrations: { key: string; label: string; status: string }[];
-        quick_links: { label: string; href: string }[];
+        integration_meta?: IntegrationMeta;
         credentials: CredentialRow[] | { data: CredentialRow[] };
     };
 };
@@ -68,6 +76,18 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
             ? ({ name: 'ゲストユーザー', employee_code: null, role: 'general' } as const)
             : ({ name: '', employee_code: null, role: 'general' } as const);
 
+    const integrationMeta: IntegrationMeta = hasPayload
+        ? (mypage.data.integration_meta ?? {
+              kot: { system_configured: false, personal_configured: false },
+              discord: { system_configured: false, personal_configured: false },
+              extras: [],
+          })
+        : {
+              kot: { system_configured: false, personal_configured: false },
+              discord: { system_configured: false, personal_configured: false },
+              extras: [],
+          };
+
     const integrations = hasPayload
         ? mypage.data.integrations
         : isDev
@@ -95,6 +115,76 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
 
     const [pressingReveal, setPressingReveal] = useState<Record<number, boolean>>({});
     const [copiedId, setCopiedId] = useState<string | null>(null);
+
+    const [integrationOpen, setIntegrationOpen] = useState(false);
+    const [kotToken, setKotToken] = useState('');
+    const [discordUrl, setDiscordUrl] = useState('');
+    const [extraRows, setExtraRows] = useState<ExtraFormRow[]>([{ label: '', token_label: '', token_value: '' }]);
+    const [clearKotToken, setClearKotToken] = useState(false);
+    const [clearDiscordUrl, setClearDiscordUrl] = useState(false);
+    const [integrationSaving, setIntegrationSaving] = useState(false);
+    const [integrationMsg, setIntegrationMsg] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!integrationOpen) return;
+        setKotToken('');
+        setDiscordUrl('');
+        setClearKotToken(false);
+        setClearDiscordUrl(false);
+        setIntegrationMsg(null);
+        const meta = hasPayload ? mypage?.data?.integration_meta : undefined;
+        const ex = meta?.extras ?? [];
+        setExtraRows(
+            ex.length > 0
+                ? ex.map((e) => ({ label: e.label, token_label: e.token_label, token_value: '' }))
+                : [{ label: '', token_label: '', token_value: '' }],
+        );
+    }, [integrationOpen, hasPayload, mypage?.data?.integration_meta]);
+
+    const saveIntegrations = async () => {
+        setIntegrationSaving(true);
+        setIntegrationMsg(null);
+        try {
+            const body: Record<string, unknown> = {
+                extra_integrations: extraRows
+                    .filter((r) => r.label.trim() !== '' || r.token_label.trim() !== '' || r.token_value.trim() !== '')
+                    .map((r) => ({ ...r })),
+            };
+            if (clearKotToken) {
+                body.clear_kot_personal = true;
+            } else if (kotToken.trim() !== '') {
+                body.kot_personal_api_token = kotToken.trim();
+            }
+            if (clearDiscordUrl) {
+                body.clear_discord_personal = true;
+            } else if (discordUrl.trim() !== '') {
+                body.personal_discord_webhook_url = discordUrl.trim();
+            }
+            const res = await fetch(route('portal.api.mypage.integrations'), {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? '',
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify(body),
+            });
+            if (!res.ok) {
+                const j = (await res.json().catch(() => null)) as { message?: string } | null;
+                setIntegrationMsg(j?.message ?? `保存に失敗しました（HTTP ${res.status}）`);
+                return;
+            }
+            setIntegrationMsg('保存しました');
+            setIntegrationOpen(false);
+            router.reload({ only: ['mypage'] });
+        } catch {
+            setIntegrationMsg('保存に失敗しました');
+        } finally {
+            setIntegrationSaving(false);
+        }
+    };
 
     const copyToClipboard = (text: string, key: string) => {
         navigator.clipboard.writeText(text).then(() => {
@@ -131,7 +221,7 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
                         </div>
 
                         <div className="mt-5 grid grid-cols-2 gap-3">
-                            <button type="button" className={btnPrimary}>
+                            <button type="button" onClick={() => setIntegrationOpen(true)} className={btnPrimary}>
                                 連携設定
                             </button>
                             <button type="button" onClick={() => setPwOpen(true)} className={btnGhost}>
@@ -139,18 +229,17 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
                             </button>
                         </div>
 
-                        {/* Integrations inline */}
                         <div className="mt-5 border-t border-wa-accent/15 pt-4">
                             <div className="text-[10px] font-bold uppercase tracking-widest text-wa-muted">
-                                外部連携
+                                外部連携の状況
                             </div>
                             <div className="mt-2 space-y-1.5">
                                 {integrations.map((i) => (
-                                    <div key={i.key} className="flex items-center justify-between">
-                                        <span className="text-xs text-wa-body">{i.label}</span>
+                                    <div key={i.key} className="flex items-center justify-between gap-2">
+                                        <span className="min-w-0 truncate text-xs text-wa-body">{i.label}</span>
                                         <span
                                             className={
-                                                'rounded-full px-2 py-0.5 text-[10px] font-bold ' +
+                                                'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ' +
                                                 (i.status === 'connected'
                                                     ? 'border border-teal-500/35 text-teal-300'
                                                     : 'border border-wa-accent/20 text-wa-muted')
@@ -161,7 +250,11 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
                                     </div>
                                 ))}
                             </div>
+                            <p className="mt-2 text-[10px] leading-relaxed text-wa-muted">
+                                トークンや Webhook の登録・削除は「連携設定」から行えます。
+                            </p>
                         </div>
+
                     </NeonCard>
 
                     <div className="flex min-h-0 lg:col-span-2">
@@ -361,11 +454,6 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
                                                 <div className="min-w-0 text-xs font-black tracking-tight text-wa-body">
                                                     <span className="block truncate">{c.service_name}</span>
                                                 </div>
-                                                {c.is_mock ? (
-                                                    <span className="shrink-0 rounded-full border border-wa-accent/20 bg-wa-ink px-2 py-0.5 text-[10px] font-semibold text-wa-muted">
-                                                        SAMPLE
-                                                    </span>
-                                                ) : null}
                                             </div>
 
                                             <div className="mt-3 space-y-2">
@@ -481,6 +569,155 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
                     </NeonCard>
                 </div>
             </div>
+
+            {integrationOpen ? (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 backdrop-blur-[1px]">
+                    <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-wa-accent/20 bg-wa-card p-6 shadow-nordic">
+                        <div className="flex items-start justify-between gap-3">
+                            <div>
+                                <div className="text-xs font-bold tracking-widest text-wa-muted">INTEGRATIONS</div>
+                                <div className="mt-1 text-lg font-black tracking-tight text-wa-body">外部連携</div>
+                                <p className="mt-2 text-xs leading-relaxed text-wa-muted">
+                                    KING OF TIME の個人用 API トークン、Discord の Incoming Webhook URL を保存できます（空欄のまま保存しても既存の秘密情報は維持されます。削除はチェックをオンにして保存）。
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setIntegrationOpen(false)}
+                                className="shrink-0 rounded-xl border border-wa-accent/20 bg-wa-ink px-3 py-2 text-xs font-black text-wa-body"
+                            >
+                                閉じる
+                            </button>
+                        </div>
+
+                        <div className="mt-4 space-y-2 rounded-xl border border-wa-accent/15 bg-wa-ink/80 px-3 py-3 text-[11px] text-wa-muted">
+                            <div>
+                                KOT サーバー設定: {integrationMeta.kot.system_configured ? 'あり' : 'なし'} / 個人トークン:{' '}
+                                {integrationMeta.kot.personal_configured ? '保存済み' : 'なし'}
+                            </div>
+                            <div>
+                                Discord 全体 Webhook: {integrationMeta.discord.system_configured ? 'あり' : 'なし'} / 個人
+                                Webhook: {integrationMeta.discord.personal_configured ? '保存済み' : 'なし'}
+                            </div>
+                        </div>
+
+                        {integrationMsg ? (
+                            <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-950/25 px-3 py-2 text-xs text-amber-100">
+                                {integrationMsg}
+                            </div>
+                        ) : null}
+
+                        <div className="mt-5 space-y-4">
+                            <div>
+                                <label className="text-[10px] font-bold uppercase tracking-wider text-wa-muted">KOT 個人用 API トークン</label>
+                                <input
+                                    type="password"
+                                    autoComplete="off"
+                                    value={kotToken}
+                                    onChange={(e) => setKotToken(e.target.value)}
+                                    placeholder="変更する場合のみ入力"
+                                    className="nordic-field mt-1 block w-full text-sm"
+                                />
+                                <label className="mt-2 flex items-center gap-2 text-xs text-wa-body">
+                                    <input type="checkbox" checked={clearKotToken} onChange={(e) => setClearKotToken(e.target.checked)} />
+                                    個人用 KOT トークンを削除
+                                </label>
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-bold uppercase tracking-wider text-wa-muted">Discord Webhook（個人）</label>
+                                <input
+                                    type="url"
+                                    value={discordUrl}
+                                    onChange={(e) => setDiscordUrl(e.target.value)}
+                                    placeholder="https://discord.com/api/webhooks/..."
+                                    className="nordic-field mt-1 block w-full text-sm"
+                                />
+                                <label className="mt-2 flex items-center gap-2 text-xs text-wa-body">
+                                    <input type="checkbox" checked={clearDiscordUrl} onChange={(e) => setClearDiscordUrl(e.target.checked)} />
+                                    個人用 Webhook を削除
+                                </label>
+                            </div>
+
+                            <div className="border-t border-wa-accent/15 pt-4">
+                                <div className="flex items-center justify-between gap-2">
+                                    <div className="text-[10px] font-bold uppercase tracking-wider text-wa-muted">追加連携</div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setExtraRows((r) => [...r, { label: '', token_label: '', token_value: '' }])}
+                                        className="rounded-lg border border-wa-accent/30 bg-wa-ink px-2 py-1 text-[10px] font-black text-wa-body"
+                                    >
+                                        行を追加
+                                    </button>
+                                </div>
+                                <div className="mt-3 space-y-3">
+                                    {extraRows.map((row, idx) => (
+                                        <div key={idx} className="rounded-xl border border-wa-accent/15 bg-wa-ink/60 p-3">
+                                            <input
+                                                value={row.label}
+                                                onChange={(e) =>
+                                                    setExtraRows((prev) =>
+                                                        prev.map((x, i) => (i === idx ? { ...x, label: e.target.value } : x)),
+                                                    )
+                                                }
+                                                placeholder="表示名（例: Slack Bot）"
+                                                className="nordic-field mb-2 block w-full text-xs"
+                                            />
+                                            <input
+                                                value={row.token_label}
+                                                onChange={(e) =>
+                                                    setExtraRows((prev) =>
+                                                        prev.map((x, i) => (i === idx ? { ...x, token_label: e.target.value } : x)),
+                                                    )
+                                                }
+                                                placeholder="トークン項目名（例: Bot Token）"
+                                                className="nordic-field mb-2 block w-full text-xs"
+                                            />
+                                            <input
+                                                type="password"
+                                                value={row.token_value}
+                                                onChange={(e) =>
+                                                    setExtraRows((prev) =>
+                                                        prev.map((x, i) => (i === idx ? { ...x, token_value: e.target.value } : x)),
+                                                    )
+                                                }
+                                                placeholder="値（空のまま保存で既存を維持）"
+                                                className="nordic-field block w-full text-xs"
+                                            />
+                                            {extraRows.length > 1 ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setExtraRows((prev) => prev.filter((_, i) => i !== idx))}
+                                                    className="mt-2 text-[10px] font-bold text-red-400"
+                                                >
+                                                    この行を削除
+                                                </button>
+                                            ) : null}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="mt-6 flex flex-wrap justify-end gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setIntegrationOpen(false)}
+                                className="rounded-xl border border-wa-accent/20 bg-wa-ink px-4 py-2 text-xs font-black text-wa-body"
+                            >
+                                キャンセル
+                            </button>
+                            <button
+                                type="button"
+                                disabled={integrationSaving}
+                                onClick={() => void saveIntegrations()}
+                                className={btnPrimary + ' px-5 py-2 text-xs'}
+                            >
+                                {integrationSaving ? '保存中…' : '保存'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            ) : null}
 
             {/* Password change modal */}
             {pwOpen ? (

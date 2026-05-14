@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\LegacyCompatibleEncryptedString;
 use Illuminate\Database\Eloquent\Model;
 
 class Credential extends Model
@@ -13,6 +14,6 @@ class Credential extends Model
     protected $casts = [
         'is_password' => 'boolean',
         'visible_on_credentials_page' => 'boolean',
+        'value' => LegacyCompatibleEncryptedString::class,
     ];
 }
-

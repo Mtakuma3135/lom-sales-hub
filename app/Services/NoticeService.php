@@ -3,9 +3,11 @@
 namespace App\Services;
 
 use App\Models\Notice;
+use App\Models\NoticeRead;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class NoticeService
 {
@@ -21,6 +23,7 @@ class NoticeService
                 ->get();
         } catch (\Throwable $e) {
             Log::error('NoticeService.index failed', ['error' => $e->getMessage()]);
+
             return collect();
         }
     }
@@ -40,6 +43,7 @@ class NoticeService
                 ->get();
         } catch (\Throwable $e) {
             Log::error('NoticeService.drafts failed', ['error' => $e->getMessage()]);
+
             return collect();
         }
     }
@@ -61,6 +65,7 @@ class NoticeService
             return $q->get();
         } catch (\Throwable $e) {
             Log::error('NoticeService.indexFor failed', ['error' => $e->getMessage()]);
+
             return collect();
         }
     }
@@ -75,12 +80,10 @@ class NoticeService
         if (($actor->role ?? 'general') !== 'admin') {
             return collect();
         }
+
         return $this->drafts();
     }
 
-    /**
-     * @return Notice
-     */
     public function find(int $id): Notice
     {
         return Notice::query()->findOrFail($id);
@@ -96,9 +99,6 @@ class NoticeService
         return $q->findOrFail($id);
     }
 
-    /**
-     * @return Notice
-     */
     public function store(string $title, string $body, bool $isPinned, ?string $publishedAt): Notice
     {
         try {
@@ -118,7 +118,6 @@ class NoticeService
 
     /**
      * @param  array{title?:string,body?:string,is_pinned?:bool,published_at?:string|null}  $attrs
-     * @return Notice
      */
     public function update(int $id, array $attrs): Notice
     {
@@ -157,5 +156,96 @@ class NoticeService
             throw new \RuntimeException('Server error.', 500);
         }
     }
-}
 
+    /**
+     * @param  Collection<int, Notice>  $notices
+     * @return Collection<int, Notice>
+     */
+    public function attachReadFlags(User $actor, Collection $notices): Collection
+    {
+        if ($notices->isEmpty() || ! Schema::hasTable('notice_reads')) {
+            return $notices;
+        }
+
+        $ids = $notices->pluck('id')->filter()->values()->all();
+        if ($ids === []) {
+            return $notices;
+        }
+
+        $readIds = NoticeRead::query()
+            ->where('user_id', (int) $actor->id)
+            ->whereIn('notice_id', $ids)
+            ->pluck('notice_id')
+            ->all();
+        $readSet = array_fill_keys(array_map('intval', $readIds), true);
+
+        return $notices->map(function (Notice $n) use ($readSet): Notice {
+            $n->setAttribute('is_read', isset($readSet[(int) $n->id]));
+
+            return $n;
+        })->values();
+    }
+
+    public function markRead(User $actor, int $noticeId): void
+    {
+        if (! Schema::hasTable('notice_reads')) {
+            return;
+        }
+
+        NoticeRead::query()->updateOrCreate(
+            [
+                'user_id' => (int) $actor->id,
+                'notice_id' => $noticeId,
+            ],
+            ['read_at' => now()],
+        );
+    }
+
+    public function markUnread(User $actor, int $noticeId): void
+    {
+        if (! Schema::hasTable('notice_reads')) {
+            return;
+        }
+
+        NoticeRead::query()
+            ->where('user_id', (int) $actor->id)
+            ->where('notice_id', $noticeId)
+            ->delete();
+    }
+
+    /**
+     * 公開済みかつ未読の周知件数（ログインユーザー向け）。
+     */
+    public function unreadPublishedCount(User $actor): int
+    {
+        try {
+            if (! Schema::hasTable('notice_reads')) {
+                return 0;
+            }
+
+            $q = Notice::query()
+                ->whereNotNull('published_at')
+                ->where('published_at', '<=', now());
+
+            if (($actor->role ?? 'general') !== 'admin') {
+                $q->whereNotNull('published_at');
+            }
+
+            $total = (clone $q)->count();
+            if ($total === 0) {
+                return 0;
+            }
+
+            $readCount = NoticeRead::query()
+                ->where('user_id', (int) $actor->id)
+                ->whereIn('notice_id', (clone $q)->pluck('id'))
+                ->count();
+
+            return max(0, $total - $readCount);
+        } catch (\Throwable $e) {
+            Log::error('NoticeService.unreadPublishedCount failed', ['error' => $e->getMessage()]);
+
+            return 0;
+        }
+    }
+}

@@ -69,6 +69,7 @@ class DiscordNotificationLogController extends Controller
             'event_type' => (string) $base->event_type,
             'payload' => $base->payload,
             'triggered_by' => $request->user()?->id,
+            'webhook_url' => $base->webhook_url,
         ]);
 
         SendDiscordNotification::dispatch((int) $log->id);
@@ -87,4 +88,3 @@ class DiscordNotificationLogController extends Controller
         return response()->json($log);
     }
 }
-

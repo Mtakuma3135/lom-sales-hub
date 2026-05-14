@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Concerns\AuditLoggable;
+use App\Events\KotPunchRecorded;
 use App\Models\User;
 use App\Services\KotService;
 use Illuminate\Bus\Queueable;
@@ -11,13 +12,14 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class SendKotPunchJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
     use AuditLoggable;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public $tries = 3;
 
@@ -26,8 +28,7 @@ class SendKotPunchJob implements ShouldQueue
     public function __construct(
         public int $userId,
         public string $atIso,
-    ) {
-    }
+    ) {}
 
     public function handle(KotService $kotService): void
     {
@@ -43,6 +44,7 @@ class SendKotPunchJob implements ShouldQueue
                 errorMessage: 'employee_code is empty',
                 actor: $user,
             );
+
             return;
         }
 
@@ -66,6 +68,9 @@ class SendKotPunchJob implements ShouldQueue
                 actor: $user,
                 meta: ['mode' => 'mock', 'reason' => 'no_token'],
             );
+
+            Event::dispatch(new KotPunchRecorded($user, 'skipped', $this->atIso));
+
             return;
         }
 
@@ -92,6 +97,9 @@ class SendKotPunchJob implements ShouldQueue
                     actor: $user,
                     meta: ['processed' => true],
                 );
+
+                Event::dispatch(new KotPunchRecorded($user, 'duplicate', $this->atIso, 422));
+
                 return;
             }
 
@@ -104,6 +112,10 @@ class SendKotPunchJob implements ShouldQueue
                 responseBody: $res->body(),
                 actor: $user,
             );
+
+            if ($res->successful()) {
+                Event::dispatch(new KotPunchRecorded($user, 'success', $this->atIso, $res->status()));
+            }
 
             if (! $res->successful()) {
                 throw new \RuntimeException('KOT punch failed with status '.$res->status().'.');
@@ -127,4 +139,3 @@ class SendKotPunchJob implements ShouldQueue
         }
     }
 }
-
