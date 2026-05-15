@@ -24,7 +24,7 @@ class AlertLunchBreakNotStartedCommand extends Command
         }
 
         $today = now()->format('Y-m-d');
-        $grace = 2;
+        $grace = 5;
 
         $names = [];
         foreach (range(1, 5) as $lane) {

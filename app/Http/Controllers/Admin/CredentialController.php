@@ -16,9 +16,11 @@ class CredentialController extends Controller
     {
         $this->authorize('viewAny', Credential::class);
 
-        $credentialService->importFromGas();
-
         $items = $credentialService->index();
+
+        dispatch(function () use ($credentialService): void {
+            $credentialService->importFromGas();
+        })->afterResponse();
 
         return CredentialResource::collection($items)->response();
     }
@@ -31,15 +33,26 @@ class CredentialController extends Controller
             'service_name' => ['required', 'string', 'max:255'],
         ]);
 
+        $label = trim($validated['service_name']);
+
         try {
-            $row = $credentialService->createWithLabelThenImport($validated['service_name']);
-        } catch (\InvalidArgumentException) {
-            return response()->json(['message' => 'サービス名を入力してください。'], 422);
+            $row = Credential::query()->firstOrCreate(
+                ['label' => $label],
+                [
+                    'login_id' => '',
+                    'value' => '',
+                    'is_password' => true,
+                    'visible_on_credentials_page' => true,
+                ],
+            );
         } catch (\Throwable $e) {
             report($e);
-
             return response()->json(['message' => '追加に失敗しました。'], 500);
         }
+
+        dispatch(function () use ($credentialService): void {
+            $credentialService->importFromGas();
+        })->afterResponse();
 
         return CredentialResource::make($row)->response();
     }

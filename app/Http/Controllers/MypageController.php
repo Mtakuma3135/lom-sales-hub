@@ -19,17 +19,18 @@ class MypageController extends Controller
     public function index(Request $request, MypageService $mypageService): Response
     {
         $user = $request->user();
+
+        $payload = $mypageService->index($user);
+
         if ($user !== null && ($user->role ?? 'general') === 'admin') {
-            app()->terminating(function (): void {
+            dispatch(function () {
                 try {
                     app(CredentialService::class)->importFromGas();
                 } catch (\Throwable $e) {
                     Log::warning('Mypage GAS credential sync skipped', ['error' => $e->getMessage()]);
                 }
-            });
+            })->afterResponse();
         }
-
-        $payload = $mypageService->index($request->user());
 
         $resource = (new MypageResource($payload))
             ->additional(['meta' => []])

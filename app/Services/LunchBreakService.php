@@ -259,7 +259,7 @@ class LunchBreakService
 
             if ($users->isNotEmpty()) {
                 // 個別アサイン通知は不要：スケジュール更新通知のみに統一
-                $this->notifyScheduleUpdated();
+                $this->notifyScheduleUpdated($actor, $date);
             }
 
         } catch (\Throwable $e) {
@@ -273,14 +273,14 @@ class LunchBreakService
         }
     }
 
-    private function notifyScheduleUpdated(): bool
+    private function notifyScheduleUpdated(User $actor, string $date): bool
     {
         try {
-            $payload = DiscordPayloadFactory::lunchBreakScheduleUpdated();
+            $payload = DiscordPayloadFactory::lunchBreakScheduleUpdated($actor->name ?? '—', $date);
             $log = DiscordNotificationLog::query()->create([
                 'event_type' => 'lunch_break.schedule_updated',
                 'payload' => $payload,
-                'triggered_by' => null,
+                'triggered_by' => $actor->id,
             ]);
             SendDiscordNotification::dispatch((int) $log->id);
             return true;
