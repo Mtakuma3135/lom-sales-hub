@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C /Applications/MAMP/htdocs/lom-sales-hub log --oneline -5)",
+      "Bash(git -C /Applications/MAMP/htdocs/lom-sales-hub diff -- app/Http/Controllers/MypageController.php app/Http/Controllers/MypageIntegrationController.php app/Http/Controllers/Admin/CredentialController.php app/Services/LunchBreakService.php app/Services/MypageService.php app/Http/Requests/TaskRequestStoreRequest.php app/Http/Requests/TaskRequestUpdateRequest.php app/Notifications/Discord/DiscordPayloadFactory.php routes/web.php vite.config.js)",
+      "Bash(git -C /Applications/MAMP/htdocs/lom-sales-hub diff --stat -- resources/js/ resources/css/)",
+      "Bash(git -C /Applications/MAMP/htdocs/lom-sales-hub diff -- resources/js/Pages/LunchBreaks/Index.tsx resources/js/Pages/Mypage/Index.tsx resources/js/Layouts/AuthenticatedLayout.tsx resources/js/Components/BreakRunner.tsx)"
+    ]
+  }
+}

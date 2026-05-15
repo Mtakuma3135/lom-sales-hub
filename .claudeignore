@@ -1,0 +1,22 @@
+# 依存パッケージ（読み込み不要・メモリ節約）
+vendor/
+node_modules/
+
+# ビルド成果物
+public/build/
+build/
+
+# ログ・キャッシュ・一時ファイル
+storage/logs/
+storage/framework/cache/
+storage/framework/sessions/
+storage/framework/views/
+bootstrap/cache/
+
+# テスト・カバレッジ
+.phpunit.cache/
+coverage/
+
+# OS・エディタ生成ファイル
+.DS_Store
+*.swp
