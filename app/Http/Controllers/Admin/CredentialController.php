@@ -18,10 +18,6 @@ class CredentialController extends Controller
 
         $items = $credentialService->index();
 
-        dispatch(function () use ($credentialService): void {
-            $credentialService->importFromGas();
-        })->afterResponse();
-
         return CredentialResource::collection($items)->response();
     }
 

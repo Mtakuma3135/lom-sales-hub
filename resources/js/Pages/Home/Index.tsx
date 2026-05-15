@@ -8,6 +8,13 @@ import StatusBadge from '@/Components/StatusBadge';
 import { PageProps } from '@/types';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import SectionHeader from '@/Components/UI/SectionHeader';
+import PrimaryButton from '@/Components/PrimaryButton';
+import SecondaryButton from '@/Components/SecondaryButton';
+import { showAppToast } from '@/lib/toast';
+
+function csrfToken(): string {
+    return (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? '';
+}
 
 type NoticeRow = {
     id: number;
@@ -33,6 +40,7 @@ type LunchLaneStatus = {
     current: {
         user: { id: number; name: string } | null;
         started_at?: string | null;
+        paused_at?: string | null;
         planned_start_time?: string | null;
         duration_minutes?: number;
     };
@@ -65,7 +73,10 @@ function laneRemainingMs(row: LunchLaneStatus, nowMs: number, totalMs: number): 
     if (!started) return null;
     const t0 = new Date(started).getTime();
     if (!Number.isFinite(t0)) return null;
-    return Math.max(0, totalMs - (nowMs - t0));
+    const pauseRaw = row.current?.paused_at;
+    const pauseAt = pauseRaw ? new Date(pauseRaw).getTime() : null;
+    const endMs = pauseAt !== null && Number.isFinite(pauseAt) ? pauseAt : nowMs;
+    return totalMs - (endMs - t0);
 }
 
 function parseIsoMs(raw: unknown): number | null {
@@ -204,10 +215,20 @@ export default function Index({
         () => lunchBreaks?.meta?.date ?? serverMeta?.date ?? localYmd(),
         [lunchBreaks?.meta?.date, serverMeta?.date],
     );
-    const totalMs = 60 * 60 * 1000;
     const [serverOffsetMs, setServerOffsetMs] = useState<number>(0);
     const [nowMs, setNowMs] = useState<number>(() => Date.now());
     const [lanesFromApi, setLanesFromApi] = useState<LunchLaneStatus[]>([]);
+
+    const wallClockLabel = useMemo(
+        () =>
+            new Date(nowMs).toLocaleTimeString('ja-JP', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false,
+            }),
+        [nowMs],
+    );
 
     const fetchLunchStatus = useCallback(async () => {
         try {
@@ -263,11 +284,45 @@ export default function Index({
         return () => window.clearInterval(id);
     }, [serverOffsetMs]);
 
-    const fmt = (ms: number) => {
-        const s = Math.floor(ms / 1000);
-        const mm = String(Math.floor(s / 60)).padStart(2, '0');
-        const ss = String(s % 60).padStart(2, '0');
-        return `${mm}:${ss}`;
+    const dispatchLunchHomeRefresh = () => {
+        window.dispatchEvent(new CustomEvent('lunch-schedule-updated', { detail: { date: dateYmd } }));
+        window.dispatchEvent(new CustomEvent('lunch-break-timer-updated', { detail: { date: dateYmd } }));
+    };
+
+    const postJson = async (url: string, body: unknown) => {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': csrfToken(),
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify(body),
+        });
+        return res.ok;
+    };
+
+    const startLane = async (lane: number) => {
+        const ok = await postJson(route('portal.api.lunch-breaks.start'), { date: dateYmd, lane });
+        void fetchLunchStatus();
+        dispatchLunchHomeRefresh();
+        showAppToast(ok ? `休憩${lane} を開始しました` : '開始に失敗しました');
+    };
+
+    const stopLane = async (lane: number) => {
+        const ok = await postJson(route('portal.api.lunch-breaks.stop'), { date: dateYmd, lane });
+        void fetchLunchStatus();
+        dispatchLunchHomeRefresh();
+        showAppToast(ok ? `休憩${lane} を停止しました` : '停止に失敗しました');
+    };
+
+    const resetLane = async (lane: number) => {
+        const ok = await postJson(route('portal.api.lunch-breaks.reset'), { date: dateYmd, lane });
+        void fetchLunchStatus();
+        dispatchLunchHomeRefresh();
+        showAppToast(ok ? `休憩${lane} をリセットしました` : 'リセットに失敗しました');
     };
 
     const publishedLabel = (raw: string | null | undefined) => {
@@ -297,6 +352,16 @@ export default function Index({
             return String(b.created_at).localeCompare(String(a.created_at));
         });
     }, [taskRows, userId]);
+
+    const homeIncompleteTasks = useMemo(
+        () => homeSortedTasks.filter((t) => t.status !== 'completed'),
+        [homeSortedTasks],
+    );
+
+    const dailyRowsIncomplete = useMemo(
+        () => dailyRows.filter((d) => d.status !== 'completed'),
+        [dailyRows],
+    );
 
     const myTaskCount = useMemo(
         () =>
@@ -355,12 +420,23 @@ export default function Index({
                         action={{ label: '詳細を見る', onClick: () => go(route('lunch-breaks.index')), variant: 'secondary' }}
                     />
 
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-wa-accent/20 bg-wa-ink/80 px-4 py-3">
+                        <div className="text-xs font-semibold text-wa-muted">現在時刻</div>
+                        <div className="wa-nums text-2xl font-black tabular-nums tracking-tight text-wa-accent sm:text-3xl">
+                            {wallClockLabel}
+                        </div>
+                    </div>
+
                     <div className="mt-5 space-y-4">
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
                             {[1, 2, 3, 4, 5].map((lane) => {
                                 const row = lanesFromApi.find((r) => r.lane === lane) ?? null;
-                                const rem = row ? laneRemainingMs(row, nowMs, totalMs) : null;
-                                const active = rem !== null && rem > 0 && rem < totalMs;
+                                const durMs = (row?.current?.duration_minutes ?? 60) * 60 * 1000;
+                                const started = Boolean(row?.current?.started_at);
+                                const rem = row ? laneRemainingMs(row, nowMs, durMs) : null;
+                                const paused = Boolean(row?.current?.paused_at);
+                                const timerActive = started && !paused && rem !== null && rem > 0;
+                                const overrun = rem !== null && rem <= 0 && started && !paused;
                                 const currentName = row?.current?.user?.name ?? '—';
                                 const nextName = row?.next?.user?.name ?? '—';
                                 const plannedStart = row?.current?.planned_start_time ?? null;
@@ -370,18 +446,48 @@ export default function Index({
                                 return (
                                     <div key={lane} className="rounded-xl border border-wa-accent/15 bg-wa-ink p-4">
                                         <div className="flex items-start justify-between gap-2">
-                                            <div className="text-sm font-black tracking-tight text-wa-body">{lane}</div>
+                                            <div className="text-sm font-black tracking-tight text-wa-body">枠 {lane}</div>
                                             <div className="text-[11px] font-medium text-wa-muted">{plannedLabel ?? '—'}</div>
                                         </div>
                                         <div className="mt-2 text-lg font-black tracking-tight text-wa-body">{currentName}</div>
                                         <div className="mt-1 text-[11px] text-wa-muted">次: {nextName}</div>
+                                        {paused && (
+                                            <div className="mt-1 text-[10px] font-black tracking-widest text-amber-400">⏸ 一時停止中</div>
+                                        )}
 
                                         <div className="mt-3">
                                             <BreakRunner
-                                                active={active}
-                                                remainingMs={active ? rem! : totalMs}
-                                                totalMs={totalMs}
+                                                active={timerActive}
+                                                overrun={overrun}
+                                                overrunMs={overrun && rem !== null ? Math.abs(rem) : 0}
+                                                remainingMs={overrun ? 0 : timerActive ? Math.max(0, rem!) : durMs}
+                                                totalMs={durMs}
+                                                frozenRemainingMs={
+                                                    paused && rem !== null && !overrun ? Math.max(0, rem) : null
+                                                }
                                             />
+                                        </div>
+                                        <div className="mt-3 grid gap-2">
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <PrimaryButton
+                                                    onClick={() => void startLane(lane)}
+                                                    className="w-full justify-center whitespace-nowrap px-3 py-2 text-[11px]"
+                                                >
+                                                    {paused ? '再開' : 'スタート'}
+                                                </PrimaryButton>
+                                                <SecondaryButton
+                                                    onClick={() => void stopLane(lane)}
+                                                    className="w-full justify-center whitespace-nowrap px-3 py-2 text-[11px]"
+                                                >
+                                                    ストップ
+                                                </SecondaryButton>
+                                            </div>
+                                            <SecondaryButton
+                                                onClick={() => void resetLane(lane)}
+                                                className="w-full justify-center whitespace-nowrap px-3 py-2 text-[11px]"
+                                            >
+                                                リセット
+                                            </SecondaryButton>
                                         </div>
                                     </div>
                                 );
@@ -502,8 +608,8 @@ export default function Index({
                         title="タスク管理"
                         meta={
                             [
-                                homeSortedTasks.length > 0 ? `業務依頼 ${homeSortedTasks.length} 件` : null,
-                                dailyRows.length > 0 ? `責タスク ${dailyRows.length} 件` : null,
+                                homeIncompleteTasks.length > 0 ? `業務依頼 ${homeIncompleteTasks.length} 件` : null,
+                                dailyRowsIncomplete.length > 0 ? `責タスク ${dailyRowsIncomplete.length} 件` : null,
                             ]
                                 .filter(Boolean)
                                 .join(' · ') || undefined
@@ -520,13 +626,13 @@ export default function Index({
                     <div className="mt-5 space-y-8">
                         <div>
                             <div className="text-xs font-semibold uppercase tracking-widest text-wa-muted">業務依頼</div>
-                            {homeSortedTasks.length === 0 ? (
+                            {homeIncompleteTasks.length === 0 ? (
                                 <div className="mt-3 rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-6 text-center text-sm text-wa-muted">
-                                    業務依頼はありません
+                                    未完了の業務依頼はありません
                                 </div>
                             ) : (
                                 <div className="mt-3 max-h-[min(320px,45vh)] space-y-3 overflow-y-auto overflow-x-hidden pr-1">
-                                    {homeSortedTasks.map((t) => (
+                                    {homeIncompleteTasks.map((t) => (
                                         <div
                                             key={t.id}
                                             role="button"
@@ -565,26 +671,18 @@ export default function Index({
 
                         <div className="border-t border-wa-accent/15 pt-6">
                             <div className="text-xs font-semibold uppercase tracking-widest text-wa-muted">責タスク（今日）</div>
-                            {dailyRows.length === 0 ? (
+                            {dailyRowsIncomplete.length === 0 ? (
                                 <div className="mt-3 rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-6 text-center text-sm text-wa-muted">
-                                    今日の責タスクはありません
+                                    未完了の責タスクはありません
                                 </div>
                             ) : (
                                 <ul className="mt-3 max-h-[min(220px,35vh)] space-y-2 overflow-y-auto pr-1">
-                                    {dailyRows.map((d) => (
+                                    {dailyRowsIncomplete.map((d) => (
                                         <li
                                             key={d.id}
                                             className="flex items-center justify-between gap-3 rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-3 text-sm"
                                         >
-                                            <span
-                                                className={
-                                                    d.status === 'completed'
-                                                        ? 'min-w-0 flex-1 text-wa-muted line-through'
-                                                        : 'min-w-0 flex-1 font-medium text-wa-body'
-                                                }
-                                            >
-                                                {d.title}
-                                            </span>
+                                            <span className="min-w-0 flex-1 font-medium text-wa-body">{d.title}</span>
                                             <StatusBadge variant={statusVariant(d.status)}>{statusLabel(d.status)}</StatusBadge>
                                         </li>
                                     ))}

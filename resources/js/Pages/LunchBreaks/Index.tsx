@@ -45,6 +45,7 @@ type ActiveRow = {
         user: { id: number; name: string } | null;
         planned_start_time?: string | null;
         started_at?: string | null;
+        paused_at?: string | null;
         finished_at?: string | null;
         duration_minutes?: number;
     };
@@ -295,7 +296,9 @@ export default function Index({
         const t0 = new Date(started).getTime();
         if (!Number.isFinite(t0)) return null;
         const total = (row.current?.duration_minutes ?? 60) * 60 * 1000;
-        return Math.max(0, total - (tick - t0));
+        const pausedAt = row.current?.paused_at ?? null;
+        const endMs = pausedAt ? new Date(pausedAt).getTime() : tick;
+        return total - (endMs - t0);
     };
 
     const hourPairs = useMemo(() => {
@@ -335,11 +338,25 @@ export default function Index({
     }, [rows, lanes, effectiveUserId, users?.data]);
 
     const laneRunState = useMemo(() => {
-        const byLane: Record<number, { remainingMs: number | null; active: boolean }> = {};
+        const byLane: Record<number, { remainingMs: number | null; active: boolean; paused: boolean; frozenMs: number | null }> = {};
         for (let lane = 1; lane <= lanes; lane++) {
             const row = activeRows.find((r) => r.lane === lane) ?? null;
+            const pausedAt = row?.current?.paused_at ?? null;
+            const paused = Boolean(pausedAt && row?.current?.started_at);
             const rem = row ? remainingFor(row) : null;
-            byLane[lane] = { remainingMs: rem, active: rem !== null && rem > 0 };
+            let frozenMs: number | null = null;
+            if (paused && row?.current?.started_at && pausedAt) {
+                const t0 = new Date(row.current.started_at!).getTime();
+                const tP = new Date(pausedAt).getTime();
+                const total = (row.current.duration_minutes ?? 60) * 60 * 1000;
+                frozenMs = Math.max(0, total - (tP - t0));
+            }
+            byLane[lane] = {
+                remainingMs: rem,
+                active: rem !== null && rem > 0 && !paused,
+                paused,
+                frozenMs,
+            };
         }
         return byLane;
     }, [activeRows, lanes, tick]);
@@ -387,6 +404,8 @@ export default function Index({
                                 const row = activeRows.find((r) => r.lane === lane) ?? null;
                                 const remaining = laneRunState[lane]?.remainingMs ?? null;
                                 const active = laneRunState[lane]?.active ?? false;
+                                const paused = laneRunState[lane]?.paused ?? false;
+                                const frozenMs = laneRunState[lane]?.frozenMs ?? null;
                                 const currentName = row?.current?.user?.name ?? '—';
                                 const nextName = row?.next?.user?.name ?? '—';
                                 const plannedStart = row?.current?.planned_start_time ?? null;
@@ -395,30 +414,34 @@ export default function Index({
                                 return (
                                     <div key={lane} className="rounded-xl border border-wa-accent/15 bg-wa-ink p-4">
                                         <div className="flex items-start justify-between gap-2">
-                                            <div className="text-sm font-black tracking-tight text-wa-body">{lane}</div>
+                                            <div className="text-sm font-black tracking-tight text-wa-body">枠 {lane}</div>
                                             <div className="text-[11px] font-medium text-wa-muted">{plannedLabel ?? '—'}</div>
                                         </div>
                                         <div className="mt-2 text-lg font-black tracking-tight text-wa-body">{currentName}</div>
                                         <div className="mt-1 text-[11px] text-wa-muted">次: {nextName}</div>
+                                        {paused && (
+                                            <div className="mt-1 text-[10px] font-black tracking-widest text-amber-400">⏸ 一時停止中</div>
+                                        )}
 
                                         <div className="mt-3">
                                             <BreakRunner
                                                 active={active}
-                                                remainingMs={remaining ?? totalMs}
+                                                remainingMs={remaining !== null && remaining > 0 ? remaining : totalMs}
                                                 totalMs={totalMs}
                                                 accent={laneAccent[lane]}
+                                                frozenRemainingMs={frozenMs}
                                             />
                                         </div>
                                         <div className="mt-3 grid gap-2">
                                             <div className="grid grid-cols-2 gap-2">
-                                                <PrimaryButton onClick={() => startLane(lane)} className="w-full justify-center whitespace-nowrap px-3 py-2 text-[11px]">
-                                                    スタート
+                                                <PrimaryButton onClick={() => void startLane(lane)} className="w-full justify-center whitespace-nowrap px-3 py-2 text-[11px]">
+                                                    {paused ? '再開' : 'スタート'}
                                                 </PrimaryButton>
-                                                <SecondaryButton onClick={() => stopLane(lane)} className="w-full justify-center whitespace-nowrap px-3 py-2 text-[11px]">
+                                                <SecondaryButton onClick={() => void stopLane(lane)} className="w-full justify-center whitespace-nowrap px-3 py-2 text-[11px]">
                                                     ストップ
                                                 </SecondaryButton>
                                             </div>
-                                            <SecondaryButton onClick={() => resetLane(lane)} className="w-full justify-center whitespace-nowrap px-3 py-2 text-[11px]">
+                                            <SecondaryButton onClick={() => void resetLane(lane)} className="w-full justify-center whitespace-nowrap px-3 py-2 text-[11px]">
                                                 リセット
                                             </SecondaryButton>
                                         </div>

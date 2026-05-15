@@ -564,9 +564,11 @@ class LunchBreakService
                     ->first();
 
                 if ($current && $current->started_at) {
-                    $elapsedSec = $current->started_at->diffInSeconds($now);
+                    // 一時停止中は経過時間を止める
+                    $endpoint = $current->paused_at ?? $now;
+                    $elapsedSec = $current->started_at->diffInSeconds($endpoint);
                     $totalSec = (int) ($current->duration_minutes ?? 60) * 60;
-                    if ($elapsedSec >= $totalSec) {
+                    if ($elapsedSec >= $totalSec && $current->paused_at === null) {
                         $current->started_at = null;
                         $current->finished_at = $now;
                         $current->save();
@@ -627,6 +629,7 @@ class LunchBreakService
                         'user' => $current && $current->user ? ['id' => (int) $current->user->id, 'name' => (string) ($current->user->name ?? '')] : null,
                         'planned_start_time' => $current?->planned_start_time,
                         'started_at' => $current?->started_at?->toISOString(),
+                        'paused_at' => $current?->paused_at?->toISOString(),
                         'finished_at' => $current?->finished_at?->toISOString(),
                         'duration_minutes' => (int) ($current?->duration_minutes ?? 60),
                     ],
@@ -681,6 +684,12 @@ class LunchBreakService
                 ->orderByDesc('started_at')
                 ->first();
             if ($current) {
+                // 一時停止中の場合は再開（paused_at をクリア）
+                if ($current->paused_at !== null) {
+                    $current->paused_at = null;
+                    $current->updated_by = (int) $actor->id;
+                    $current->save();
+                }
                 $current->loadMissing('user:id,name,role');
                 return [
                     'date' => $date,
@@ -762,7 +771,7 @@ class LunchBreakService
             if (! $row) {
                 return true;
             }
-            $row->finished_at = now();
+            $row->paused_at = now();
             $row->updated_by = (int) $actor->id;
             $row->save();
 
@@ -790,6 +799,7 @@ class LunchBreakService
                 ->first();
             if ($row) {
                 $row->started_at = null;
+                $row->paused_at = null;
                 $row->finished_at = null;
                 $row->updated_by = (int) $actor->id;
                 $row->save();

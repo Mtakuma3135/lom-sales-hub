@@ -24,7 +24,7 @@ class MypageIntegrationUpdateRequest extends FormRequest
             'extra_integrations' => ['nullable', 'array', 'max:8'],
             'extra_integrations.*.label' => ['required_with:extra_integrations', 'string', 'max:120'],
             'extra_integrations.*.token_label' => ['required_with:extra_integrations', 'string', 'max:120'],
-            'extra_integrations.*.token_value' => ['required_with:extra_integrations', 'string', 'max:4000'],
+            'extra_integrations.*.token_value' => ['nullable', 'string', 'max:4000'],
         ];
     }
 
