@@ -9,7 +9,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('lunch_break_actives', function (Blueprint $table): void {
-            $table->timestamp('paused_at')->nullable()->after('started_at');
+            if (! Schema::hasColumn('lunch_break_actives', 'paused_at')) {
+                $table->timestamp('paused_at')->nullable()->after('started_at');
+            }
         });
     }
 
