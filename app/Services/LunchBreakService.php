@@ -9,6 +9,7 @@ use App\Models\LunchBreak;
 use App\Models\LunchBreakActive;
 use App\Models\User;
 use App\Notifications\Discord\DiscordPayloadFactory;
+use App\Support\DiscordWebhookResolver;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -513,10 +514,12 @@ class LunchBreakService
 
             $payload = DiscordPayloadFactory::lunchBreakEnded((string) ($user->name ?? ''));
 
+            $webhook = DiscordWebhookResolver::forUser($user);
             $log = DiscordNotificationLog::query()->create([
                 'event_type' => 'lunch_break.end',
                 'payload' => $payload,
                 'triggered_by' => (int) $user->id,
+                'webhook_url' => $webhook !== '' ? $webhook : null,
             ]);
 
             SendDiscordNotification::dispatch((int) $log->id);
