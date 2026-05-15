@@ -15,14 +15,9 @@ class DiscordPayloadFactory
             $users
         )));
 
-        $who = $names !== [] ? implode(' / ', $names) : '—';
+        $who = $names !== [] ? implode('・', $names) : '—';
 
-        $text = "【休憩アサイン】\n".
-            "対象: {$who}\n".
-            "時間: {$startTime} 〜 {$endTime}\n".
-            '開始までにタスクを整えて、スマートに離脱しましょう。';
-
-        return ['content' => $text];
+        return ['content' => "☕ {$who}さん、{$startTime}〜{$endTime}の昼休憩です！いってらっしゃい🍽️"];
     }
 
     /**
@@ -32,11 +27,7 @@ class DiscordPayloadFactory
     {
         $name = $userName !== '' ? $userName : '—';
 
-        $text = "【休憩終了】{$name} さん\n".
-            "休憩時間が終了しました。\n".
-            'エネルギー満タンで、業務へリブートしてください。';
-
-        return ['content' => $text];
+        return ['content' => "✅ {$name}さんの昼休憩が終了しました。お疲れ様です！"];
     }
 
     /**
@@ -46,7 +37,7 @@ class DiscordPayloadFactory
     {
         $who = $actorName !== '' ? $actorName : '—';
 
-        return ['content' => "【昼休憩テーブル更新】\n更新者: {$who}\n対象日: {$date}\nタイムテーブルが保存されました。"];
+        return ['content' => "📅 昼休憩のタイムテーブルが更新されました！（{$date} / 更新者: {$who}）"];
     }
 
     /**
@@ -61,16 +52,16 @@ class DiscordPayloadFactory
         ?int $httpStatus = null,
     ): array {
         $name = $userName !== '' ? $userName : '—';
-        $code = $employeeCode !== '' ? $employeeCode : '—';
-        $status = match ($outcome) {
-            'success' => '打刻が完了しました',
-            'duplicate' => '重複打刻のため処理済みとして完了しました',
-            'skipped' => 'API トークン未設定のためモック完了（キュー処理）',
-            default => '打刻処理が記録されました',
-        };
-        $http = $httpStatus !== null ? " / HTTP {$httpStatus}" : '';
 
-        return ['content' => "【KOT 打刻】\n{$name}（{$code}）\n{$status}{$http}\n時刻: {$atIso}"];
+        if ($outcome === 'success') {
+            return ['content' => "🕐 {$name}さんが KOT打刻しました（{$atIso}）"];
+        }
+
+        if ($outcome === 'duplicate') {
+            return ['content' => "🕐 {$name}さんの打刻は重複のため処理済みとしました（{$atIso}）"];
+        }
+
+        return ['content' => "🕐 {$name}さんの打刻を記録しました（{$atIso}）"];
     }
 
     /**
@@ -79,33 +70,24 @@ class DiscordPayloadFactory
      */
     public static function lunchBreakNotStartedAlert(string $date, array $userNames): array
     {
-        $who = $userNames !== [] ? implode('、', $userNames) : '—';
+        $who = $userNames !== [] ? implode('・', $userNames) : '—';
 
-        return ['content' => "【休憩アラート】\n対象日: {$date}\n予定時刻を過ぎてもスタートしていないユーザー: {$who}\n至急ステータスを確認してください。"];
+        return ['content' => "⚠️ 昼休憩がまだ開始されていません！（{$date}）\n対象: {$who}さん"];
     }
 
     /**
-     * 業務依頼作成時の Discord 通知本文
-     *
      * @return array{content:string}
      */
     public static function taskRequestCreated(string $fromName, string $toName, string $title): array
     {
-        $text = "【業務依頼】\n".
-            "宛先: {$toName}\n".
-            "差出人: {$fromName}\n".
-            "件名: {$title}";
-
-        return ['content' => $text];
+        return ['content' => "📋 {$toName}さんに業務依頼が届きました！\n「{$title}」（依頼者: {$fromName}）"];
     }
 
+    /**
+     * @return array{content:string}
+     */
     public static function csvCompleted(int $uploadId, string $filename, int $successCount, int $failedCount): array
     {
-        $text = "【CSV取込完了】\n".
-            "ID: {$uploadId}\n".
-            "ファイル: {$filename}\n".
-            "成功: {$successCount} / 失敗: {$failedCount}";
-
-        return ['content' => $text];
+        return ['content' => "📊 成績更新されました！OK率確認をしてください！"];
     }
 }

@@ -31,16 +31,20 @@ class CredentialController extends Controller
 
         $label = trim($validated['service_name']);
 
+        if (Credential::query()->where('label', $label)->exists()) {
+            return response()->json([
+                'message' => "「{$label}」は既に使用されている項目です。",
+            ], 422);
+        }
+
         try {
-            $row = Credential::query()->firstOrCreate(
-                ['label' => $label],
-                [
-                    'login_id' => '',
-                    'value' => '',
-                    'is_password' => true,
-                    'visible_on_credentials_page' => true,
-                ],
-            );
+            $row = Credential::query()->create([
+                'label' => $label,
+                'login_id' => '',
+                'value' => '',
+                'is_password' => true,
+                'visible_on_credentials_page' => true,
+            ]);
         } catch (\Throwable $e) {
             report($e);
             return response()->json(['message' => '追加に失敗しました。'], 500);

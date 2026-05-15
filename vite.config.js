@@ -31,12 +31,15 @@ export default defineConfig(({ mode }) => {
          * public/hot は `server.origin`（localhost:port）に揃える。
          */
         server: {
-            host: '::1',
+            // Docker環境では 0.0.0.0 (すべてのインターフェース) で待機する必要があります
+            host: '0.0.0.0', 
             port: devPort,
             strictPort: true,
-            origin: viteOrigin,
+            // origin を指定するとパスが固定されすぎる場合があるため、一旦コメントアウト推奨
+            // origin: viteOrigin, 
             hmr: {
-                host: 'localhost',
+                // ブラウザ（Mac側）からは localhost でアクセスするのでここは OK
+                host: 'localhost', 
                 port: devPort,
             },
             cors: {

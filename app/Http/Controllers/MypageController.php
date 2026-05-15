@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\MypagePasswordUpdateRequest;
+use App\Http\Resources\CredentialResource;
 use App\Http\Resources\MypageResource;
 use App\Services\CredentialService;
 use App\Services\MypageService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -39,6 +41,15 @@ class MypageController extends Controller
 
         return Inertia::render('Mypage/Index', [
             'mypage' => $resource,
+        ]);
+    }
+
+    public function credentials(Request $request, CredentialService $credentialService): JsonResponse
+    {
+        $items = $credentialService->index();
+
+        return response()->json([
+            'data' => CredentialResource::collection($items)->resolve(),
         ]);
     }
 

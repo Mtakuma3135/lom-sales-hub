@@ -563,6 +563,11 @@ class LunchBreakService
                     ->orderByDesc('started_at')
                     ->first();
 
+                // 計画にないユーザーのレコードは無視（スケジュール変更後の古いレコード対策）
+                if ($current && !$userIds->contains((int) $current->user_id)) {
+                    $current = null;
+                }
+
                 if ($current && $current->started_at) {
                     // 一時停止中は経過時間を止める
                     $endpoint = $current->paused_at ?? $now;
@@ -684,8 +689,10 @@ class LunchBreakService
                 ->orderByDesc('started_at')
                 ->first();
             if ($current) {
-                // 一時停止中の場合は再開（paused_at をクリア）
+                // 一時停止中の場合は再開（停止していた期間分 started_at をずらして経過時間を補正）
                 if ($current->paused_at !== null) {
+                    $pausedSeconds = $current->paused_at->diffInSeconds($now);
+                    $current->started_at = $current->started_at->addSeconds($pausedSeconds);
                     $current->paused_at = null;
                     $current->updated_by = (int) $actor->id;
                     $current->save();
@@ -792,15 +799,29 @@ class LunchBreakService
     public function resetLaneTimer(User $actor, string $date, int $lane): bool
     {
         try {
+            // 走行中または一時停止中のレコードを優先。完了済み（finished_at != null）には触れない。
             $row = LunchBreakActive::query()
                 ->whereDate('date', $date)
                 ->where('lane', $lane)
-                ->orderByDesc('updated_at')
+                ->whereNotNull('started_at')
+                ->whereNull('finished_at')
+                ->orderByDesc('started_at')
                 ->first();
+
+            if (! $row) {
+                // スタート待ち（started_at = null, finished_at = null）のレコードを対象にする
+                $row = LunchBreakActive::query()
+                    ->whereDate('date', $date)
+                    ->where('lane', $lane)
+                    ->whereNull('started_at')
+                    ->whereNull('finished_at')
+                    ->orderByDesc('updated_at')
+                    ->first();
+            }
+
             if ($row) {
                 $row->started_at = null;
                 $row->paused_at = null;
-                $row->finished_at = null;
                 $row->updated_by = (int) $actor->id;
                 $row->save();
             }

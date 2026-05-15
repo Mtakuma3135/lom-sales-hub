@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\MypageIntegrationUpdateRequest;
 use App\Support\UserIntegrationSchema;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 
 class MypageIntegrationController extends Controller
 {
@@ -72,7 +73,16 @@ class MypageIntegrationController extends Controller
             }
         }
 
-        $user->save();
+        try {
+            $user->save();
+        } catch (\Throwable $e) {
+            Log::error('MypageIntegrationController.update: save failed', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json(['ok' => false, 'message' => '保存に失敗しました。管理者に連絡してください。'], 500);
+        }
 
         return response()->json(['ok' => true]);
     }

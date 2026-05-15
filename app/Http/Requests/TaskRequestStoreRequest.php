@@ -25,6 +25,20 @@ class TaskRequestStoreRequest extends FormRequest
         ];
     }
 
+    public function messages(): array
+    {
+        return [
+            'title.required' => 'タイトルは必須です。',
+            'title.max' => 'タイトルは100文字以内で入力してください。',
+            'to_user_id.required' => '依頼先ユーザーを選択してください。',
+            'to_user_id.exists' => '選択したユーザーが存在しません。',
+            'priority.required' => '優先度を選択してください。',
+            'priority.in' => '優先度の値が不正です。',
+            'body.max' => '内容は2000文字以内で入力してください。',
+            'due_date.date' => '期日は正しい日付形式で入力してください。',
+        ];
+    }
+
     public function title(): string
     {
         return (string) $this->input('title');

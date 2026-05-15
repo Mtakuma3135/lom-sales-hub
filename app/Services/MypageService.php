@@ -38,7 +38,7 @@ class MypageService
             $discordPersonal = $user !== null && trim((string) ($user->personal_discord_webhook_url ?? '')) !== '';
 
             $kotConnected = $kotGlobal || $kotPersonal;
-            $discordConfigured = $discordGlobal || $discordPersonal;
+            $discordConfigured = $discordPersonal;
 
             $integrations = collect([
                 ['key' => 'king_of_time', 'label' => 'KING OF TIME', 'status' => $kotConnected ? 'connected' : 'not_connected'],
@@ -89,7 +89,7 @@ class MypageService
                 'kot_status' => $kotStatus,
                 'integrations' => $integrations,
                 'integration_meta' => $integrationMeta,
-                'credentials' => $this->credentials(),
+                'credentials' => collect(),
             ];
         } catch (\Throwable $e) {
             Log::error('MypageService.index failed', ['error' => $e->getMessage()]);

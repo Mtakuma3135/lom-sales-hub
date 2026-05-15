@@ -99,6 +99,8 @@ Route::middleware('auth')->group(function () {
             ->name('portal.api.mypage.kot.punch');
         Route::put('/api/mypage/integrations', [MypageIntegrationController::class, 'update'])
             ->name('portal.api.mypage.integrations');
+        Route::get('/api/mypage/credentials', [MypageController::class, 'credentials'])
+            ->name('portal.api.mypage.credentials');
 
         // KOT mock endpoint (internal)
         Route::post('/mock/kot/punch', [KotMockController::class, 'punch'])

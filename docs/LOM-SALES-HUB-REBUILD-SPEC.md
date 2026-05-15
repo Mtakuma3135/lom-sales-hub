@@ -295,7 +295,7 @@ mypage: **POST kot/punch**
 | 日付 | `date`, `日付` |
 | 担当者 | `staff_name`, `担当者`, `スタッフ` |
 | 店舗 | `store_name`, `店舗名`, `店名` |
-| 売上額 | `sales_amount`, `売上額`, `売上` |
+| 売上額 | `sales_amount`, `売上額`, `売上` |ƒ
 | 客数 | `customer_count`, `客数` |
 | 商材 | `product_name`, `商材`, `商品` |
 | 契約種別 | `contract_type`, `契約種別` |

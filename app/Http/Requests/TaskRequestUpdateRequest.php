@@ -36,6 +36,20 @@ class TaskRequestUpdateRequest extends FormRequest
         ];
     }
 
+    public function messages(): array
+    {
+        return [
+            'title.required' => 'タイトルは必須です。',
+            'title.max' => 'タイトルは500文字以内で入力してください。',
+            'priority.required' => '優先度を選択してください。',
+            'priority.in' => '優先度の値が不正です。',
+            'status.required' => 'ステータスを選択してください。',
+            'status.in' => 'ステータスの値が不正です。',
+            'body.max' => '内容は2000文字以内で入力してください。',
+            'due_date.date' => '期日は正しい日付形式で入力してください。',
+        ];
+    }
+
     public function status(): string
     {
         return (string) $this->input('status');
