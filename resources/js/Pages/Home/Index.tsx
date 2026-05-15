@@ -430,6 +430,7 @@ export default function Index({
                     <div className="mt-5 space-y-4">
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
                             {[1, 2, 3, 4, 5].map((lane) => {
+                                const homeLaneAccent: Record<number, 'emerald' | 'sky' | 'amber' | 'violet' | 'rose'> = { 1: 'emerald', 2: 'sky', 3: 'amber', 4: 'violet', 5: 'rose' };
                                 const row = lanesFromApi.find((r) => r.lane === lane) ?? null;
                                 const durMs = (row?.current?.duration_minutes ?? 60) * 60 * 1000;
                                 const started = Boolean(row?.current?.started_at);
@@ -446,7 +447,7 @@ export default function Index({
                                 return (
                                     <div key={lane} className="rounded-xl border border-wa-accent/15 bg-wa-ink p-4">
                                         <div className="flex items-start justify-between gap-2">
-                                            <div className="text-sm font-black tracking-tight text-wa-body">枠 {lane}</div>
+                                            <div className="text-sm font-black tracking-tight text-wa-body">{lane}</div>
                                             <div className="text-[11px] font-medium text-wa-muted">{plannedLabel ?? '—'}</div>
                                         </div>
                                         <div className="mt-2 text-lg font-black tracking-tight text-wa-body">{currentName}</div>
@@ -462,6 +463,7 @@ export default function Index({
                                                 overrunMs={overrun && rem !== null ? Math.abs(rem) : 0}
                                                 remainingMs={overrun ? 0 : timerActive ? Math.max(0, rem!) : durMs}
                                                 totalMs={durMs}
+                                                accent={homeLaneAccent[lane]}
                                                 frozenRemainingMs={
                                                     paused && rem !== null && !overrun ? Math.max(0, rem) : null
                                                 }
@@ -469,29 +471,33 @@ export default function Index({
                                         </div>
                                         <div className="mt-3 grid gap-2">
                                             <div className="grid grid-cols-2 gap-2">
-                                                <PrimaryButton
-                                                    onClick={() => void startLane(lane)}
-                                                    className="w-full justify-center whitespace-nowrap px-3 py-2 text-[11px]"
-                                                >
-                                                    {paused ? '再開' : 'スタート'}
-                                                </PrimaryButton>
+                                                {timerActive ? (
+                                                    <SecondaryButton
+                                                        onClick={() => void stopLane(lane)}
+                                                        className="w-full justify-center whitespace-nowrap px-3 py-2 text-[11px]"
+                                                    >
+                                                        ストップ
+                                                    </SecondaryButton>
+                                                ) : (
+                                                    <PrimaryButton
+                                                        onClick={() => void startLane(lane)}
+                                                        className="w-full justify-center whitespace-nowrap px-3 py-2 text-[11px]"
+                                                    >
+                                                        {paused ? '再開' : 'スタート'}
+                                                    </PrimaryButton>
+                                                )}
                                                 <SecondaryButton
-                                                    onClick={() => void stopLane(lane)}
+                                                    onClick={() => void resetLane(lane)}
                                                     className="w-full justify-center whitespace-nowrap px-3 py-2 text-[11px]"
                                                 >
-                                                    ストップ
+                                                    リセット
                                                 </SecondaryButton>
                                             </div>
-                                            <SecondaryButton
-                                                onClick={() => void resetLane(lane)}
-                                                className="w-full justify-center whitespace-nowrap px-3 py-2 text-[11px]"
-                                            >
-                                                リセット
-                                            </SecondaryButton>
                                         </div>
                                     </div>
                                 );
                             })}
+
                         </div>
                     </div>
                 </NeonCard>

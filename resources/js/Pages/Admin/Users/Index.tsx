@@ -54,26 +54,8 @@ export default function Index({ users }: { users: UsersProp }) {
         internal_policy_explained: false,
     });
 
-    const submit = (e: React.FormEvent) => {
-        e.preventDefault();
-        post(route('admin.users.store'), {
-            onSuccess: () => reset(),
-        });
-    };
-
-    if (!users?.data) {
-        return (
-            <AuthenticatedLayout header={<h2 className="text-sm font-black tracking-tight text-wa-body">ADMIN / USERS</h2>}>
-                <Head title="ユーザー一覧（管理者用）" />
-                <div className="mx-auto max-w-6xl px-6 py-6">
-                    <div className="rounded-sm border border-red-500/35 bg-wa-ink p-6 text-red-200">
-                        <div className="text-sm font-black tracking-tight">ユーザー情報の取得に失敗しました</div>
-                        <div className="mt-2 text-sm text-red-300/90">もう一度読み込み直してください。</div>
-                    </div>
-                </div>
-            </AuthenticatedLayout>
-        );
-    }
+    const [currentPage, setCurrentPage] = useState(0);
+    const PAGE_SIZE = 15;
 
     const [editingUserId, setEditingUserId] = useState<number | null>(null);
     const editingUser = useMemo(() => {
@@ -83,11 +65,10 @@ export default function Index({ users }: { users: UsersProp }) {
 
     const [editName, setEditName] = useState<string>('');
     const [editEmployeeCode, setEditEmployeeCode] = useState<string>('');
-    const [editEmail, setEditEmail] = useState<string>('');
     const [editPassword, setEditPassword] = useState<string>('');
     const [editRole, setEditRole] = useState<'admin' | 'general'>('general');
     const [editActive, setEditActive] = useState<boolean>(true);
-    const [deactivatePhrase, setDeactivatePhrase] = useState<string>('');
+    const [confirmModal, setConfirmModal] = useState<{ message: string; onConfirm: () => void } | null>(null);
 
     const [sort, setSort] = useState<{ key: UserSortKey; dir: SortDir }>(() => readUsersSortFromUrl());
 
@@ -112,22 +93,58 @@ export default function Index({ users }: { users: UsersProp }) {
     }, [sort.dir, sort.key, users.data]);
 
     const toggleSort = (key: UserSortKey) => {
+        setCurrentPage(0);
         setSort((s) => {
             if (s.key !== key) return { key, dir: 'asc' };
             return { key, dir: nextDir(s.dir) };
         });
     };
 
+    const totalPages = Math.ceil(sortedUsers.length / PAGE_SIZE);
+    const pagedUsers = sortedUsers.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
+
     const openEdit = (u: UserRow) => {
         setEditingUserId(u.id);
         setEditName(u.name ?? '');
         setEditEmployeeCode(u.employee_code ?? '');
-        setEditEmail(u.email ?? '');
         setEditPassword('');
         setEditRole((u.role === 'admin' ? 'admin' : 'general') as 'admin' | 'general');
         setEditActive(u.is_active !== false);
-        setDeactivatePhrase('');
     };
+
+    const submit = (e: React.FormEvent) => {
+        e.preventDefault();
+        post(route('admin.users.store'), {
+            onSuccess: () => reset(),
+        });
+    };
+
+    const errorMap: Record<string, string> = {
+        name: 'お名前を入力してください',
+        employee_code: '社員コードを入力してください',
+        password: 'パスワードを入力してください（8文字以上）',
+        role: '権限を選択してください',
+        internal_policy_explained: '利用規程の説明済みチェックが必要です',
+    };
+
+    const translateError = (field: string, msg: string | undefined): string | undefined => {
+        if (!msg) return undefined;
+        return errorMap[field] ?? msg;
+    };
+
+    if (!users?.data) {
+        return (
+            <AuthenticatedLayout header={<h2 className="text-sm font-black tracking-tight text-wa-body">ADMIN / USERS</h2>}>
+                <Head title="ユーザー一覧（管理者用）" />
+                <div className="mx-auto max-w-6xl px-6 py-6">
+                    <div className="rounded-sm border border-red-500/35 bg-wa-ink p-6 text-red-200">
+                        <div className="text-sm font-black tracking-tight">ユーザー情報の取得に失敗しました</div>
+                        <div className="mt-2 text-sm text-red-300/90">もう一度読み込み直してください。</div>
+                    </div>
+                </div>
+            </AuthenticatedLayout>
+        );
+    }
 
     return (
         <AuthenticatedLayout header={<h2 className="text-sm font-black tracking-tight text-wa-body">ADMIN / USERS</h2>}>
@@ -161,10 +178,10 @@ export default function Index({ users }: { users: UsersProp }) {
                                     onChange={(e) => setData('name', e.target.value)}
                                     required
                                 />
-                                <InputError message={errors.name} className="mt-2" />
+                                <InputError message={translateError('name', errors.name)} className="mt-2" />
                             </div>
                             <div>
-                                <InputLabel htmlFor="employee_code" value="社員コード" />
+                                <InputLabel htmlFor="employee_code" value="社員コード（ログインID）" />
                                 <TextInput
                                     id="employee_code"
                                     type="text"
@@ -173,7 +190,7 @@ export default function Index({ users }: { users: UsersProp }) {
                                     onChange={(e) => setData('employee_code', e.target.value)}
                                     required
                                 />
-                                <InputError message={errors.employee_code} className="mt-2" />
+                                <InputError message={translateError('employee_code', errors.employee_code)} className="mt-2" />
                             </div>
                             <div>
                                 <InputLabel htmlFor="password" value="パスワード" />
@@ -185,7 +202,7 @@ export default function Index({ users }: { users: UsersProp }) {
                                     onChange={(e) => setData('password', e.target.value)}
                                     required
                                 />
-                                <InputError message={errors.password} className="mt-2" />
+                                <InputError message={translateError('password', errors.password)} className="mt-2" />
                             </div>
                             <div>
                                 <InputLabel htmlFor="role" value="権限" />
@@ -199,7 +216,7 @@ export default function Index({ users }: { users: UsersProp }) {
                                     <option value="general">一般</option>
                                     <option value="admin">管理者</option>
                                 </select>
-                                <InputError message={errors.role} className="mt-2" />
+                                <InputError message={translateError('role', errors.role)} className="mt-2" />
                             </div>
                             <label className="block rounded-sm border border-wa-accent/20 bg-wa-ink/70 p-4 text-sm text-wa-body">
                                 <span className="flex items-start gap-3">
@@ -274,7 +291,7 @@ export default function Index({ users }: { users: UsersProp }) {
                                         </td>
                                     </tr>
                                 )}
-                                {sortedUsers.map((user) => (
+                                {pagedUsers.map((user) => (
                                     <tr key={user.id} className="transition-colors hover:bg-wa-ink/80">
                                         <td className="border-b border-wa-accent/20 p-3 text-sm font-black tracking-tight text-wa-body">
                                             {user.name}
@@ -334,6 +351,47 @@ export default function Index({ users }: { users: UsersProp }) {
                                 ))}
                             </tbody>
                         </table>
+
+                        {totalPages > 1 && (
+                            <div className="mt-4 flex items-center justify-between gap-2">
+                                <span className="text-xs text-wa-muted">
+                                    {currentPage * PAGE_SIZE + 1}〜{Math.min((currentPage + 1) * PAGE_SIZE, sortedUsers.length)} / {sortedUsers.length} 件
+                                </span>
+                                <div className="flex gap-1">
+                                    <button
+                                        type="button"
+                                        disabled={currentPage === 0}
+                                        onClick={() => setCurrentPage((p) => p - 1)}
+                                        className="rounded-sm border border-wa-accent/25 bg-wa-ink px-3 py-1.5 text-xs font-black text-wa-body transition hover:border-wa-accent/40 disabled:opacity-30"
+                                    >
+                                        ← 前
+                                    </button>
+                                    {Array.from({ length: totalPages }, (_, i) => (
+                                        <button
+                                            key={i}
+                                            type="button"
+                                            onClick={() => setCurrentPage(i)}
+                                            className={
+                                                'rounded-sm border px-3 py-1.5 text-xs font-black transition ' +
+                                                (i === currentPage
+                                                    ? 'border-wa-accent/50 bg-wa-accent text-wa-ink'
+                                                    : 'border-wa-accent/25 bg-wa-ink text-wa-body hover:border-wa-accent/40')
+                                            }
+                                        >
+                                            {i + 1}
+                                        </button>
+                                    ))}
+                                    <button
+                                        type="button"
+                                        disabled={currentPage === totalPages - 1}
+                                        onClick={() => setCurrentPage((p) => p + 1)}
+                                        className="rounded-sm border border-wa-accent/25 bg-wa-ink px-3 py-1.5 text-xs font-black text-wa-body transition hover:border-wa-accent/40 disabled:opacity-30"
+                                    >
+                                        次 →
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </NeonCard>
                 </div>
             </div>
@@ -351,7 +409,6 @@ export default function Index({ users }: { users: UsersProp }) {
                                 type="button"
                                 onClick={() => {
                                     setEditingUserId(null);
-                                    setDeactivatePhrase('');
                                 }}
                                 className="rounded-sm border border-wa-accent/25 bg-wa-ink px-4 py-2 text-xs font-black tracking-widest text-wa-body transition hover:border-wa-accent/40"
                             >
@@ -384,18 +441,6 @@ export default function Index({ users }: { users: UsersProp }) {
                                 <InputError message={pageErrors.employee_code} className="mt-2" />
                             </div>
                             <div>
-                                <InputLabel htmlFor="edit_email" value="メール（任意）" />
-                                <TextInput
-                                    id="edit_email"
-                                    type="email"
-                                    className="mt-1 block w-full"
-                                    value={editEmail}
-                                    onChange={(e) => setEditEmail(e.target.value)}
-                                    autoComplete="off"
-                                />
-                                <InputError message={pageErrors.email} className="mt-2" />
-                            </div>
-                            <div>
                                 <InputLabel htmlFor="edit_password" value="新しいパスワード（変更する場合のみ）" />
                                 <TextInput
                                     id="edit_password"
@@ -421,57 +466,37 @@ export default function Index({ users }: { users: UsersProp }) {
                                 </select>
                                 <InputError message={pageErrors.role} className="mt-2" />
                             </div>
-                            <label className="flex items-center gap-2 text-sm font-semibold text-wa-body">
+                            <label className="flex cursor-pointer items-center gap-3 rounded-sm border border-wa-accent/20 bg-wa-ink/70 px-4 py-3 text-sm font-semibold text-wa-body">
                                 <input
                                     type="checkbox"
                                     checked={editActive}
-                                    onChange={(e) => setEditActive(e.target.checked)}
-                                    className="rounded-sm border-wa-accent/35 text-wa-accent"
-                                />
-                                有効
-                            </label>
-
-                            <div className="rounded-sm border border-red-500/30 bg-red-950/20 p-4">
-                                <div className="text-[11px] font-bold uppercase tracking-widest text-red-200">アカウント無効化</div>
-                                <p className="mt-2 text-xs leading-relaxed text-red-200/90">
-                                    無効化するとこのユーザーはログインできなくなります。取り消しは「有効」に戻すことで可能です。
-                                </p>
-                                <p className="mt-2 text-xs font-semibold text-red-100">
-                                    続行するには下欄に「<span className="font-black">無効化する</span>」と入力してください。
-                                </p>
-                                <input
-                                    type="text"
-                                    value={deactivatePhrase}
-                                    onChange={(e) => setDeactivatePhrase(e.target.value)}
-                                    placeholder="無効化する"
-                                    className="nordic-field mt-3 w-full"
-                                    autoComplete="off"
-                                />
-                                <button
-                                    type="button"
-                                    disabled={deactivatePhrase !== '無効化する'}
-                                    onClick={() => {
-                                        router.delete(route('admin.users.destroy', { id: editingUser.id }), {
-                                            preserveScroll: true,
-                                            onSuccess: () => {
-                                                setEditingUserId(null);
-                                                setDeactivatePhrase('');
-                                            },
-                                        });
+                                    onChange={(e) => {
+                                        if (!e.target.checked) {
+                                            setConfirmModal({
+                                                message: 'このユーザーを無効化しますか？\n無効化するとログインできなくなります。',
+                                                onConfirm: () => {
+                                                    setEditActive(false);
+                                                    setConfirmModal(null);
+                                                },
+                                            });
+                                            return;
+                                        }
+                                        setEditActive(e.target.checked);
                                     }}
-                                    className="mt-3 w-full rounded-sm border border-red-500/50 bg-wa-ink px-4 py-3 text-xs font-black tracking-widest text-red-200 transition hover:border-red-400 hover:bg-red-950/40 disabled:cursor-not-allowed disabled:opacity-35"
-                                >
-                                    このユーザーを無効化する
-                                </button>
-                            </div>
+                                    className="h-4 w-4 rounded-sm border-wa-accent/35 text-wa-accent"
+                                />
+                                <span>
+                                    <span className="block font-black tracking-tight">有効</span>
+                                    <span className="mt-0.5 block text-xs font-normal text-wa-muted">
+                                        チェックを外すとこのユーザーはログインできなくなります
+                                    </span>
+                                </span>
+                            </label>
 
                             <div className="flex items-center justify-end gap-2">
                                 <button
                                     type="button"
-                                    onClick={() => {
-                                        setEditingUserId(null);
-                                        setDeactivatePhrase('');
-                                    }}
+                                    onClick={() => setEditingUserId(null)}
                                     className="rounded-sm border border-wa-accent/25 bg-wa-ink px-4 py-2.5 text-sm font-black tracking-tight text-wa-body transition hover:border-wa-accent/40"
                                 >
                                     CANCEL
@@ -482,7 +507,6 @@ export default function Index({ users }: { users: UsersProp }) {
                                         const payload: Record<string, string | boolean> = {
                                             name: editName,
                                             employee_code: editEmployeeCode,
-                                            email: editEmail.trim(),
                                             role: editRole,
                                             is_active: editActive,
                                         };
@@ -493,7 +517,6 @@ export default function Index({ users }: { users: UsersProp }) {
                                             preserveScroll: true,
                                             onSuccess: () => {
                                                 setEditingUserId(null);
-                                                setDeactivatePhrase('');
                                                 setEditPassword('');
                                             },
                                         });
@@ -503,6 +526,32 @@ export default function Index({ users }: { users: UsersProp }) {
                                     SAVE
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            ) : null}
+
+            {confirmModal ? (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 backdrop-blur-[1px]">
+                    <div className="w-full max-w-sm rounded-2xl border border-wa-accent/20 bg-wa-card p-6 shadow-xl shadow-black/50">
+                        <div className="text-sm font-black tracking-tight text-wa-body whitespace-pre-line">
+                            {confirmModal.message}
+                        </div>
+                        <div className="mt-6 flex justify-end gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setConfirmModal(null)}
+                                className="rounded-sm border border-wa-accent/25 bg-wa-ink px-4 py-2 text-xs font-black tracking-tight text-wa-body transition hover:border-wa-accent/40"
+                            >
+                                キャンセル
+                            </button>
+                            <button
+                                type="button"
+                                onClick={confirmModal.onConfirm}
+                                className="rounded-sm border border-red-500/45 bg-red-600 px-4 py-2 text-xs font-black tracking-tight text-white transition hover:bg-red-500"
+                            >
+                                無効化する
+                            </button>
                         </div>
                     </div>
                 </div>

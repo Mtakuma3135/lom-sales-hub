@@ -21,6 +21,37 @@ type NoticesProp = {
     data: Notice[];
 };
 
+function NoticeMetaFields({
+    pinned,
+    onPinnedChange,
+    publishedLocal,
+    onPublishedLocalChange,
+}: {
+    pinned: boolean;
+    onPinnedChange: (v: boolean) => void;
+    publishedLocal: string;
+    onPublishedLocalChange: (v: string) => void;
+}) {
+    return (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <select
+                value={pinned ? '1' : '0'}
+                onChange={(e) => onPinnedChange(e.target.value === '1')}
+                className="nordic-field py-2 text-xs font-black"
+            >
+                <option value="0">PIN なし</option>
+                <option value="1">PIN 固定</option>
+            </select>
+            <input
+                type="datetime-local"
+                value={publishedLocal}
+                onChange={(e) => onPublishedLocalChange(e.target.value)}
+                className="nordic-field py-2 text-xs sm:col-span-2"
+            />
+        </div>
+    );
+}
+
 const btnGhost =
     'w-full rounded-sm border border-wa-accent/25 bg-wa-ink px-3 py-3 text-sm font-black tracking-tight text-wa-body transition hover:border-wa-accent/40';
 
@@ -32,6 +63,23 @@ function formatNaiveNow(): string {
     const d = new Date();
     const p = (n: number) => String(n).padStart(2, '0');
     return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+
+/** API の日時文字列 → datetime-local 用 */
+function isoToDatetimeLocal(raw: string | null | undefined): string {
+    if (!raw) return '';
+    const d = new Date(raw.includes('T') ? raw : raw.replace(' ', 'T'));
+    if (Number.isNaN(d.getTime())) return '';
+    const z = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}T${z(d.getHours())}:${z(d.getMinutes())}`;
+}
+
+function datetimeLocalToServer(local: string): string | null {
+    const t = local.trim();
+    if (!t) return null;
+    const m = t.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/);
+    if (!m) return null;
+    return `${m[1]} ${m[2]}:00`;
 }
 
 export default function Index({ notices, initialDrafts }: { notices?: NoticesProp; initialDrafts?: boolean }) {
@@ -49,12 +97,13 @@ export default function Index({ notices, initialDrafts }: { notices?: NoticesPro
     const [draftTitle, setDraftTitle] = useState<string>('');
     const [draftBody, setDraftBody] = useState<string>('');
     const [draftPinned, setDraftPinned] = useState<boolean>(false);
-    const [draftPublishedAt, setDraftPublishedAt] = useState<string>('');
+    /** datetime-local 用（業務依頼の日付欄と同型） */
+    const [draftPublishedLocal, setDraftPublishedLocal] = useState<string>('');
     const [isSaving, setIsSaving] = useState<boolean>(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const [draftsOnly, setDraftsOnly] = useState<boolean>(() => !!initialDrafts);
-    const [drawerEdit, setDrawerEdit] = useState<boolean>(false);
+    const [unreadOnly, setUnreadOnly] = useState<boolean>(false);
 
     const [readToggleId, setReadToggleId] = useState<number | null>(null);
 
@@ -172,7 +221,6 @@ export default function Index({ notices, initialDrafts }: { notices?: NoticesPro
             if (!res.ok) return;
             setItems((prev) => prev.map((x) => (x.id === id ? { ...x, is_read: true } : x)));
             setSelectedNotice((n) => (n && n.id === id ? { ...n, is_read: true } : n));
-            router.reload();
         } catch {
             /* ignore */
         }
@@ -184,7 +232,6 @@ export default function Index({ notices, initialDrafts }: { notices?: NoticesPro
             if (!res.ok) return;
             setItems((prev) => prev.map((x) => (x.id === id ? { ...x, is_read: false } : x)));
             setSelectedNotice((n) => (n && n.id === id ? { ...n, is_read: false } : n));
-            router.reload();
         } catch {
             /* ignore */
         }
@@ -204,11 +251,10 @@ export default function Index({ notices, initialDrafts }: { notices?: NoticesPro
         setIsCreating(true);
         setDrawerId(null);
         setSelectedNotice(null);
-        setDrawerEdit(false);
         setDraftTitle('');
         setDraftBody('');
         setDraftPinned(false);
-        setDraftPublishedAt('');
+        setDraftPublishedLocal('');
         setErrorMessage(null);
         setSuccessMessage(null);
     };
@@ -219,7 +265,6 @@ export default function Index({ notices, initialDrafts }: { notices?: NoticesPro
         setSelectedNotice(null);
         setIsDetailLoading(true);
         setErrorMessage(null);
-        setDrawerEdit(false);
         try {
             const res = await api.show(id);
             if (!res.ok) throw new Error();
@@ -229,7 +274,7 @@ export default function Index({ notices, initialDrafts }: { notices?: NoticesPro
             setDraftTitle(n?.title ?? '');
             setDraftBody(n?.body ?? '');
             setDraftPinned(!!n?.is_pinned);
-            setDraftPublishedAt((n?.published_at ?? '').replace('T', ' ').slice(0, 19));
+            setDraftPublishedLocal(isoToDatetimeLocal(n?.published_at ?? null));
         } catch {
             setSelectedNotice(null);
             setErrorMessage('詳細の取得に失敗しました。');
@@ -275,9 +320,16 @@ export default function Index({ notices, initialDrafts }: { notices?: NoticesPro
                             >
                                 検索
                             </button>
-                            <div className="rounded-sm border border-teal-500/25 bg-wa-ink px-3 py-3 text-xs text-teal-300/90">
-                                PIN は常に最上部に表示されます
-                            </div>
+                            <label className="flex cursor-pointer items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    checked={unreadOnly}
+                                    onChange={(e) => setUnreadOnly(e.target.checked)}
+                                    className="rounded-sm border-wa-accent/35 text-wa-accent"
+                                />
+                                <span className="text-xs font-semibold text-wa-body">未読のみ表示</span>
+                            </label>
+                            <p className="text-[10px] text-wa-muted">PIN 固定の項目は常に最上部に表示されます</p>
                             <ActionButton className="w-full" disabled={!isAdmin} onClick={openCreate}>
                                 新規作成（管理者）
                             </ActionButton>
@@ -322,45 +374,21 @@ export default function Index({ notices, initialDrafts }: { notices?: NoticesPro
                                             placeholder="本文（最大10000）"
                                             className="nordic-field min-h-[120px]"
                                         />
-                                        <div className="flex flex-wrap items-center justify-between gap-2">
-                                            <label className="flex items-center gap-2 text-xs font-semibold text-wa-body">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={draftPinned}
-                                                    onChange={(e) => setDraftPinned(e.target.checked)}
-                                                    className="rounded-sm border-wa-accent/35 text-wa-accent"
-                                                />
-                                                PIN
-                                            </label>
-                                            <input
-                                                value={draftPublishedAt}
-                                                onChange={(e) => setDraftPublishedAt(e.target.value)}
-                                                placeholder="公開日時（YYYY-MM-DD HH:mm:ss）※空なら「公開として保存」で現在時刻"
-                                                className="nordic-field min-w-0 flex-1 py-2 text-xs sm:max-w-xs"
-                                            />
-                                        </div>
-                                        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    setIsCreating(false);
-                                                    setDrawerId(null);
-                                                    setSelectedNotice(null);
-                                                    setDraftTitle('');
-                                                    setDraftBody('');
-                                                    setDraftPinned(false);
-                                                    setDraftPublishedAt('');
-                                                    setErrorMessage(null);
-                                                    setSuccessMessage(null);
-                                                }}
-                                                className="rounded-sm border border-wa-accent/25 bg-wa-card px-4 py-2 text-xs font-black tracking-widest text-wa-body transition hover:border-wa-accent/40"
-                                            >
-                                                CLOSE
-                                            </button>
+                                        <NoticeMetaFields
+                                            pinned={draftPinned}
+                                            onPinnedChange={setDraftPinned}
+                                            publishedLocal={draftPublishedLocal}
+                                            onPublishedLocalChange={setDraftPublishedLocal}
+                                        />
+                                        <div className="flex gap-2">
                                             <button
                                                 type="button"
                                                 disabled={isSaving}
                                                 onClick={async () => {
+                                                    if (!draftTitle.trim()) {
+                                                        setErrorMessage('タイトルを入力してください');
+                                                        return;
+                                                    }
                                                     setIsSaving(true);
                                                     setErrorMessage(null);
                                                     setSuccessMessage(null);
@@ -383,19 +411,23 @@ export default function Index({ notices, initialDrafts }: { notices?: NoticesPro
                                                         setIsSaving(false);
                                                     }
                                                 }}
-                                                className={btnGhost + ' sm:w-auto'}
+                                                className="flex-1 rounded-sm border border-wa-accent/25 bg-wa-ink px-3 py-3 text-xs font-black tracking-tight text-wa-body transition hover:border-wa-accent/40 disabled:opacity-40"
                                             >
                                                 {isSaving ? '保存中…' : '下書き保存'}
                                             </button>
-                                            <ActionButton
+                                            <button
+                                                type="button"
                                                 disabled={isSaving}
-                                                className="sm:!w-auto"
                                                 onClick={async () => {
+                                                    if (!draftTitle.trim()) {
+                                                        setErrorMessage('タイトルを入力してください');
+                                                        return;
+                                                    }
                                                     setIsSaving(true);
                                                     setErrorMessage(null);
                                                     setSuccessMessage(null);
                                                     try {
-                                                        const pub = draftPublishedAt.trim() || formatNaiveNow();
+                                                        const pub = datetimeLocalToServer(draftPublishedLocal) || formatNaiveNow();
                                                         const res = await api.store({
                                                             title: draftTitle,
                                                             body: draftBody,
@@ -414,10 +446,28 @@ export default function Index({ notices, initialDrafts }: { notices?: NoticesPro
                                                         setIsSaving(false);
                                                     }
                                                 }}
+                                                className="flex-1 rounded-xl border border-wa-accent/40 bg-wa-accent px-3 py-3 text-xs font-black text-wa-ink transition hover:bg-wa-accent/90 disabled:opacity-40"
                                             >
-                                                {isSaving ? 'SAVING…' : '公開として保存'}
-                                            </ActionButton>
+                                                {isSaving ? '保存中…' : '公開'}
+                                            </button>
                                         </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setIsCreating(false);
+                                                setDrawerId(null);
+                                                setSelectedNotice(null);
+                                                setDraftTitle('');
+                                                setDraftBody('');
+                                                setDraftPinned(false);
+                                                setDraftPublishedLocal('');
+                                                setErrorMessage(null);
+                                                setSuccessMessage(null);
+                                            }}
+                                            className="w-full rounded-sm border border-wa-accent/20 bg-wa-card px-4 py-2 text-xs font-black tracking-widest text-wa-muted transition hover:border-wa-accent/35 hover:text-wa-body"
+                                        >
+                                            CLOSE
+                                        </button>
                                     </div>
                                 </div>
                             ) : null}
@@ -434,7 +484,12 @@ export default function Index({ notices, initialDrafts }: { notices?: NoticesPro
                         </div>
 
                         <div className="mt-4 space-y-3">
-                            {items.map((n) => (
+                            {[...items]
+                                .filter((n) => !unreadOnly || !n.is_read)
+                                .sort((a, b) => {
+                                if (a.is_pinned !== b.is_pinned) return a.is_pinned ? -1 : 1;
+                                return 0;
+                            }).map((n) => (
                                 <NoticeFeedItem
                                     key={n.id}
                                     title={n.title}
@@ -454,7 +509,13 @@ export default function Index({ notices, initialDrafts }: { notices?: NoticesPro
 
             <DetailDrawer
                 open={drawerId !== null}
-                title={selectedNotice?.title ?? '周知事項'}
+                title={
+                    isDetailLoading
+                        ? '読み込み中…'
+                        : isAdmin && selectedNotice
+                          ? 'お知らせを編集'
+                          : (selectedNotice?.title ?? '周知事項')
+                }
                 onClose={() => {
                     setDrawerId(null);
                     setSelectedNotice(null);
@@ -465,146 +526,110 @@ export default function Index({ notices, initialDrafts }: { notices?: NoticesPro
                     <div className="rounded-sm border border-wa-accent/20 bg-wa-card px-4 py-6 text-sm text-wa-muted">
                         読み込み中…
                     </div>
-                ) : selectedNotice ? (
+                ) : selectedNotice && isAdmin ? (
                     <div className="space-y-4">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                            <div className="min-w-0">
-                                <div className="flex items-center gap-2">
-                                    {selectedNotice.is_pinned ? <StatusBadge variant="primary" pulse>PIN</StatusBadge> : null}
-                                    <div className="truncate text-base font-black tracking-tight text-wa-body">
-                                        {selectedNotice.title}
-                                    </div>
-                                </div>
-                                <div className="mt-2 text-xs text-wa-muted">
-                                    {selectedNotice.published_at ? `公開: ${selectedNotice.published_at}` : '下書き（未公開）'}
-                                </div>
-                            </div>
-                            {isAdmin ? (
-                                <div className="flex items-center gap-2">
+                        <div className="rounded-xl border border-wa-accent/20 bg-wa-ink px-4 py-4">
+                            <div className="text-[11px] font-bold tracking-widest text-wa-muted">お知らせの編集</div>
+                            <div className="mt-3 space-y-3">
+                                <input
+                                    type="text"
+                                    value={draftTitle}
+                                    onChange={(e) => setDraftTitle(e.target.value)}
+                                    className="nordic-field"
+                                    placeholder="タイトル（最大100）"
+                                />
+                                <textarea
+                                    rows={8}
+                                    value={draftBody}
+                                    onChange={(e) => setDraftBody(e.target.value)}
+                                    className="nordic-field min-h-[160px]"
+                                    placeholder="本文（最大10000）"
+                                />
+                                <NoticeMetaFields
+                                    pinned={draftPinned}
+                                    onPinnedChange={setDraftPinned}
+                                    publishedLocal={draftPublishedLocal}
+                                    onPublishedLocalChange={setDraftPublishedLocal}
+                                />
+                                <div className="flex flex-col gap-2 sm:flex-row">
                                     <button
                                         type="button"
-                                        onClick={() => setDrawerEdit((v) => !v)}
-                                        className="rounded-sm border border-wa-accent/25 bg-wa-ink px-4 py-2 text-xs font-black tracking-tight text-wa-body transition hover:border-wa-accent/40 hover:bg-wa-card"
+                                        disabled={isSaving}
+                                        onClick={async () => {
+                                            if (!drawerId) return;
+                                            if (!draftTitle.trim()) {
+                                                setErrorMessage('タイトルを入力してください');
+                                                return;
+                                            }
+                                            setIsSaving(true);
+                                            setErrorMessage(null);
+                                            setSuccessMessage(null);
+                                            try {
+                                                const res = await api.update(drawerId, {
+                                                    title: draftTitle,
+                                                    body: draftBody,
+                                                    is_pinned: draftPinned,
+                                                    published_at: null,
+                                                });
+                                                if (!res.ok) throw new Error();
+                                                const json = (await res.json()) as any;
+                                                const n = (json?.data ?? json) as Notice;
+                                                setItems((prev) => prev.map((x) => (x.id === n.id ? n : x)));
+                                                setSelectedNotice(n);
+                                                setDraftPublishedLocal(isoToDatetimeLocal(n.published_at));
+                                                setSuccessMessage('下書きにしました。');
+                                            } catch {
+                                                setErrorMessage('保存に失敗しました。');
+                                            } finally {
+                                                setIsSaving(false);
+                                            }
+                                        }}
+                                        className="w-full rounded-xl border border-wa-accent/25 bg-wa-card px-4 py-3 text-xs font-black tracking-tight text-wa-body transition hover:border-wa-accent/40 sm:flex-1"
                                     >
-                                        {drawerEdit ? '編集を閉じる' : '編集'}
+                                        {isSaving ? '保存中…' : '下書き保存'}
                                     </button>
-                                    {drawerEdit ? (
-                                        <>
-                                            <button
-                                                type="button"
-                                                disabled={isSaving}
-                                                onClick={async () => {
-                                                    if (!drawerId) return;
-                                                    setIsSaving(true);
-                                                    setErrorMessage(null);
-                                                    setSuccessMessage(null);
-                                                    try {
-                                                        const res = await api.update(drawerId, {
-                                                            title: draftTitle,
-                                                            body: draftBody,
-                                                            is_pinned: draftPinned,
-                                                            published_at: null,
-                                                        });
-                                                        if (!res.ok) throw new Error();
-                                                        const json = (await res.json()) as any;
-                                                        const n = (json?.data ?? json) as Notice;
-                                                        setItems((prev) => prev.map((x) => (x.id === n.id ? n : x)));
-                                                        setSelectedNotice(n);
-                                                        setSuccessMessage('下書きにしました。');
-                                                        setDrawerEdit(false);
-                                                    } catch {
-                                                        setErrorMessage('保存に失敗しました。');
-                                                    } finally {
-                                                        setIsSaving(false);
-                                                    }
-                                                }}
-                                                className="rounded-sm border border-wa-accent/25 bg-wa-card px-4 py-2 text-xs font-black tracking-tight text-wa-body transition hover:border-wa-accent/40"
-                                            >
-                                                {isSaving ? '保存中…' : '下書き保存'}
-                                            </button>
-                                            <ActionButton
-                                                disabled={isSaving}
-                                                onClick={async () => {
-                                                    if (!drawerId) return;
-                                                    setIsSaving(true);
-                                                    setErrorMessage(null);
-                                                    setSuccessMessage(null);
-                                                    try {
-                                                        const pub = draftPublishedAt.trim() || formatNaiveNow();
-                                                        const res = await api.update(drawerId, {
-                                                            title: draftTitle,
-                                                            body: draftBody,
-                                                            is_pinned: draftPinned,
-                                                            published_at: pub,
-                                                        });
-                                                        if (!res.ok) throw new Error();
-                                                        const json = (await res.json()) as any;
-                                                        const n = (json?.data ?? json) as Notice;
-                                                        setItems((prev) => prev.map((x) => (x.id === n.id ? n : x)));
-                                                        setSelectedNotice(n);
-                                                        setSuccessMessage('公開設定を更新しました。');
-                                                        setDrawerEdit(false);
-                                                    } catch {
-                                                        setErrorMessage('保存に失敗しました。');
-                                                    } finally {
-                                                        setIsSaving(false);
-                                                    }
-                                                }}
-                                            >
-                                                {isSaving ? 'SAVING…' : '公開として保存'}
-                                            </ActionButton>
-                                        </>
-                                    ) : null}
+                                    <button
+                                        type="button"
+                                        disabled={isSaving}
+                                        onClick={async () => {
+                                            if (!drawerId) return;
+                                            if (!draftTitle.trim()) {
+                                                setErrorMessage('タイトルを入力してください');
+                                                return;
+                                            }
+                                            setIsSaving(true);
+                                            setErrorMessage(null);
+                                            setSuccessMessage(null);
+                                            try {
+                                                const pub = datetimeLocalToServer(draftPublishedLocal) || formatNaiveNow();
+                                                const res = await api.update(drawerId, {
+                                                    title: draftTitle,
+                                                    body: draftBody,
+                                                    is_pinned: draftPinned,
+                                                    published_at: pub,
+                                                });
+                                                if (!res.ok) throw new Error();
+                                                const json = (await res.json()) as any;
+                                                const n = (json?.data ?? json) as Notice;
+                                                setItems((prev) => prev.map((x) => (x.id === n.id ? n : x)));
+                                                setSelectedNotice(n);
+                                                setDraftPublishedLocal(isoToDatetimeLocal(n.published_at));
+                                                setSuccessMessage('公開設定を更新しました。');
+                                            } catch {
+                                                setErrorMessage('保存に失敗しました。');
+                                            } finally {
+                                                setIsSaving(false);
+                                            }
+                                        }}
+                                        className="w-full rounded-xl border border-wa-accent/40 bg-wa-accent px-4 py-3 text-xs font-black text-wa-ink transition hover:bg-wa-accent/90 disabled:opacity-40 sm:flex-1"
+                                    >
+                                        {isSaving ? '保存中…' : '公開として保存'}
+                                    </button>
                                 </div>
-                            ) : null}
-                        </div>
-
-                        {drawerEdit && isAdmin ? (
-                            <div className="rounded-sm border border-wa-accent/20 bg-wa-ink p-4">
-                                <div className="text-[11px] font-bold tracking-widest text-wa-muted">EDIT</div>
-                                <div className="mt-3 space-y-3">
-                                    <input
-                                        value={draftTitle}
-                                        onChange={(e) => setDraftTitle(e.target.value)}
-                                        className="nordic-field"
-                                        placeholder="タイトル（最大100）"
-                                    />
-                                    <textarea
-                                        value={draftBody}
-                                        onChange={(e) => setDraftBody(e.target.value)}
-                                        className="nordic-field min-h-[160px]"
-                                        rows={8}
-                                        placeholder="本文（最大10000）"
-                                    />
-                                    <div className="flex flex-wrap items-center justify-between gap-2">
-                                        <label className="flex items-center gap-2 text-xs font-semibold text-wa-body">
-                                            <input
-                                                type="checkbox"
-                                                checked={draftPinned}
-                                                onChange={(e) => setDraftPinned(e.target.checked)}
-                                                className="rounded-sm border-wa-accent/35 text-wa-accent"
-                                            />
-                                            PIN
-                                        </label>
-                                        <input
-                                            value={draftPublishedAt}
-                                            onChange={(e) => setDraftPublishedAt(e.target.value)}
-                                            placeholder="published_at (YYYY-MM-DD HH:mm:ss) ※空で下書き"
-                                            className="nordic-field w-full py-2 text-xs sm:w-72"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        ) : null}
-
-                        <div className="rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-3">
-                            <div className="text-[11px] font-bold tracking-widest text-wa-muted">BODY</div>
-                            <div className="wa-wrap-anywhere mt-2 whitespace-pre-wrap text-sm text-wa-body">
-                                {selectedNotice.body}
                             </div>
                         </div>
 
-                        {isAdmin && drawerId !== null ? (
+                        {drawerId !== null ? (
                             <div className="rounded-sm border border-red-500/30 bg-red-950/25 px-4 py-4">
                                 <div className="text-[11px] font-bold uppercase tracking-widest text-red-200">Danger zone</div>
                                 <button
@@ -634,6 +659,22 @@ export default function Index({ notices, initialDrafts }: { notices?: NoticesPro
                                 </button>
                             </div>
                         ) : null}
+                    </div>
+                ) : selectedNotice ? (
+                    <div className="space-y-4">
+                        <div className="flex flex-wrap items-center gap-2">
+                            {selectedNotice.is_pinned ? <StatusBadge variant="primary" pulse>PIN</StatusBadge> : null}
+                            <div className="text-base font-black tracking-tight text-wa-body">{selectedNotice.title}</div>
+                        </div>
+                        <div className="text-xs text-wa-muted">
+                            {selectedNotice.published_at ? `公開: ${selectedNotice.published_at}` : '下書き（未公開）'}
+                        </div>
+                        <div className="rounded-sm border border-wa-accent/20 bg-wa-ink px-4 py-3">
+                            <div className="text-[11px] font-bold tracking-widest text-wa-muted">本文</div>
+                            <div className="wa-wrap-anywhere mt-2 whitespace-pre-wrap text-sm text-wa-body">
+                                {selectedNotice.body}
+                            </div>
+                        </div>
                     </div>
                 ) : (
                     <div className="rounded-sm border border-wa-accent/20 bg-wa-card px-4 py-6 text-sm text-wa-muted">

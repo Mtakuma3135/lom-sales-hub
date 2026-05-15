@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import NeonCard from '@/Components/NeonCard';
 import SectionHeader from '@/Components/UI/SectionHeader';
 
@@ -99,7 +99,28 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
 
     const attendance = mypage?.data.attendance ?? null;
     const kotStatus = mypage?.data.kot_status ?? null;
-    const credentials = parseCredentials(mypage?.data.credentials);
+
+    const [credentials, setCredentials] = useState<CredentialRow[]>([]);
+    const [credentialsLoading, setCredentialsLoading] = useState(false);
+
+    const fetchCredentials = useCallback(async () => {
+        setCredentialsLoading(true);
+        try {
+            const res = await fetch(route('portal.api.mypage.credentials'), {
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin',
+            });
+            if (!res.ok) return;
+            const json = (await res.json()) as { data?: CredentialRow[] };
+            setCredentials(Array.isArray(json.data) ? json.data : []);
+        } catch { /* ignore */ } finally {
+            setCredentialsLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        void fetchCredentials();
+    }, [fetchCredentials]);
 
     const [pwOpen, setPwOpen] = useState(false);
     const [currentPw, setCurrentPw] = useState('');
@@ -172,16 +193,29 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
                 body: JSON.stringify(body),
             });
             if (!res.ok) {
-                const j = (await res.json().catch(() => null)) as { message?: string } | null;
-                setIntegrationMsg(j?.message ?? `保存に失敗しました（HTTP ${res.status}）`);
+                const j = (await res.json().catch(() => null)) as { message?: string; errors?: Record<string, string[]> } | null;
+                const errDetail = j?.errors ? Object.values(j.errors).flat().join('、') : null;
+                setIntegrationMsg(errDetail ?? j?.message ?? `保存に失敗しました（HTTP ${res.status}）`);
+                setIntegrationSaving(false);
                 return;
             }
-            setIntegrationMsg('保存しました');
-            setIntegrationOpen(false);
-            router.reload({ only: ['mypage'] });
+            router.reload({
+                only: ['mypage'],
+                onSuccess: () => {
+                    setIntegrationSaving(false);
+                    setIntegrationMsg('保存できました');
+                    window.setTimeout(() => {
+                        setIntegrationOpen(false);
+                        setIntegrationMsg(null);
+                    }, 2000);
+                },
+                onError: () => {
+                    setIntegrationSaving(false);
+                    setIntegrationMsg('保存しましたが、画面の更新に失敗しました。再読み込みしてください。');
+                },
+            });
         } catch {
             setIntegrationMsg('保存に失敗しました');
-        } finally {
             setIntegrationSaving(false);
         }
     };
@@ -430,7 +464,11 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
                             meta={credentials.length > 0 ? `${credentials.length} 件` : ''}
                         />
 
-                        {credentials.length === 0 ? (
+                        {credentialsLoading ? (
+                            <div className="mt-4 rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-8 text-center text-sm text-wa-muted">
+                                読み込み中…
+                            </div>
+                        ) : credentials.length === 0 ? (
                             <div className="mt-4 rounded-xl border border-wa-accent/15 bg-wa-ink px-4 py-8 text-center text-sm text-wa-muted">
                                 登録されている情報はありません
                             </div>
@@ -629,7 +667,7 @@ export default function Index({ mypage }: { mypage?: MypagePayload }) {
                                     type="url"
                                     value={discordUrl}
                                     onChange={(e) => setDiscordUrl(e.target.value)}
-                                    placeholder="https://discord.com/api/webhooks/..."
+                                    placeholder={integrationMeta.discord.personal_configured ? '保存済み（変更する場合のみ入力）' : 'https://discord.com/api/webhooks/...'}
                                     className="nordic-field mt-1 block w-full text-sm"
                                 />
                                 <label className="mt-2 flex items-center gap-2 text-xs text-wa-body">

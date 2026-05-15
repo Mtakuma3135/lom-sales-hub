@@ -64,6 +64,8 @@ export default function Index() {
     const [filterStatus, setFilterStatus] = useState<string>('');
     const [filterDateFrom, setFilterDateFrom] = useState<string>('');
     const [filterDateTo, setFilterDateTo] = useState<string>('');
+    const PAGE_SIZE = 20;
+    const [currentPage, setCurrentPage] = useState(0);
     const [isRetryingId, setIsRetryingId] = useState<number | null>(null);
     const [detailId, setDetailId] = useState<number | null>(null);
     const [detail, setDetail] = useState<LogDetail | null>(null);
@@ -119,6 +121,7 @@ export default function Index() {
                   ? ((json as { data: LogRow[] }).data as LogRow[])
                   : [];
             setItems(rows);
+            setCurrentPage(0);
         } catch {
             setErrorMessage('ログ一覧の取得に失敗しました。再読み込みしてください。');
         } finally {
@@ -175,8 +178,8 @@ export default function Index() {
                             <option value="success">成功（2xx）</option>
                             <option value="failed">失敗・未送信など</option>
                         </select>
-                        <input type="date" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)} className={filterField} />
-                        <input type="date" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} className={filterField} />
+                        <input type="date" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)} placeholder="2025-05-01" className={filterField} />
+                        <input type="date" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} placeholder="2025-12-31" className={filterField} />
                         <button
                             type="button"
                             onClick={() => void load()}
@@ -216,7 +219,7 @@ export default function Index() {
                                         </td>
                                     </tr>
                                 ) : items.length ? (
-                                    items.map((x) => {
+                                    items.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE).map((x) => {
                                         const hb = httpBadge(x.status_code);
                                         const canRetry = x.status_code === null || x.status_code >= 300;
                                         return (
@@ -296,6 +299,32 @@ export default function Index() {
                             </tbody>
                         </table>
                     </div>
+
+                    {items.length > PAGE_SIZE && (
+                        <div className="mt-4 flex items-center justify-between gap-2">
+                            <span className="text-xs text-wa-muted">
+                                {currentPage * PAGE_SIZE + 1}〜{Math.min((currentPage + 1) * PAGE_SIZE, items.length)} / {items.length} 件
+                            </span>
+                            <div className="flex gap-1">
+                                <button
+                                    type="button"
+                                    disabled={currentPage === 0}
+                                    onClick={() => setCurrentPage((p) => p - 1)}
+                                    className={`${ghostBtn} disabled:opacity-30`}
+                                >
+                                    ← 前
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled={(currentPage + 1) * PAGE_SIZE >= items.length}
+                                    onClick={() => setCurrentPage((p) => p + 1)}
+                                    className={`${ghostBtn} disabled:opacity-30`}
+                                >
+                                    次 →
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </NordicCard>
             </div>
 

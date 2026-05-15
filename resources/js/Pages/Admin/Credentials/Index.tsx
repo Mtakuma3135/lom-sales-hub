@@ -50,6 +50,7 @@ export default function Index() {
     const [addOpen, setAddOpen] = useState(false);
     const [newLabel, setNewLabel] = useState('');
     const [addSaving, setAddSaving] = useState(false);
+    const [gasSyncing, setGasSyncing] = useState(false);
 
     const api = useMemo(
         () => ({
@@ -126,6 +127,30 @@ export default function Index() {
         setErrorMessage(null);
     };
 
+    const onSyncFromGas = async () => {
+        setGasSyncing(true);
+        setErrorMessage(null);
+        setToast(null);
+        try {
+            const res = await fetch(route('portal.api.credentials.sync-from-gas'), {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': csrf(),
+                },
+                credentials: 'same-origin',
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            setToast('GAS から同期しました');
+            await load();
+        } catch {
+            setErrorMessage('GAS 同期に失敗しました。管理者の GAS 設定を確認してください。');
+        } finally {
+            setGasSyncing(false);
+        }
+    };
+
     const onAddCredential = async () => {
         const label = newLabel.trim();
         if (!label) {
@@ -192,7 +217,6 @@ export default function Index() {
                             variant: 'primary',
                         }}
                     />
-
                     {isLoading ? (
                         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                             {Array.from({ length: 6 }).map((_, i) => (

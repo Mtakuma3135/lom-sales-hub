@@ -17,7 +17,7 @@ export default function BreakRunner({
     overrunMs?: number;
     label?: string;
     totalMs?: number;
-    accent?: 'copper' | 'emerald' | 'sky' | 'amber';
+    accent?: 'copper' | 'emerald' | 'sky' | 'amber' | 'violet' | 'rose';
     /** 一時停止中: タイマー表示のみ（バーは進行しない） */
     frozenRemainingMs?: number | null;
 }) {
@@ -53,7 +53,11 @@ export default function BreakRunner({
             ? 'bg-sky-500'
             : accent === 'amber'
               ? 'bg-amber-500'
-              : 'bg-wa-accent';
+              : accent === 'violet'
+                ? 'bg-violet-500'
+                : accent === 'rose'
+                  ? 'bg-rose-500'
+                  : 'bg-wa-accent';
     const accentGlow = overrun
         ? 'bg-red-400 shadow-[0_0_18px_rgba(248,113,113,0.35)]'
         : accent === 'emerald'
@@ -62,7 +66,11 @@ export default function BreakRunner({
             ? 'bg-sky-400 shadow-[0_0_18px_rgba(56,189,248,0.35)]'
             : accent === 'amber'
               ? 'bg-amber-400 shadow-[0_0_18px_rgba(251,191,36,0.30)]'
-              : 'bg-wa-accent shadow-[0_0_18px_rgba(192,132,87,0.28)]';
+              : accent === 'violet'
+                ? 'bg-violet-400 shadow-[0_0_18px_rgba(167,139,250,0.35)]'
+                : accent === 'rose'
+                  ? 'bg-rose-400 shadow-[0_0_18px_rgba(251,113,133,0.35)]'
+                  : 'bg-wa-accent shadow-[0_0_18px_rgba(192,132,87,0.28)]';
 
     return (
         <div

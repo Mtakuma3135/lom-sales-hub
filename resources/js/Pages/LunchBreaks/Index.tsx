@@ -246,8 +246,7 @@ export default function Index({
     const rowIsAlert = (rowTime: string) =>
         rowTime === blockStart && nowDate.getSeconds() < alertSeconds;
 
-    const laneLabels = ['休憩枠 1', '休憩枠 2', '休憩枠 3', '休憩枠 4', '休憩枠 5'];
-    const laneAccent: Record<number, 'emerald' | 'sky' | 'amber'> = { 1: 'emerald', 2: 'sky', 3: 'amber', 4: 'emerald', 5: 'sky' };
+    const laneAccent: Record<number, 'emerald' | 'sky' | 'amber' | 'violet' | 'rose'> = { 1: 'emerald', 2: 'sky', 3: 'amber', 4: 'violet', 5: 'rose' };
 
     const postJson = async (url: string, body: unknown) => {
         const res = await fetch(url, {
@@ -361,6 +360,27 @@ export default function Index({
         return byLane;
     }, [activeRows, lanes, tick]);
 
+    const overdueLanes = useMemo(() => {
+        const result = new Set<number>();
+        const OVERDUE_MS = 5 * 60 * 1000;
+        for (let lane = 1; lane <= lanes; lane++) {
+            const row = activeRows.find((r) => r.lane === lane) ?? null;
+            if (!row) continue;
+            const plannedStart = row.current?.planned_start_time ?? null;
+            const startedAt = row.current?.started_at ?? null;
+            if (!plannedStart || startedAt) continue;
+            // HH:MM を当日の Date に変換
+            const [h, m] = plannedStart.split(':').map(Number);
+            if (!Number.isFinite(h) || !Number.isFinite(m)) continue;
+            const today = new Date(tick);
+            const plannedMs = new Date(today.getFullYear(), today.getMonth(), today.getDate(), h, m, 0).getTime();
+            if (tick - plannedMs > OVERDUE_MS) {
+                result.add(lane);
+            }
+        }
+        return result;
+    }, [activeRows, lanes, tick]);
+
     const hourBlocks = useMemo(() => {
         // 上テーブル用: 60分単位(=2行)で rowIdx を持つ
         return compactSlots.map((s, idx) => ({
@@ -411,14 +431,18 @@ export default function Index({
                                 const plannedStart = row?.current?.planned_start_time ?? null;
                                 const plannedLabel = plannedStart ? `${plannedStart} - ${addMinutesHHMM(plannedStart, 60)}` : null;
 
+                                const isOverdue = overdueLanes.has(lane);
                                 return (
-                                    <div key={lane} className="rounded-xl border border-wa-accent/15 bg-wa-ink p-4">
+                                    <div key={lane} className={['rounded-xl border p-4', isOverdue ? 'border-red-500/50 bg-red-500/10' : 'border-wa-accent/15 bg-wa-ink'].join(' ')}>
                                         <div className="flex items-start justify-between gap-2">
-                                            <div className="text-sm font-black tracking-tight text-wa-body">枠 {lane}</div>
+                                            <div className="text-sm font-black tracking-tight text-wa-body">{lane}</div>
                                             <div className="text-[11px] font-medium text-wa-muted">{plannedLabel ?? '—'}</div>
                                         </div>
                                         <div className="mt-2 text-lg font-black tracking-tight text-wa-body">{currentName}</div>
                                         <div className="mt-1 text-[11px] text-wa-muted">次: {nextName}</div>
+                                        {isOverdue && (
+                                            <div className="mt-1 text-[10px] font-black tracking-widest text-red-400">⚠ 開始遅延（5分超過）</div>
+                                        )}
                                         {paused && (
                                             <div className="mt-1 text-[10px] font-black tracking-widest text-amber-400">⏸ 一時停止中</div>
                                         )}
@@ -434,16 +458,19 @@ export default function Index({
                                         </div>
                                         <div className="mt-3 grid gap-2">
                                             <div className="grid grid-cols-2 gap-2">
-                                                <PrimaryButton onClick={() => void startLane(lane)} className="w-full justify-center whitespace-nowrap px-3 py-2 text-[11px]">
-                                                    {paused ? '再開' : 'スタート'}
-                                                </PrimaryButton>
-                                                <SecondaryButton onClick={() => void stopLane(lane)} className="w-full justify-center whitespace-nowrap px-3 py-2 text-[11px]">
-                                                    ストップ
+                                                {active ? (
+                                                    <SecondaryButton onClick={() => void stopLane(lane)} className="w-full justify-center whitespace-nowrap px-3 py-2 text-[11px]">
+                                                        ストップ
+                                                    </SecondaryButton>
+                                                ) : (
+                                                    <PrimaryButton onClick={() => void startLane(lane)} className="w-full justify-center whitespace-nowrap px-3 py-2 text-[11px]">
+                                                        {paused ? '再開' : 'スタート'}
+                                                    </PrimaryButton>
+                                                )}
+                                                <SecondaryButton onClick={() => void resetLane(lane)} className="w-full justify-center whitespace-nowrap px-3 py-2 text-[11px]">
+                                                    リセット
                                                 </SecondaryButton>
                                             </div>
-                                            <SecondaryButton onClick={() => void resetLane(lane)} className="w-full justify-center whitespace-nowrap px-3 py-2 text-[11px]">
-                                                リセット
-                                            </SecondaryButton>
                                         </div>
                                     </div>
                                 );
@@ -463,7 +490,7 @@ export default function Index({
                                                 <th className="border-b border-wa-accent/15 px-3 py-2">時間帯</th>
                                                 {Array.from({ length: lanes }, (_, i) => (
                                                     <th key={i} className="border-b border-wa-accent/15 px-3 py-2">
-                                                        枠{i + 1}
+                                                        {i + 1}
                                                     </th>
                                                 ))}
                                             </tr>

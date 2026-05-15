@@ -203,4 +203,25 @@
   .lunch-cell-alert {
     animation: lunchCellGlow 0.85s ease-in-out 4;
   }
+
+  @keyframes lom-steam {
+    0%   { opacity: 0; transform: translateY(0); }
+    30%  { opacity: 0.75; }
+    100% { opacity: 0; transform: translateY(-9px); }
+  }
+  @keyframes lom-wiggle {
+    0%, 100% { transform: rotate(0); }
+    25%       { transform: rotate(-7deg); }
+    75%       { transform: rotate(7deg); }
+  }
+  @keyframes lom-float {
+    0%, 100% { transform: translateY(0); }
+    50%       { transform: translateY(-2.5px); }
+  }
+  @keyframes lom-key-spin {
+    0%   { transform: rotate(0); }
+    35%  { transform: rotate(-18deg); }
+    70%  { transform: rotate(12deg); }
+    100% { transform: rotate(0); }
+  }
 }
