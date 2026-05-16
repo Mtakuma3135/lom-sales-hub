@@ -4,6 +4,8 @@
 
 ![ダッシュボード](docs/screenshots/home.png)
 
+https://github.com/user-attachments/assets/7baed61c-ec19-41d4-be1b-c0c4e56f100f
+
 ---
 
 ## サービス概要
