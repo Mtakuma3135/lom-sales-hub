@@ -57,12 +57,14 @@ https://github.com/user-attachments/assets/7baed61c-ec19-41d4-be1b-c0c4e56f100f
 | Tailwind CSS | 3 | ユーティリティファーストで一貫したデザインを効率よく実装できるため |
 | Vite | 8 | HMR が高速で開発体験が向上するため |
 
-### インフラ・外部連携
+### インフラ・Docker
 | 技術・サービス | 用途 |
 |---------------|------|
-| Render（Docker） | 本番ホスティング・自動デプロイ |
+| Docker / Laravel Sail | ローカル開発環境（PHP + MySQL をコンテナ化） |
+| Docker マルチステージビルド | 本番用イメージ（Node→Composer→PHP-Apache の3ステージ構成） |
+| Render | 本番ホスティング・ブランチ push で自動デプロイ |
 | PostgreSQL | 本番 DB（Render 提供） |
-| MySQL | ローカル開発 DB（MAMP） |
+| MySQL 8.4 | ローカル開発 DB（Sail コンテナ） |
 | GitHub Actions | CI（ビルド・テスト自動実行） |
 | Discord Webhook | 各種イベント通知の自動送信 |
 | King of Time API | 打刻連携（KOT） |
@@ -171,18 +173,44 @@ departments（部署）
 
 ## 環境構築（ローカル）
 
-詳細は [`docs/dev-environments.md`](docs/dev-environments.md) を参照してください。
+### Docker 構成
+
+ローカル開発は **Laravel Sail**（Docker Compose）を使用しています。
+
+| コンテナ | 内容 |
+|---------|------|
+| `laravel.test` | PHP 8.5 + Apache（アプリ本体） |
+| `mysql` | MySQL 8.4 |
+
+本番は **カスタム Dockerfile（マルチステージビルド）** で動作します。
+
+```
+Stage 1: node:22    → npm run build（Vite アセット生成）
+Stage 2: composer:2 → composer install（本番依存のみ）
+Stage 3: php:8.3-apache → 実行イメージ（Apache + PHP）
+```
+
+起動時に `docker/start.sh` がマイグレーション・キャッシュ最適化を自動実行します。
+
+### セットアップ手順
 
 ```bash
 git clone https://github.com/Mtakuma3135/lom-sales-hub.git
 cd lom-sales-hub
 cp .env.example .env
-composer install
-npm install
+
+# Docker（Sail）で起動
+./vendor/bin/sail up -d
+./vendor/bin/sail artisan migrate --seed
+
+# または MAMP などローカル環境で起動
+composer install && npm install
 php artisan key:generate
 php artisan migrate --seed
 composer dev   # サーバー・キュー・Vite を同時起動
 ```
+
+詳細は [`docs/dev-environments.md`](docs/dev-environments.md) を参照してください。
 
 ログイン（シード後）:
 - **管理者**: `admin@example.com` / `password`
